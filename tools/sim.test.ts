@@ -9,6 +9,7 @@ import { loadCity, type CityFile } from '../sim/city.ts';
 import { buildAt, buySite, buyUnit, expand, unitsOf } from '../sim/buildings.ts';
 import { dispatch, options, qualify } from '../sim/calls.ts';
 import { pathTo, search } from '../sim/routing.ts';
+import { choices, decide } from '../sim/scenes.ts';
 import type { World } from '../sim/types.ts';
 import { newWorld, tick } from '../sim/world.ts';
 
@@ -19,6 +20,10 @@ const centre = { x: city.width / 2, y: city.height / 2 };
 function regulate(w: World) {
   for (const c of w.calls) {
     if (c.state === 'clos') continue;
+    if (c.state === 'bilan') {
+      const best = choices(w, c).find((o) => o.enabled && o.id === 'renfort') ?? choices(w, c).find((o) => o.id === 'evacuer') ?? choices(w, c)[1];
+      decide(w, c, best.id);
+    }
     if (!c.qualified) qualify(w, c.id, c.kind.family);
     const picks = options(w, c.id).filter((o) => o.suggested).map((o) => o.unit.id);
     if (picks.length) dispatch(w, c.id, picks);
@@ -136,4 +141,122 @@ test('the same seed replays the same career', () => {
     return w.calls.map((c) => `${c.kind.id}@${c.address}`).join('|');
   };
   expect(run()).toBe(run());
+});
+
+test('a twist on scene asks a decision; reinforcements add needs and a bonus', () => {
+  const w = newWorld(city, 5);
+  buildAt(w, 'caserne', centre.x, centre.y);
+  w.money = 1e6;
+  const b = w.buildings[0];
+  expand(w, b.id);
+  buyUnit(w, b.id, 'VSAV');
+  let seen = 0, reinforced = 0;
+  for (let i = 0; i < 4 * 60 * 120 && reinforced < 2; i++) {
+    tick(w, 250);
+    for (const c of w.calls) {
+      if (c.state === 'bilan') {
+        seen++;
+        const before = c.needs.length;
+        const renfort = choices(w, c).find((o) => o.id === 'renfort')!;
+        expect(renfort.enabled).toBe(true); // the twists of level 1 only ask for a VSAV
+        expect(decide(w, c, 'renfort')).toBe(true);
+        expect(c.needs.length).toBe(before + 1);
+        expect(c.bonus).toBe(1.3);
+        reinforced++;
+      }
+    }
+    regulate(w);
+  }
+  expect(seen).toBeGreaterThan(0);
+});
+
+test('making do is risky: about 60 % succeed', () => {
+  let ok = 0, n = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    const w = newWorld(city, seed);
+    buildAt(w, 'caserne', centre.x, centre.y);
+    for (let i = 0; i < 4 * 60 * 60 && n < 200; i++) {
+      tick(w, 250);
+      for (const c of w.calls) if (c.state === 'bilan') decide(w, c, 'surplace');
+      regulate(w);
+    }
+    for (const c of w.calls) if (c.risk < 1 && c.state === 'clos') { n++; if (c.outcome === 'sauve') ok++; }
+  }
+  expect(n).toBeGreaterThan(10);
+  expect(ok / n).toBeGreaterThan(0.35);
+  expect(ok / n).toBeLessThan(0.85);
+});
+
+test('coverage: a central station covers most streets, a second one adds to it', async () => {
+  const { coverageShare, withStationAt } = await import('../sim/coverage.ts');
+  const { nearestNode } = await import('../sim/city.ts');
+  const w = newWorld(city, 1);
+  expect(coverageShare(w)).toBe(0);
+  buildAt(w, 'caserne', centre.x, centre.y);
+  const one = coverageShare(w);
+  expect(one).toBeGreaterThan(0.4);
+  expect(one).toBeLessThan(0.95);
+  const corner = withStationAt(w, nearestNode(city, city.width * 0.9, city.height * 0.9));
+  expect(corner.gain).toBeGreaterThan(0.03);
+  const twin = withStationAt(w, nearestNode(city, centre.x + 50, centre.y));
+  expect(twin.gain).toBeLessThan(corner.gain);
+});
+
+test('districts draw their calls: falls near nursing homes, fires in the industrial zone', async () => {
+  const { CALL_KINDS } = await import('../sim/catalog/calls.ts');
+  const { pickStreet, placesAt } = await import('../sim/places.ts');
+  const { mulberry } = await import('../sim/rng.ts');
+  const rng = mulberry(7);
+  const share = (id: string, place: string) => {
+    const kind = CALL_KINDS.find((k) => k.id === id)!;
+    let hit = 0;
+    for (let i = 0; i < 400; i++) if (placesAt(city, pickStreet(city, kind, rng, () => false)).has(place as never)) hit++;
+    return hit / 400;
+  };
+  const base = (place: string) => share('malaise_domicile', place);
+  expect(share('chute', 'ehpad')).toBeGreaterThan(base('ehpad') * 2);
+  expect(share('feu_entrepot', 'industriel')).toBeGreaterThan(base('industriel') * 2);
+  expect(share('tapage', 'bar')).toBeGreaterThan(base('bar') * 2);
+});
+
+test('daily contracts: three a day, paid once, renewed at 07:00, a perfect day starts a streak', () => {
+  const w = newWorld(city, 21);
+  buildAt(w, 'caserne', centre.x, centre.y);
+  tick(w, 250);
+  expect(w.contracts.length).toBe(3);
+  expect(new Set(w.contracts.map((c) => c.kind)).size).toBe(3);
+  // Force-complete the day's contracts.
+  const money = w.money;
+  for (const c of w.contracts) { c.target = 0; }
+  tick(w, 250);
+  expect(w.contracts.every((c) => c.state === 'done')).toBe(true);
+  expect(w.money).toBeGreaterThan(money);
+  const paid = w.money;
+  tick(w, 250);
+  expect(w.money).toBeLessThanOrEqual(paid); // not paid twice
+  w.speed = 4;
+  const day = w.dayStats.day;
+  while (w.dayStats.day === day) tick(w, 1000);
+  expect(w.streak).toBe(1);
+  expect(w.contracts.every((c) => c.state === 'open' || c.state === 'done')).toBe(true);
+});
+
+test('the tutorial follows the player and then gives tips once', async () => {
+  const { STEPS, guide, dismissTip } = await import('../sim/tutorial.ts');
+  const w = newWorld(city, 4);
+  tick(w, 250);
+  expect(guide(w).hint).toBe('open-build');
+  buildAt(w, 'caserne', centre.x, centre.y);
+  for (let i = 0; i < 4 * 60 * 40 && w.tutorial < STEPS.length; i++) {
+    tick(w, 250);
+    regulate(w);
+    if (w.tutorial === STEPS.length - 1) { w.money = 1e6; buyUnit(w, w.buildings[0].id, 'VSAV'); }
+  }
+  expect(w.tutorial).toBe(STEPS.length);
+  for (let i = 0; i < 20 && w.tip === ''; i++) tick(w, 250);
+  expect(w.tip).toBe('contracts');
+  dismissTip(w);
+  tick(w, 250);
+  expect(w.tipsSeen).toContain('contracts');
+  expect(w.tip).not.toBe('contracts');
 });

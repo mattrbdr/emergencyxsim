@@ -11,12 +11,13 @@ component CallQueue
     selected: string
     pick: action
     firstBuilding: bool
+    hint: string
   view
     column role="tabpanel" id="panel-appels" gap=6
       if calls.length == 0
         Empty(icon="phone", text=(firstBuilding ? "Aucun appel tant que vous n'avez pas de caserne. Touchez « Construire »." : "Ligne calme. Les appels arrivent ici."))
-      for c in calls key=c.id
-        CallCard(c=c, active=(c.id == selected), pick=pick(c.id))
+      for c, i in calls key=c.id
+        CallCard(c=c, active=(c.id == selected), pick=pick(c.id), hinted=(hint == "call" and i == 0), tid=(i == 0 ? "call-first" : `call-${c.id}`))
       if closed.length > 0
         view height=8
         Heading(text="Terminés", detail=`${closed.length}`)
@@ -36,8 +37,10 @@ component CallCard
     c: CallRow
     active: bool
     pick: action
+    hinted: bool
+    tid: string
   view
-    column press=pick role="button" aria-label=`Priorité ${c.priority}, ${c.title}, ${c.address}, ${c.stateLabel}, ${c.timeText}` gap=7 padding="10px 12px 10px 14px" position="relative" overflow="hidden" border-radius=4 background-color=(active ? "#1c2330" : "#171c24") border-width=1 border-style="solid" border-color=(active ? "#4b5668" : "#1f2630") testId=`call-${c.id}`
+    column press=pick box-shadow=(hinted ? "0 0 0 2px #56c2e6" : "none") role="button" aria-label=`Priorité ${c.priority}, ${c.title}, ${c.address}, ${c.stateLabel}, ${c.timeText}` gap=7 padding="10px 12px 10px 14px" position="relative" overflow="hidden" border-radius=4 background-color=(active ? "#1c2330" : "#171c24") border-width=1 border-style="solid" border-color=(active ? "#4b5668" : "#1f2630") testId=tid
       view position="absolute" left=0 top=0 bottom=0 width=3 background-color=priorityColor(c.priority)
       row align-items="center" gap=8
         text `P${c.priority}` class=Mono font-size="0.7rem" font-weight=600 color=priorityColor(c.priority)

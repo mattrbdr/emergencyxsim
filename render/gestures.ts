@@ -1,6 +1,7 @@
 // Touch, mouse and trackpad on the map: one finger pans, two pinch, a wheel
 // zooms, a tap picks what is under it (or places a building in build mode).
-import { buildAt } from '../sim/buildings.ts';
+import { nearestNode } from '../sim/city.ts';
+import { withStationAt } from '../sim/coverage.ts';
 import type { World } from '../sim/types.ts';
 import { clamp, settle, toScreen, toWorld } from './camera.ts';
 
@@ -67,10 +68,13 @@ function pick(w: World, sx: number, sy: number): string {
     const kind = w.placing.kind;
     const site = closest(w.city.pois.map((p, i) => ({ id: `site:${i}`, d: near(w, p.x, p.y, sx, sy) })), 24);
     if (site) return site;
+    // First tap aims: the ghost stands on the nearest street and shows its gain.
     const [x, y] = toWorld(w, sx, sy);
-    const b = buildAt(w, kind, x, y);
-    if (b) { w.placing = null; return `built:${b.id}`; }
-    return '';
+    const node = nearestNode(w.city, x, y);
+    const preview = withStationAt(w, node);
+    w.placing = { kind, node, gain: preview.gain, after: preview.after };
+    w.cam.seq++;
+    return 'aimed';
   }
   return (
     closest(w.calls.filter((c) => c.state !== 'clos').map((c) => ({ id: `call:${c.id}`, d: near(w, c.x, c.y, sx, sy) })), 26) ||

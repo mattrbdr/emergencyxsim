@@ -5,6 +5,7 @@ import type { Service, UnitType } from './catalog/units.ts';
 import type { City } from './city.ts';
 import type { Rng } from './rng.ts';
 import type { Tree } from './routing.ts';
+import type { Contract, DayStats } from './contracts.ts';
 
 export type UnitStatus = 'dispo' | 'route' | 'surplace' | 'transport' | 'hopital' | 'retour';
 
@@ -44,7 +45,7 @@ export interface Unit {
   missions: number;
 }
 
-export type CallState = 'nouveau' | 'attente' | 'engage' | 'traitement' | 'clos';
+export type CallState = 'nouveau' | 'attente' | 'engage' | 'bilan' | 'traitement' | 'clos';
 export type Outcome = '' | 'sauve' | 'perdu' | 'echec';
 
 export interface Call {
@@ -69,6 +70,15 @@ export interface Call {
   firstOnScene: number;
   closedAt: number;
   earned: number;
+  /** The first crew's report was rolled (sim/scenes.ts). */
+  twistRolled: boolean;
+  /** A report waiting for the player's decision. */
+  twist: { id: string; report: string; add: UnitType[]; from: string } | null;
+  decisionLeft: number;
+  /** Chance the intervention succeeds (1 unless the player took a risk). */
+  risk: number;
+  /** Reward multiplier earned by the decision. */
+  bonus: number;
 }
 
 export interface LogEntry {
@@ -133,5 +143,15 @@ export interface World {
   pointers: Map<number, Pointer>;
   pinch: { d: number; zoom: number } | null;
   /** Build mode: the kind being placed and where the ghost stands (node, or -1). */
-  placing: { kind: BuildingKind; node: number } | null;
+  placing: { kind: BuildingKind; node: number; gain: number; after: number } | null;
+  /** The coverage overlay is shown on the map. */
+  overlay: boolean;
+  contracts: Contract[];
+  dayStats: DayStats;
+  /** Days in a row with every contract done. */
+  streak: number;
+  /** Index of the current tutorial step (STEPS.length when finished). */
+  tutorial: number;
+  tip: string;
+  tipsSeen: string[];
 }

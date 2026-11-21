@@ -6,8 +6,12 @@ import { MAX_LEVEL, XP_FOR_LEVEL, levelProgress } from '../sim/catalog/levels.ts
 import { UNIT_ORDER, UNITS, type UnitType } from '../sim/catalog/units.ts';
 import { buildPrice, cannotBuy, isFirstBuilding, sitePrice, unitsOf } from '../sim/buildings.ts';
 import { needState } from '../sim/calls.ts';
-import { clockText, dayOf, minutesText } from '../sim/clock.ts';
+import { choices } from '../sim/scenes.ts';
+import { clockText, minutesText } from '../sim/clock.ts';
 import { upkeepPerHour } from '../sim/economy.ts';
+import { coverageShare } from '../sim/coverage.ts';
+import { shiftDay, streakBonus } from '../sim/contracts.ts';
+import { guide } from '../sim/tutorial.ts';
 import { euros } from '../sim/log.ts';
 import { unlocksAt } from '../sim/progression.ts';
 import type { Building, Call, UnitStatus, World } from '../sim/types.ts';
@@ -19,7 +23,7 @@ const STATUS: Record<UnitStatus, string> = {
   dispo: 'Disponible', route: 'En route', surplace: 'Sur place', transport: 'Transport', hopital: 'À l\'hôpital', retour: 'Retour',
 };
 const CALL_STATE: Record<Call['state'], string> = {
-  nouveau: 'À qualifier', attente: 'À engager', engage: 'Moyens en route', traitement: 'Intervention', clos: 'Terminé',
+  nouveau: 'À qualifier', attente: 'À engager', engage: 'Moyens en route', bilan: 'Décision requise', traitement: 'Intervention', clos: 'Terminé',
 };
 const OUTCOME: Record<string, string> = { sauve: 'Réussi', perdu: 'Victime perdue', echec: 'Échec', '': '' };
 
@@ -44,7 +48,15 @@ function callRow(w: World, c: Call): Snap['calls'][number] {
     at: clockText(c.at),
     timeText: c.state === 'clos' ? clockText(c.closedAt) : working ? minutesText(left) : left > 0 ? minutesText(left) : 'dépassé',
     fraction: Math.max(0, Math.min(1, left / Math.max(1, total))),
-    reward: c.state === 'clos' ? (c.earned > 0 ? `+${euros(c.earned)}` : '') : euros(c.kind.reward),
+    reward: c.state === 'clos' ? (c.earned > 0 ? `+${euros(c.earned)}` : '') : euros(c.kind.reward * c.bonus),
+    risk: c.risk < 1 && c.state !== 'clos' ? `${Math.round(c.risk * 100)} % de réussite` : '',
+    decision: {
+      pending: c.state === 'bilan' && c.twist !== null,
+      from: c.twist?.from ?? '',
+      report: c.twist?.report ?? '',
+      left: c.state === 'bilan' ? minutesText(c.decisionLeft) : '',
+      choices: c.state === 'bilan' ? choices(w, c) : [],
+    },
     needs: known
       ? needState(w, c).map((n) => ({ type: n.type, label: UNITS[n.type].long, service: UNITS[n.type].service, state: n.state }))
       : [],
@@ -94,7 +106,7 @@ export function snapshot(w: World): Snap {
     seq: w.seq,
     city: w.city.name,
     attribution: w.city.file.attribution,
-    day: dayOf(w.t),
+    day: shiftDay(w),
     clock: clockText(w.t),
     speed: w.speed,
     paused: w.paused,
@@ -116,6 +128,13 @@ export function snapshot(w: World): Snap {
     showUnlock: w.level > w.seenLevel,
     newCalls: active.filter((c) => !c.qualified).length,
     placing: w.placing?.kind ?? '',
+    aimed: (w.placing?.node ?? -1) >= 0,
+    aimText: w.placing && w.placing.node >= 0
+      ? `+${Math.round(w.placing.gain * 100)} % · ${Math.round(w.placing.after * 100)} % de la ville à moins de 3 min`
+      : '',
+    placingPrice: w.placing ? euros(buildPrice(w, w.placing.kind)) : '',
+    overlay: w.overlay,
+    coverage: Math.round(coverageShare(w) * 100),
     firstBuilding: isFirstBuilding(w),
     calls: active.map((c) => callRow(w, c)),
     closed: closed.map((c) => callRow(w, c)),
@@ -149,6 +168,18 @@ export function snapshot(w: World): Snap {
     })),
     log: w.log.slice(0, 40).map((l) => ({ id: l.id, at: clockText(l.t), text: l.text, tone: l.tone })),
     toast: { id: w.toast.id, at: clockText(w.toast.t), text: w.toast.text, tone: w.toast.tone },
+    guide: guide(w),
+    contracts: w.contracts.map((c) => ({
+      id: c.id, label: c.label, state: c.state, xp: c.xp,
+      progressText: c.kind === 'earn' ? `${euros(Math.min(c.progress, c.target))} / ${euros(c.target)}`
+        : c.kind === 'coverage' ? `${c.progress} % / ${c.target} %`
+        : c.kind === 'no_loss' ? (c.state === 'failed' ? 'Victime perdue' : c.state === 'done' ? 'Tenu' : 'En cours')
+        : `${Math.min(c.progress, c.target)} / ${c.target}`,
+      fraction: c.state === 'done' ? 1 : c.target > 0 ? Math.min(1, c.progress / c.target) : 0,
+      reward: euros(Math.round(c.reward * streakBonus(w))),
+    })),
+    contractsDone: w.contracts.filter((c) => c.state === 'done').length,
+    streak: w.streak,
     stats: {
       calls: s.calls, saved: s.saved, lost: s.lost, failed: s.failed,
       avgResponse: s.responses ? minutesText(s.responseSum / s.responses) : '—',

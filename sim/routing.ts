@@ -16,7 +16,9 @@ export interface Tree {
   prev: Int32Array;
 }
 
-export function search(city: City, source: number, traffic?: (edge: number) => number): Tree {
+/** Shortest times from `source` (or from the nearest of several sources) to every node. */
+export function search(city: City, source: number | number[], traffic?: (edge: number) => number): Tree {
+  const sources = Array.isArray(source) ? source : [source];
   const n = city.nx.length;
   const time = new Float64Array(n).fill(Infinity);
   const prev = new Int32Array(n).fill(-1);
@@ -52,8 +54,10 @@ export function search(city: City, source: number, traffic?: (edge: number) => n
     }
     return [t, v];
   };
-  time[source] = 0;
-  push(0, source);
+  for (const s of sources) {
+    time[s] = 0;
+    push(0, s);
+  }
   while (heap.length > 0) {
     const [t, u] = pop();
     if (t > time[u]) continue;
@@ -68,7 +72,7 @@ export function search(city: City, source: number, traffic?: (edge: number) => n
       }
     }
   }
-  return { source, time, prev };
+  return { source: sources[0] ?? 0, time, prev };
 }
 
 /** The nodes from `from` to the tree's source, following `prev`. */

@@ -2,6 +2,8 @@
 // OpenStreetMap baker (tools/bake-osm.ts). Coordinates are metres, origin at the
 // top-left corner of the bounding box, y pointing south (screen order).
 
+import type { HotspotKind, ZoneKind } from './catalog/places.ts';
+
 export type PoiKind = 'fire' | 'hospital' | 'police';
 
 export interface CityFile {
@@ -19,6 +21,9 @@ export interface CityFile {
   parks: number[][];
   buildings: number[][];
   pois: { kind: PoiKind; name: string; x: number; y: number }[];
+  /** Districts (absent from cities baked before v3). */
+  zones?: { kind: ZoneKind; name: string; pts: number[] }[];
+  hotspots?: { kind: HotspotKind; name: string; x: number; y: number }[];
 }
 
 export interface Edge {
@@ -49,6 +54,8 @@ export interface City {
   /** For each node, the indexes of its edges. */
   adj: number[][];
   pois: Poi[];
+  zones: { kind: ZoneKind; name: string; pts: number[]; cx: number; cy: number }[];
+  hotspots: { kind: HotspotKind; name: string; x: number; y: number }[];
   /** Edges a call can happen on (local streets first). */
   callEdges: number[];
   /** Buckets of polygon/edge indexes by grid cell, for culling while drawing. */
@@ -96,6 +103,8 @@ export function loadCity(file: CityFile): City {
   const callEdges = edges.map((_, i) => i).filter((i) => edges[i].cls >= 1 && edges[i].len > 40);
   return {
     file, name: file.name, width: file.width, height: file.height, nx, ny, edges, adj, pois,
+    zones: (file.zones ?? []).map((z) => ({ ...z, ...centroid(z.pts) })),
+    hotspots: file.hotspots ?? [],
     callEdges: callEdges.length > 0 ? callEdges : edges.map((_, i) => i),
     grid: { size: CELL, cols, rows, edges: gEdges, buildings: gBuild },
   };
@@ -113,3 +122,20 @@ function nearest(nx: Float64Array, ny: Float64Array, adj: number[][], x: number,
 
 /** The road node closest to a point (only nodes on the road network). */
 export const nearestNode = (city: City, x: number, y: number) => nearest(city.nx, city.ny, city.adj, x, y);
+
+function centroid(pts: number[]) {
+  let cx = 0, cy = 0;
+  for (let i = 0; i < pts.length; i += 2) { cx += pts[i]; cy += pts[i + 1]; }
+  const n = Math.max(1, pts.length / 2);
+  return { cx: cx / n, cy: cy / n };
+}
+
+/** Even-odd test of a point against a flat polygon. */
+export function inside(pts: number[], x: number, y: number): boolean {
+  let hit = false;
+  for (let i = 0, j = pts.length - 2; i < pts.length; j = i, i += 2) {
+    const xi = pts[i], yi = pts[i + 1], xj = pts[j], yj = pts[j + 1];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) hit = !hit;
+  }
+  return hit;
+}

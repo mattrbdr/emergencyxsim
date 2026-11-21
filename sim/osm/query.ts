@@ -25,6 +25,13 @@ way["highway"~"^(${ROAD_CLASSES})$"](area.a)->.roads;
 out skel qt;
 nwr["amenity"~"^(fire_station|hospital|police)$"](area.a);
 out center tags;
+(
+  nwr["amenity"~"^(bar|pub|nightclub|school|nursing_home)$"](area.a);
+  nwr["social_facility"="nursing_home"](area.a);
+  nwr["leisure"="stadium"](area.a);
+  nwr["railway"="station"](area.a);
+);
+out center tags 800;
 rel["boundary"="administrative"]["admin_level"="8"]["ref:INSEE"="${quote(insee)}"];
 out tags;`;
 
@@ -38,6 +45,7 @@ ${area(insee)}
   way["waterway"~"^(river|canal)$"](area.a);
   way["leisure"~"^(park|garden)$"](area.a);
   way["landuse"~"^(grass|forest|recreation_ground|cemetery)$"](area.a);
+  way["landuse"~"^(industrial|commercial|retail)$"](area.a);
 );
 out geom qt;
 way["building"](area.a);

@@ -7,6 +7,9 @@ import { adjustReputation, earn, reward } from './economy.ts';
 import { euros, say } from './log.ts';
 import { gainXp } from './progression.ts';
 import { pick } from './rng.ts';
+import { landmark, pickStreet } from './places.ts';
+import { decisionTimeout, rollTwist } from './scenes.ts';
+import { recordCall } from './contracts.ts';
 import { treeFromCall } from './traffic.ts';
 import type { Call, World } from './types.ts';
 import { etaFrom, goHome, isFree, sendTo, toHospital } from './units.ts';
@@ -39,12 +42,10 @@ export function spawnCall(w: World) {
   let kind = kinds[0];
   for (const k of kinds) { r -= weight(k); if (r <= 0) { kind = k; break; } }
 
-  let edgeIndex = pick(w.rng, w.city.callEdges);
-  for (let tries = 0; tries < 8; tries++) {
-    const e = w.city.edges[edgeIndex];
-    if (!active.some((c) => Math.hypot(c.x - w.city.nx[e.a], c.y - w.city.ny[e.a]) < 250)) break;
-    edgeIndex = pick(w.rng, w.city.callEdges);
-  }
+  const edgeIndex = pickStreet(w.city, kind, w.rng, (edge) => {
+    const e = w.city.edges[edge];
+    return active.some((c) => Math.hypot(c.x - w.city.nx[e.a], c.y - w.city.ny[e.a]) < 250);
+  });
   const e = w.city.edges[edgeIndex];
   const f = 0.2 + w.rng() * 0.6;
   const call: Call = {
@@ -52,11 +53,15 @@ export function spawnCall(w: World) {
     node: w.rng() < 0.5 ? e.a : e.b,
     x: w.city.nx[e.a] + (w.city.nx[e.b] - w.city.nx[e.a]) * f,
     y: w.city.ny[e.a] + (w.city.ny[e.b] - w.city.ny[e.a]) * f,
-    address: `${1 + Math.floor(w.rng() * 140)} ${w.city.file.names[e.name] ?? 'rue sans nom'}`,
+    address: '',
     caller: pick(w.rng, kind.callers), at: w.t, deadline: w.t + kind.deadline * 60, priority: kind.priority,
     state: 'nouveau', qualified: false, guessedRight: false, needs: [...kind.needs], assigned: [],
     workLeft: kind.work * 60, escalated: false, outcome: '', firstOnScene: -1, closedAt: 0, earned: 0,
+    twistRolled: false, twist: null, decisionLeft: 0, risk: 1, bonus: 1,
   };
+  const street = `${1 + Math.floor(w.rng() * 140)} ${w.city.file.names[e.name] ?? 'rue sans nom'}`;
+  const near = landmark(w.city, kind, call.x, call.y);
+  call.address = near ? `${near}, ${street}` : street;
   w.calls.push(call);
   w.stats.calls++;
   say(w, `Appel ${call.priority === 1 ? 'URGENT ' : ''}— ${call.address}.`, call.priority === 1 ? 'alert' : 'info', true);
@@ -74,6 +79,7 @@ export function qualify(w: World, callId: string, family: Family): boolean {
   if (call.state === 'nouveau') call.state = 'attente';
   if (call.guessedRight) {
     w.stats.qualifyRight++;
+    w.dayStats.qualifyRight++;
     gainXp(w, 5);
     say(w, `Qualifié : ${call.kind.title.toLowerCase()}.`, 'info');
   } else {
@@ -180,6 +186,14 @@ export function updateCall(w: World, call: Call, dt: number) {
     if (call.workLeft <= 0) finish(w, call);
     return;
   }
+  if (call.state === 'bilan') {
+    decisionTimeout(w, call, dt);
+    return;
+  }
+  if (!call.twistRolled && call.firstOnScene >= 0) {
+    rollTwist(w, call);
+    if ((call.state as Call['state']) === 'bilan') return; // rollTwist may have changed it
+  }
   const missing = [...call.needs];
   for (const type of onSceneTypes(w, call)) {
     const k = missing.indexOf(type);
@@ -215,9 +229,25 @@ export function updateCall(w: World, call: Call, dt: number) {
 }
 
 function finish(w: World, call: Call) {
+  // A risky decision may fail.
+  if (call.risk < 1 && w.rng() > call.risk) {
+    if (call.kind.victims > 0) {
+      call.outcome = 'perdu';
+      w.stats.lost += call.kind.victims;
+      adjustReputation(w, -4 * call.kind.victims);
+      say(w, `${call.kind.title}, ${call.address} : malgré les efforts, la victime n'a pas survécu.`, 'bad', true);
+    } else {
+      call.outcome = 'echec';
+      w.stats.failed++;
+      adjustReputation(w, -3);
+      say(w, `${call.kind.title}, ${call.address} : les moyens étaient insuffisants.`, 'bad', true);
+    }
+    close(w, call);
+    return;
+  }
   call.outcome = 'sauve';
   const early = call.firstOnScene >= 0 ? Math.max(0, call.deadline - call.firstOnScene) : 0;
-  const money = reward(w, call.kind, early);
+  const money = Math.round(reward(w, call.kind, early) * call.bonus);
   call.earned = money;
   earn(w, money);
   gainXp(w, call.kind.xp);
@@ -230,6 +260,7 @@ function finish(w: World, call: Call) {
 function close(w: World, call: Call, transport = false) {
   call.state = 'clos';
   call.closedAt = w.t;
+  recordCall(w, call);
   let carrier: string | undefined;
   if (transport) {
     const scene = call.assigned

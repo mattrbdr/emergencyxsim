@@ -1,6 +1,6 @@
 // The call sheet: what the caller says, the qualification, what the scene needs,
 // who is engaged, and the vehicles to send.
-use CallRow, Option, Ack from "./model.contract"
+use CallRow, Option, Ack, Decision from "./model.contract"
 use Icon from "./icons.contract"
 use Tag, CallSign, Heading from "./parts.contract"
 use Mono, Caps, Primary, Secondary, Quiet, priorityColor, familyColor, familyIcon, needColor, serviceColor, callStateColor, plural, money from "./theme.contract"
@@ -11,6 +11,7 @@ component CallSheet
     seq: number
     close: action
     pickUnit: action
+    hint: string
   state picks: string[] = []
   state showAll = false
   resource opts = dispatchOptions(c.id, seq) as shape Option[] else empty() transient
@@ -34,6 +35,9 @@ component CallSheet
     send ordered = recallUnit(id)
   action toggleAll
     showAll = not showAll
+  action choose(id: string)
+    send ordered = decide(c.id, id)
+    haptic("selection")
 
   view
     column gap=16 testId="sheet"
@@ -49,6 +53,9 @@ component CallSheet
         button press=close aria-label="Fermer la fiche" class=Quiet testId="sheet-close"
           Icon(name="close", size=18, color="#9aa4b2")
 
+      if c.decision.pending
+        DecisionCard(d=c.decision, choose=choose)
+
       row gap=8 align-items="center" padding="8px 0" border-top="1px solid #252c36" border-bottom="1px solid #252c36"
         Tag(text=c.stateLabel, color=callStateColor(c.state))
         view flex=1
@@ -56,6 +63,10 @@ component CallSheet
         text c.timeText class=Mono font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#e6edf3")
         Icon(name="money", size=14, color=money())
         text c.reward class=Mono font-size="0.82rem" color=money()
+      if c.risk != ""
+        row gap=6 align-items="center"
+          Icon(name="alert", size=13, color="#f0a531")
+          text c.risk class=Mono font-size="0.75rem" color="#f0a531"
 
       // The caller, as a transcript line.
       column gap=6 padding="12px 14px" background-color="#0b0e12" border-left-width=2 border-left-style="solid" border-left-color=priorityColor(c.priority)
@@ -65,7 +76,7 @@ component CallSheet
         text `« ${c.caller} »` font-size="0.95rem" line-height=1.5 testId="caller"
 
       if not c.qualified
-        column gap=8 testId="qualify"
+        column gap=8 padding=(hint == "call" ? 8 : 0) box-shadow=(hint == "call" ? "0 0 0 2px #56c2e6" : "none") border-radius=4 testId="qualify"
           Heading(text="Qualifier l'appel", detail="")
           column gap=6
             for f in ["sap", "feu", "route", "police", "technique"] key=f
@@ -120,6 +131,28 @@ component CallSheet
               if picks.isEmpty() and suggested.length > 0
                 button press=useSuggestion class=Secondary flex=1 testId="use-suggestion"
                   text "Choisir"
-              button press=engage class=Primary flex=2 disabled=(picks.isEmpty() and suggested.isEmpty()) opacity=(picks.isEmpty() and suggested.isEmpty() ? 0.4 : 1) testId="engage"
+              button press=engage class=Primary flex=2 box-shadow=(hint == "engage" ? "0 0 0 2px #56c2e6" : "none") disabled=(picks.isEmpty() and suggested.isEmpty()) opacity=(picks.isEmpty() and suggested.isEmpty() ? 0.4 : 1) testId="engage"
                 Icon(name="flag", size=16, color="#0b0e12")
                 text (picks.isEmpty() ? "Engager la suggestion" : `Engager ${plural(picks.length, "véhicule", "véhicules")}`) font-weight=600
+
+// The crew chief's report: the situation changed, the room decides.
+component DecisionCard
+  props
+    d: Decision
+    choose: action
+  view
+    column gap=10 padding=14 background-color="#1a1610" border="1px solid #f0a531" border-radius=4 animation="pulse-border 1.6s ease-in-out infinite" testId="decision"
+      row gap=8 align-items="center"
+        Icon(name="alert", size=16, color="#f0a531")
+        text `BILAN · ${d.from.toUpperCase()}` class=Caps color="#f0a531" flex=1
+        text d.left class=Mono font-size="0.72rem" color="#f0a531"
+      text d.report font-size="0.95rem" line-height=1.45 testId="decision-report"
+      column gap=6
+        for ch in d.choices key=ch.id
+          button press=choose(ch.id) disabled=(not ch.enabled) class=(ch.id == "renfort" ? Primary : Secondary) justify-content="flex-start" opacity=(ch.enabled ? 1 : 0.45) testId=`decide-${ch.id}`
+            column align-items="flex-start" gap=2 flex=1
+              text ch.label font-weight=600 color=(ch.id == "renfort" ? "#0b0e12" : "#e6edf3")
+              text ch.detail class=Mono font-size="0.68rem" color=(ch.id == "renfort" ? "#30394a" : "#9aa4b2") text-align="left"
+
+keyframes pulse-border
+  50% border-color="#6b4f1c"

@@ -9,7 +9,7 @@ export const CITY_FILE = 'app:/data/city.json';
 export const SAVE_FILE = 'app:/data/save.json';
 export const GRANTS = ['fs.read app:/data', 'fs.write app:/data'];
 
-const VERSION = 1;
+const VERSION = 2;
 
 export interface Save {
   version: number;
@@ -28,6 +28,12 @@ export interface Save {
   buildings: Building[];
   units: Pick<Unit, 'id' | 'type' | 'name' | 'building' | 'missions'>[];
   log: World['log'];
+  // Since v2.
+  contracts?: World['contracts'];
+  dayStats?: World['dayStats'];
+  streak?: number;
+  tutorial?: number;
+  tipsSeen?: string[];
 }
 
 const encode = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
@@ -44,7 +50,8 @@ async function readJson<T>(storage: Storage, path: string): Promise<T | null> {
 export const loadCityFile = (storage: Storage) => readJson<CityFile>(storage, CITY_FILE);
 export const loadSave = async (storage: Storage) => {
   const save = await readJson<Save>(storage, SAVE_FILE);
-  return save && save.version === VERSION ? save : null;
+  // v1 (before contracts and the tutorial) is read as is; restore fills the gaps.
+  return save && (save.version === VERSION || save.version === 1) ? save : null;
 };
 
 export function saveCity(storage: Storage, city: CityFile) {
@@ -58,6 +65,7 @@ export function snapshotSave(w: World): Save {
     nextId: w.nextId, nextCallAt: w.nextCallAt, stats: w.stats, buildings: w.buildings,
     units: w.units.map((u) => ({ id: u.id, type: u.type, name: u.name, building: u.building, missions: u.missions })),
     log: w.log.slice(0, 30),
+    contracts: w.contracts, dayStats: w.dayStats, streak: w.streak, tutorial: w.tutorial, tipsSeen: w.tipsSeen,
   };
 }
 

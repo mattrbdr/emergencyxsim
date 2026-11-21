@@ -11,6 +11,8 @@ use Fleet, UnitCard from "./ui/fleet.contract"
 use BuildMenu, PlacingBanner, BuildingSheet, SiteSheet from "./ui/build.contract"
 use UnlockCard, CareerPanel from "./ui/career.contract"
 use CityPicker from "./ui/city-picker.contract"
+use ContractsPanel from "./ui/contracts.contract"
+use GuideCard from "./ui/tutorial.contract"
 
 shape Time
   seed: number
@@ -28,6 +30,7 @@ component EmergencySim
   mutation commanded as shape Ack queue refreshes snap
   mutation moved as shape Ack queue then afterMove
   mutation cammed as shape Ack queue then afterCam
+  mutation placed as shape Ack queue refreshes snap then afterPlaced
 
   state bootSeq = 0
   state started = false
@@ -45,6 +48,7 @@ component EmergencySim
   derive mapSel = panel == "" ? "" : `${panel}:${picked}`
   derive moveReply = match moved { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
   derive camReply = match cammed { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
+  derive placedReply = match placed { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
   derive sideOpen = panel != ""
   derive insetLeft = wide ? 384 : 0
   derive insetRight = wide and sideOpen ? 424 : 0
@@ -52,7 +56,9 @@ component EmergencySim
   derive detailRight = wide ? 424 : 0
   derive insetBottom = wide ? 0 : viewport.height * 0.55
   derive barHeight = wide ? 52 : 50
-  derive showToast = ready and snap.toast.id > hiddenToast and snap.toast.text != ""
+  derive guiding = snap.guide.kind != ""
+  derive hint = snap.guide.hint
+  derive showToast = ready and snap.toast.id > hiddenToast and snap.toast.text != "" and not guiding
   derive placingLabel = snap.placing == "caserne" ? "caserne" : snap.placing == "police" ? "poste de police" : snap.placing == "hopital" ? "hôpital" : ""
 
   task loop when ready
@@ -111,12 +117,27 @@ component EmergencySim
     show("build", "")
   action openCareer
     show("career", "")
+  action openContracts
+    show("contracts", "")
   action place(kind: string)
     send commanded = startPlacing(kind)
     panel = ""
     drawerOpen = false
   action cancelPlacing
     send commanded = cancelPlacing()
+  action confirmPlacing
+    send placed = confirmPlacing()
+  action afterPlaced
+    camSeq = placedReply.cam
+    if placedReply.picked.startsWith("built:")
+      show("building", placedReply.picked.slice(6))
+      haptic("success")
+  action skipGuide
+    send commanded = skipTutorial()
+  action tipSeen
+    send commanded = dismissTip()
+  action toggleOverlay
+    send placed = toggleOverlay()
   action levelSeen
     send commanded = seenLevel()
   action resetCareer
@@ -164,7 +185,7 @@ component EmergencySim
       else
         canvas surface=city(camSeq) position="absolute" left=0 top=0 width="100%" height="100%" aria-hidden=true testId="map-city"
         canvas surface=live(mapSel) position="absolute" left=0 top=0 width="100%" height="100%" touch-action="none" pointerdown=down pointermove=drag pointerup=up wheel=zoomWheel role="img" aria-label=`Carte de ${snap.city}` testId="map"
-        TopBar(snap=snap, wide=wide, setSpeed=setSpeed, togglePause=togglePause, openCareer=openCareer)
+        TopBar(snap=snap, wide=wide, setSpeed=setSpeed, togglePause=togglePause, openCareer=openCareer, openContracts=openContracts)
 
         // Map tools: zoom, overview, build.
         column position="absolute" right=(wide ? (sideOpen ? 436 : 12) : 10) top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` gap=6
@@ -174,12 +195,19 @@ component EmergencySim
             Icon(name="minus", size=16, color="#e6edf3")
           button press=fit aria-label="Vue d'ensemble" class=IconButton testId="fit"
             Icon(name="target", size=16, color="#e6edf3")
-          button press=openBuild aria-label="Construire" class=IconButton background-color="#e6edf3" testId="open-build"
+          button press=toggleOverlay aria-label=(snap.overlay ? "Masquer la couverture" : "Afficher la couverture") aria-pressed=snap.overlay class=IconButton background-color=(snap.overlay ? "#1f3a26" : "#11151b") border-color=(snap.overlay ? "#3fb950" : "#252c36") testId="overlay"
+            Icon(name="layers", size=16, color=(snap.overlay ? "#3fb950" : "#e6edf3"))
+          button press=openBuild aria-label="Construire" class=IconButton background-color="#e6edf3" box-shadow=(hint == "open-build" ? "0 0 0 2px #56c2e6" : "none") testId="open-build"
             Icon(name="build", size=18, color="#0b0e12")
 
         if snap.placing != ""
           view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 396 : 10) right=(wide ? 64 : 60)
-            PlacingBanner(label=placingLabel, cancel=cancelPlacing)
+            PlacingBanner(label=placingLabel, aimed=snap.aimed, aimText=snap.aimText, price=snap.placingPrice, confirm=confirmPlacing, cancel=cancelPlacing)
+
+        if guiding and snap.placing == "" and not snap.showUnlock
+          view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 396 : 10) right=(wide ? (sideOpen ? 488 : 64) : 60) display="flex" justify-content="center" pointer-events="none"
+            view pointer-events="auto" max-width="30rem" width="100%"
+              GuideCard(g=snap.guide, skip=skipGuide, ok=tipSeen)
 
         if showToast and snap.placing == ""
           view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 396 : 10) right=(wide ? (sideOpen ? 488 : 64) : 60) display="flex" justify-content="center" pointer-events="none"
@@ -252,7 +280,7 @@ component Lists
   view
     column
       if tab == "appels"
-        CallQueue(calls=snap.calls, closed=snap.closed, selected=(panel == "call" ? picked : ""), pick=pickCall, firstBuilding=snap.firstBuilding)
+        CallQueue(calls=snap.calls, closed=snap.closed, selected=(panel == "call" ? picked : ""), pick=pickCall, firstBuilding=snap.firstBuilding, hint=snap.guide.hint)
       if tab == "flotte"
         Fleet(buildings=snap.buildings, units=snap.units, pickBuilding=pickBuilding, pickUnit=pickUnit)
       if tab == "journal"
@@ -279,7 +307,7 @@ component Detail
       if panel == "call"
         match first(snap.calls.filter(c => c.id == picked))
           case some(c)
-            CallSheet(c=c, seq=snap.seq, close=closePanel, pickUnit=pickUnit)
+            CallSheet(c=c, seq=snap.seq, close=closePanel, pickUnit=pickUnit, hint=snap.guide.hint)
           case none
             CallGone(close=closePanel)
       if panel == "unit"
@@ -291,7 +319,7 @@ component Detail
       if panel == "building"
         match first(snap.buildings.filter(b => b.id == picked))
           case some(b)
-            BuildingSheet(b=b, seq=snap.seq, close=closePanel)
+            BuildingSheet(b=b, seq=snap.seq, close=closePanel, hint=snap.guide.hint)
           case none
             CallGone(close=closePanel)
       if panel == "site"
@@ -302,6 +330,8 @@ component Detail
             CallGone(close=closePanel)
       if panel == "build"
         BuildMenu(options=snap.build, first=snap.firstBuilding, place=place, close=closePanel)
+      if panel == "contracts"
+        ContractsPanel(contracts=snap.contracts, streak=snap.streak, day=snap.day, close=closePanel)
       if panel == "career"
         CareerPanel(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, stats=snap.stats, city=snap.city, close=closePanel, reset=resetCareer)
 

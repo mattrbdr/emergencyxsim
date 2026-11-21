@@ -1,0 +1,26 @@
+// The guide: a tutorial step or a one-off tip, over the map.
+use Guide from "./model.contract"
+use Icon from "./icons.contract"
+use Mono, Caps, Quiet from "./theme.contract"
+
+component GuideCard
+  props
+    g: Guide
+    skip: action
+    ok: action
+  view
+    column gap=8 padding="12px 14px" background-color="#11151b" border="1px solid #56c2e6" border-radius=4 animation="guide-in 300ms cubic-bezier(0.2, 0.8, 0.2, 1)" testId="guide"
+      row gap=8 align-items="center"
+        Icon(name=(g.kind == "step" ? "flag" : "alert"), size=15, color="#56c2e6")
+        text (g.kind == "step" ? `PRISE EN MAIN · ${g.index}/${g.total}` : "CONSEIL") class=Caps color="#56c2e6" flex=1
+        if g.kind == "step"
+          button press=skip class=Quiet padding="2px 4px" testId="guide-skip"
+            text "Passer" class=Mono font-size="0.7rem"
+      text g.title font-weight=600
+      text g.text font-size="0.85rem" color="#c9d1d9" line-height=1.45 testId="guide-text"
+      if g.kind == "tip"
+        button press=ok appearance="none" align-self="flex-start" padding="6px 10px" border="1px solid #56c2e6" border-radius=3 testId="guide-ok"
+          text "Compris" class=Mono font-size="0.75rem" color="#56c2e6"
+
+keyframes guide-in
+  from opacity=0 translate="0px -6px"

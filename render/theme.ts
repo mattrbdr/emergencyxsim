@@ -19,6 +19,10 @@ export const MAP = {
 export const SERVICE: Record<Service, string> = { pompiers: '#f2555a', samu: '#3fb950', police: '#4c8dff' };
 export const PRIORITY = ['', '#f2555a', '#f0a531', '#c9b037'];
 export const WORKING = '#56c2e6';
+export const COVERAGE = { fast: '#3fb950', slow: '#f0a531', far: '#f2555a' };
+export const ZONE_TINT: Record<string, string> = {
+  industriel: 'rgba(180,142,240,0.08)', commercial: 'rgba(216,166,74,0.07)', parc: 'rgba(0,0,0,0)',
+};
 
 export const FONT = {
   mono: "'IBM Plex Mono', ui-monospace, Menlo, monospace",

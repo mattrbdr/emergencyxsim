@@ -11,6 +11,7 @@ component TopBar
     setSpeed: action
     togglePause: action
     openCareer: action
+    openContracts: action
   view
     row position="absolute" top=0 left=0 right=0 padding-top="env(safe-area-inset-top)" background-color="#0e1217" border-bottom="1px solid #252c36" testId="bar"
       row flex=1 align-items="center" gap=(wide ? 20 : 10) padding=(wide ? "8px 16px" : "8px 10px") min-width=0
@@ -38,7 +39,11 @@ component TopBar
         view flex=1
         Figure(icon="money", label=(wide ? snap.upkeepText : "Caisse"), value=snap.moneyText, color=(snap.money < 0 ? "#f2555a" : money()))
         if wide
+          Figure(icon="layers", label="Couverture 3 min", value=`${snap.coverage} %`, color=(snap.coverage >= 70 ? "#3fb950" : snap.coverage >= 40 ? "#f0a531" : "#f2555a"))
           Figure(icon="reputation", label="Réputation", value=`${snap.reputation} %`, color="#e6edf3")
+        button press=openContracts appearance="none" aria-label=`Contrats du jour : ${snap.contractsDone} sur ${snap.contracts.length}` display="flex" align-items="center" gap=6 padding="5px 8px" border="1px solid #252c36" border-radius=4 testId="open-contracts"
+          Icon(name="flag", size=15, color=(snap.contractsDone == snap.contracts.length and snap.contracts.length > 0 ? "#3fb950" : "#e6edf3"))
+          text `${snap.contractsDone}/${snap.contracts.length}` class=Mono font-size="0.8rem" font-weight=600
         // Level: a badge and the XP bar; opens the career panel.
         button press=openCareer appearance="none" aria-label=`Niveau ${snap.level}, ${snap.xpText}` display="flex" align-items="center" gap=8 padding="4px 6px" border-radius=4 testId="level"
           view width="2rem" height="2rem" border="1px solid #b48ef0" border-radius=4 display="flex" align-items="center" justify-content="center"

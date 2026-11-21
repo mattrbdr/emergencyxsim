@@ -1,9 +1,13 @@
 // The static map (canvas `city`): land, water, parks, buildings, roads by class,
 // street names. Redrawn only when the camera moves.
 import type { Ctx2D, Frame } from '../app.contract.d.ts';
+import { HOTSPOT_LABEL, ZONE_LABEL } from '../sim/catalog/places.ts';
+import type { IconName } from '../sim/catalog/icons.ts';
+import { coverageTimes, SLOW, TARGET, withStationAt } from '../sim/coverage.ts';
 import type { World } from '../sim/types.ts';
+import { drawIcon } from './sprites.ts';
 import { glide, syncView, toScreen, toWorld } from './camera.ts';
-import { FONT, MAP } from './theme.ts';
+import { COVERAGE, FONT, MAP, ZONE_TINT } from './theme.ts';
 
 const ROAD_WIDTH = [18, 14, 10, 7];
 
@@ -47,6 +51,12 @@ export function drawCity(w: World, ctx: Ctx2D, frame: Frame): boolean {
   ctx.beginPath();
   for (const p of city.file.parks) polygon(ctx, w, p);
   ctx.fill();
+  for (const z of city.zones) {
+    ctx.fillStyle = ZONE_TINT[z.kind];
+    ctx.beginPath();
+    polygon(ctx, w, z.pts);
+    ctx.fill();
+  }
   ctx.fillStyle = MAP.water;
   ctx.strokeStyle = MAP.waterEdge;
   ctx.lineWidth = 1;
@@ -76,14 +86,17 @@ export function drawCity(w: World, ctx: Ctx2D, frame: Frame): boolean {
       for (const i of g.edges[r * g.cols + c]) if (!seen.has(i)) { seen.add(i); visible.push(i); }
     }
   }
-  for (let cls = 3; cls >= 0; cls--) {
+  const times = w.overlay ? overlayTimes(w) : null;
+  const bands = times ? [COVERAGE.far, COVERAGE.slow, COVERAGE.fast] : [''];
+  for (let cls = 3; cls >= 0; cls--) for (const band of bands) {
     if (cls === 3 && z < 0.05) continue; // a whole commune at a glance: main roads only
-    ctx.lineWidth = Math.max(cls === 0 ? 2 : 1, ROAD_WIDTH[cls] * z);
-    ctx.strokeStyle = MAP.roads[cls];
+    ctx.lineWidth = Math.max(cls === 0 ? 2 : times ? 1.5 : 1, ROAD_WIDTH[cls] * z);
+    ctx.strokeStyle = band || MAP.roads[cls];
     ctx.beginPath();
     for (const i of visible) {
       const e = city.edges[i];
       if (e.cls !== cls) continue;
+      if (times && bandOf(Math.min(times[e.a], times[e.b])) !== band) continue;
       const [ax, ay] = toScreen(w, city.nx[e.a], city.ny[e.a]);
       const [bx, by] = toScreen(w, city.nx[e.b], city.ny[e.b]);
       ctx.moveTo(ax, ay);
@@ -93,7 +106,67 @@ export function drawCity(w: World, ctx: Ctx2D, frame: Frame): boolean {
   }
 
   if (z > 0.5) drawStreetNames(w, ctx, visible);
+  drawPlaces(w, ctx);
   return moving;
+}
+
+// ---------------------------------------------------------------- coverage
+
+let previewNode = -1;
+let previewTimes: Float64Array | null = null;
+
+/** Station times, including the building being aimed at in build mode. */
+function overlayTimes(w: World): Float64Array {
+  const node = w.placing?.node ?? -1;
+  if (node < 0) return coverageTimes(w);
+  if (node !== previewNode || !previewTimes) {
+    previewNode = node;
+    previewTimes = withStationAt(w, node).times;
+  }
+  return previewTimes;
+}
+
+const bandOf = (t: number) => (t <= TARGET ? COVERAGE.fast : t <= SLOW ? COVERAGE.slow : COVERAGE.far);
+
+// ---------------------------------------------------------------- districts and places
+
+function drawPlaces(w: World, ctx: Ctx2D) {
+  const z = w.cam.zoom;
+  if (z < 0.55) {
+    ctx.font = `600 10px ${FONT.mono}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const zone of w.city.zones) {
+      if (zone.kind === 'parc' && z < 0.25) continue;
+      const [x, y] = toScreen(w, zone.cx, zone.cy);
+      const text = (zone.name || ZONE_LABEL[zone.kind]).toUpperCase();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = MAP.halo;
+      ctx.strokeText(text, x, y);
+      ctx.fillStyle = zone.kind === 'industriel' ? '#9f86c9' : zone.kind === 'commercial' ? '#b8924a' : '#5f8f6a';
+      ctx.fillText(text, x, y);
+    }
+  }
+  if (z > 0.35) {
+    for (const h of w.city.hotspots) {
+      const [x, y] = toScreen(w, h.x, h.y);
+      if (x < -20 || y < -20 || x > w.view.w + 20 || y > w.view.h + 20) continue;
+      ctx.fillStyle = '#0b0e12';
+      ctx.strokeStyle = '#3a4350';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.rect(x - 9, y - 9, 18, 18);
+      ctx.fill();
+      ctx.stroke();
+      drawIcon(ctx, h.kind as IconName, x, y, 13, '#8b949e', 2);
+      if (z > 0.8) {
+        ctx.font = `500 9px ${FONT.mono}`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#768294';
+        ctx.fillText((h.name || HOTSPOT_LABEL[h.kind]).toUpperCase(), x, y + 17);
+      }
+    }
+  }
 }
 
 function drawStreetNames(w: World, ctx: Ctx2D, visible: number[]) {

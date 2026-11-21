@@ -19,6 +19,9 @@ test "the first caserne is free and comes with a VSAV"
   tap "map"
   clock data
   clock +300
+  tap "placing-confirm"
+  clock data
+  clock +300
   expect state snap.buildings.length == 1
   expect state snap.money == 30000
   expect state snap.units.0 .type == "VSAV"
@@ -36,17 +39,20 @@ test "a call is qualified, dispatched and paid"
   tap "map"
   clock data
   clock +300
+  tap "placing-confirm"
+  clock data
+  clock +300
   tap "building-close"
   clock +5000
   clock data
   expect state snap.calls.length == 1
-  tap "call-c3"
+  tap "call-first"
   clock data
   clock +300
   tap "q-sap"
   clock data
   clock +300
-  expect text "sheet-title" == "Malaise sur la voie publique"
+  expect text "sheet-title" == "Malaise à domicile"
   tap "engage"
   clock data
   clock +300
@@ -69,6 +75,9 @@ test "the career survives a reload"
   clock data
   clock +300
   tap "map"
+  clock data
+  clock +300
+  tap "placing-confirm"
   clock data
   clock +300
   tap "buy-VSAV"

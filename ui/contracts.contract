@@ -1,0 +1,37 @@
+// Today's three contracts, the streak, and what they pay.
+use ContractRow from "./model.contract"
+use Icon from "./icons.contract"
+use Meter, Heading from "./parts.contract"
+use Mono, Caps, Quiet, Row, money from "./theme.contract"
+
+fn contractColor(state: string): string = state == "done" ? "#3fb950" : state == "failed" ? "#f2555a" : "#e6edf3"
+
+component ContractsPanel
+  props
+    contracts: ContractRow[]
+    streak: number
+    day: number
+    close: action
+  view
+    column gap=14 testId="contracts"
+      row align-items="center"
+        column flex=1 gap=2
+          text `CONTRATS · JOUR ${day}` class=Caps
+          text "Objectifs du jour" font-size="1.15rem" font-weight=600 role="heading" aria-level=2
+        button press=close aria-label="Fermer" class=Quiet testId="contracts-close"
+          Icon(name="close", size=16, color="#9aa4b2")
+      text "Trois objectifs par jour, renouvelés à 07:00. Remplissez-les tous pour allonger la série : +10 % de prime par jour parfait, jusqu'à +50 %." font-size="0.82rem" color="#9aa4b2" line-height=1.45
+      if streak > 0
+        row gap=8 align-items="center" padding="8px 10px" class=Row
+          Icon(name="reputation", size=16, color=money())
+          text `Série de ${streak} jour${streak > 1 ? "s" : ""} parfait${streak > 1 ? "s" : ""}` font-weight=600 flex=1
+          text `+${min(5, streak) * 10} %` class=Mono color=money()
+      for c in contracts key=c.id
+        column gap=8 padding=12 class=Row border-left-width=3 border-left-style="solid" border-left-color=contractColor(c.state) testId=`contract-${c.id}`
+          row gap=8 align-items="flex-start"
+            Icon(name=(c.state == "done" ? "check" : c.state == "failed" ? "close" : "flag"), size=16, color=contractColor(c.state))
+            text c.label font-weight=500 flex=1 font-size="0.9rem"
+          Meter(fraction=c.fraction, color=contractColor(c.state))
+          row gap=8 align-items="center"
+            text c.progressText class=Mono font-size="0.75rem" color="#9aa4b2" flex=1
+            text `${c.reward} · ${c.xp} XP` class=Mono font-size="0.75rem" color=(c.state == "failed" ? "#6b7686" : money())

@@ -6,7 +6,7 @@ import type { CityFile } from '../sim/city.ts';
 import { mulberry } from '../sim/rng.ts';
 
 const rnd = mulberry(20261121);
-const COLS = 24, ROWS = 17, STEP = 170;
+const COLS = 30, ROWS = 21, STEP = 175;
 const W = (COLS - 1) * STEP + 200, H = (ROWS - 1) * STEP + 200;
 const riverY = (x: number) => 1180 + Math.sin(x / 700) * 160 + Math.sin(x / 260) * 40;
 const RIVER_HALF = 70;
@@ -142,9 +142,29 @@ const pois: CityFile['pois'] = [
   { kind: 'police', name: 'Commissariat Rive Sud', ...at(19, 14) },
 ];
 
+// Districts and sensitive places (fixed positions: no random draw, so the
+// streets above stay the same).
+const rect = (c0: number, r0: number, c1: number, r1: number) =>
+  [P(c0, r0), P(c1, r0), P(c1, r1), P(c0, r1)].flat().map(Math.round);
+const zones: NonNullable<CityFile['zones']> = [
+  { kind: 'industriel', name: 'ZI des Forges', pts: rect(17, 10, 22, 15) },
+  { kind: 'industriel', name: 'Port fluvial', pts: rect(0, 6, 4, 9) },
+  { kind: 'commercial', name: 'Centre commercial du Lac', pts: rect(2, 12, 6, 15) },
+  { kind: 'commercial', name: 'Quartier des Halles', pts: rect(9, 3, 13, 5) },
+  { kind: 'parc', name: 'Parc de la République', pts: rect(10, 6, 14, 8) },
+];
+const spot = (kind: NonNullable<CityFile['hotspots']>[number]['kind'], name: string, c: number, r: number) => ({ kind, name, ...at(c, r) });
+const hotspots: NonNullable<CityFile['hotspots']> = [
+  spot('bar', 'Le Central', 11, 4), spot('bar', 'Café des Sports', 13, 5), spot('bar', 'Le Zinc', 8, 3),
+  spot('bar', 'Pub L\'Écluse', 6, 7), spot('bar', 'La Guinguette', 16, 10),
+  spot('ecole', 'École Jules Ferry', 5, 3), spot('ecole', 'Collège Marie Curie', 15, 13), spot('ecole', 'Lycée Condorcet', 19, 5),
+  spot('stade', 'Stade municipal', 8, 14), spot('ehpad', 'EHPAD Les Tilleuls', 3, 4), spot('ehpad', 'Résidence Bel Âge', 20, 13),
+  spot('gare', 'Gare centrale', 12, 2),
+];
+
 const file: CityFile = {
   name: 'Ville de démonstration', source: 'demo', attribution: 'Ville générée (démo)',
-  width: W, height: H, nodes, edges: keptEdges, names, water, parks, buildings, pois,
+  width: W, height: H, nodes, edges: keptEdges, names, water, parks, buildings, pois, zones, hotspots,
 };
 await Bun.write(new URL('../data/city.json', import.meta.url), JSON.stringify(file));
 console.log(`data/city.json: ${n} nodes, ${keptEdges.length / 4} edges, ${buildings.length} buildings, ${parks.length} parks`);

@@ -4,8 +4,10 @@ import type { Result, Sources } from '../app.contract.d.ts';
 import type { BuildingKind } from '../sim/catalog/buildings.ts';
 import type { Family } from '../sim/catalog/calls.ts';
 import { UNITS, type UnitType } from '../sim/catalog/units.ts';
-import { buySite, buyUnit, expand, sellUnit } from '../sim/buildings.ts';
-import { dispatch, options, qualify, recall } from '../sim/calls.ts';
+import { buildAt, buySite, buyUnit, expand, sellUnit } from '../sim/buildings.ts';
+import { dispatch, findCall, options, qualify, recall } from '../sim/calls.ts';
+import { decide, type ChoiceId } from '../sim/scenes.ts';
+import { dismissTip, skipTutorial } from '../sim/tutorial.ts';
 import { minutesText } from '../sim/clock.ts';
 import { buildingUnlocked } from '../sim/progression.ts';
 import { tick } from '../sim/world.ts';
@@ -64,18 +66,39 @@ export const sources: Sources = {
   qualifyCall: ([id, family]) => { qualify(game.world, id, family as Family); return ack(); },
   send: ([id, ids]) => { dispatch(game.world, id, ids); return ack(); },
   recallUnit: ([id]) => { recall(game.world, id); game.world.seq++; return ack(); },
+  decide: ([callId, choice]) => {
+    const call = findCall(game.world, callId);
+    if (call) decide(game.world, call, choice as ChoiceId);
+    return ack();
+  },
 
   // ------------------------------------------------ building and buying
   startPlacing: ([kind]) => {
     const k = kind as BuildingKind;
-    game.world.placing = buildingUnlocked(game.world, k) ? { kind: k, node: -1 } : null;
+    game.world.placing = buildingUnlocked(game.world, k) ? { kind: k, node: -1, gain: 0, after: 0 } : null;
+    game.world.overlay = game.world.placing !== null;
+    game.world.cam.seq++;
     game.world.seq++;
     return ack();
   },
-  cancelPlacing: () => { game.world.placing = null; game.world.seq++; return ack(); },
+  cancelPlacing: () => { game.world.placing = null; game.world.overlay = false; game.world.cam.seq++; game.world.seq++; return ack(); },
+  confirmPlacing: (_args, _store, storage) => {
+    const w = game.world;
+    const p = w.placing;
+    if (!p || p.node < 0) return ack();
+    const b = buildAt(w, p.kind, w.city.nx[p.node], w.city.ny[p.node]);
+    if (b) { w.placing = null; w.overlay = false; save(storage); }
+    w.cam.seq++;
+    w.seq++;
+    return ack(b ? `built:${b.id}` : '');
+  },
+  dismissTip: () => { dismissTip(game.world); game.world.seq++; return ack(); },
+  skipTutorial: () => { skipTutorial(game.world); game.world.seq++; return ack(); },
+  toggleOverlay: () => { game.world.overlay = !game.world.overlay; game.world.cam.seq++; game.world.seq++; return ack(); },
   buySite: ([index], _store, storage) => {
     const b = buySite(game.world, index);
-    if (b) { game.world.placing = null; save(storage); }
+    if (b) { game.world.placing = null; game.world.overlay = false; save(storage); }
+    game.world.cam.seq++;
     game.world.seq++;
     return ack(b ? `building:${b.id}` : '');
   },

@@ -28,19 +28,34 @@ component BuildMenu
 component PlacingBanner
   props
     label: string
+    aimed: bool
+    aimText: string
+    price: string
+    confirm: action
     cancel: action
   view
-    row align-items="center" gap=10 padding="10px 12px" background-color="#e6edf3" border-radius=4 testId="placing"
-      Icon(name="target", size=18, color="#0b0e12")
-      text `Touchez une route pour poser : ${label}` font-weight=600 color="#0b0e12" flex=1 font-size="0.88rem"
-      button press=cancel appearance="none" padding="4px 8px" border="1px solid #0b0e12" border-radius=3 testId="placing-cancel"
-        text "Annuler" class=Mono font-size="0.75rem" color="#0b0e12"
+    column gap=8 padding="10px 12px" background-color="#e6edf3" border-radius=4 testId="placing"
+      row align-items="center" gap=10
+        Icon(name="target", size=18, color="#0b0e12")
+        column flex=1 min-width=0 gap=1
+          text (aimed ? `Construire ici : ${label}` : `Touchez une route pour viser : ${label}`) font-weight=600 color="#0b0e12" font-size="0.88rem"
+          if aimed
+            text aimText class=Mono font-size="0.72rem" color="#1f6f33" testId="aim-gain"
+          else
+            text "Rues vertes : moins de 3 min d'une base · orange : moins de 5 min." font-size="0.75rem" color="#30394a"
+        button press=cancel appearance="none" padding="4px 8px" border="1px solid #0b0e12" border-radius=3 testId="placing-cancel"
+          text "Annuler" class=Mono font-size="0.75rem" color="#0b0e12"
+      if aimed
+        button press=confirm appearance="none" padding="9px 12px" background-color="#0b0e12" border-radius=3 display="flex" justify-content="center" gap=8 testId="placing-confirm"
+          Icon(name="build", size=16, color="#e6edf3")
+          text `Construire · ${price}` class=Mono font-size="0.8rem" font-weight=600 color="#e6edf3"
 
 component BuildingSheet
   props
     b: BuildingRow
     seq: number
     close: action
+    hint: string
   resource items = shop(b.id, seq) as shape ShopItem[] else empty() transient
   mutation bought as shape Ack queue refreshes items
   action buy(type: string)
@@ -81,7 +96,7 @@ component BuildingSheet
               text it.long font-size="0.8rem" font-weight=500
               text (it.owned > 0 ? `${it.upkeep} · ${it.owned} en service` : it.upkeep) class=Mono font-size="0.66rem" color="#6b7686"
             if it.why == ""
-              button press=buy(it.type) class=Primary padding="6px 10px" testId=`buy-${it.type}`
+              button press=buy(it.type) class=Primary padding="6px 10px" box-shadow=(hint == `buy-${it.type}` ? "0 0 0 2px #56c2e6" : "none") testId=`buy-${it.type}`
                 text it.price class=Mono font-size="0.75rem" font-weight=600 color="#0b0e12"
             else
               row gap=4 align-items="center"

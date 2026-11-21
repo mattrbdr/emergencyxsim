@@ -25,7 +25,29 @@ export function drawLive(w: World, ctx: Ctx2D, frame: Frame, selected: string): 
   for (const b of w.buildings) drawBuilding(w, ctx, b, selected === `building:${b.id}`);
   for (const c of w.calls) if (c.state !== 'clos') drawCall(w, ctx, c, now, selected === `call:${c.id}`);
   drawUnits(w, ctx, alpha, now, selected);
+  drawGhost(w, ctx, now);
   return true;
+}
+
+/** Build mode: the building being aimed at, and what it adds. */
+function drawGhost(w: World, ctx: Ctx2D, now: number) {
+  const p = w.placing;
+  if (!p || p.node < 0) return;
+  const [x, y] = toScreen(w, w.city.nx[p.node], w.city.ny[p.node]);
+  const color = SERVICE[BUILDINGS[p.kind].service];
+  ctx.save();
+  ctx.globalAlpha = 0.65 + 0.35 * Math.sin(now / 180);
+  ctx.setLineDash([4, 3]);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.fillStyle = 'rgba(11,14,18,0.85)';
+  ctx.beginPath();
+  ctx.rect(x - 16, y - 16, 32, 32);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+  drawIcon(ctx, p.kind as IconName, x, y, 20, color, 2);
+  label(ctx, `+${Math.round(p.gain * 100)} % COUVERTURE`, x, y + 28, '#3fb950');
 }
 
 // ---------------------------------------------------------------- stations
@@ -89,7 +111,8 @@ function drawCall(w: World, ctx: Ctx2D, call: Call, now: number, selected: boole
   const left = working ? call.workLeft : call.deadline - w.t;
   const f = Math.max(0, Math.min(1, left / total));
   // An unanswered P1 blinks its outline.
-  const blink = !call.qualified && Math.floor(now / 450) % 2 === 0;
+  const deciding = call.state === 'bilan';
+  const blink = (!call.qualified || deciding) && Math.floor(now / 450) % 2 === 0;
   const r = 13;
   ctx.save();
   ctx.translate(x, y);
@@ -106,7 +129,7 @@ function drawCall(w: World, ctx: Ctx2D, call: Call, now: number, selected: boole
   ctx.font = `700 10px ${FONT.mono}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(working ? '··' : `P${call.priority}`, x, y + 0.5);
+  ctx.fillText(deciding ? '!' : working ? '··' : `P${call.priority}`, x, y + 0.5);
   // Time left: a bar under the diamond.
   ctx.fillStyle = 'rgba(230,237,243,0.15)';
   ctx.fillRect(x - 14, y + 16, 28, 3);

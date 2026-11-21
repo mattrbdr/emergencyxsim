@@ -2,6 +2,7 @@
 // (split at junctions, simplified, largest connected part only), its buildings,
 // water and parks polygons, its stations points. Shared by the game (downloading
 // the player's town) and tools/bake-osm.ts.
+import type { HotspotKind, ZoneKind } from '../catalog/places.ts';
 import type { CityFile, PoiKind } from '../city.ts';
 import { ROAD_CLASSES } from './query.ts';
 
@@ -166,6 +167,13 @@ export async function convert(
     return left;
   };
   const water: number[][] = [], parks: number[][] = [], buildings: number[][] = [];
+  const zones: NonNullable<CityFile['zones']> = [];
+  const area = (p: number[]) => {
+    let s = 0;
+    for (let i = 0; i < p.length; i += 2) { const j = (i + 2) % p.length; s += p[i] * p[j + 1] - p[j] * p[i + 1]; }
+    return Math.abs(s / 2);
+  };
+  const ZONE: Record<string, ZoneKind> = { industrial: 'industriel', commercial: 'commercial', retail: 'commercial' };
   count = 0;
   for (const e of areas?.elements ?? []) {
     if (++count % 3000 === 0) await pause();
@@ -175,7 +183,14 @@ export async function convert(
       const closed = g.length > 3 && g[0].lat === g[g.length - 1].lat && g[0].lon === g[g.length - 1].lon;
       if (t.waterway === 'river' || t.waterway === 'canal') water.push(strip(g, t.waterway === 'river' ? 22 : 10));
       else if ((t.natural === 'water' || t.waterway === 'riverbank') && closed) water.push(ring(g, 4));
-      else if ((t.leisure || t.landuse) && closed) parks.push(ring(g, 4));
+      else if (ZONE[t.landuse] && closed) {
+        const pts = ring(g, 8);
+        if (area(pts) > 15000) zones.push({ kind: ZONE[t.landuse], name: t.name ?? '', pts });
+      } else if ((t.leisure || t.landuse) && closed) {
+        const pts = ring(g, 4);
+        parks.push(pts);
+        if (t.name && area(pts) > 20000) zones.push({ kind: 'parc', name: t.name, pts });
+      }
       else if ((t.building || !e.tags) && closed) {
         const b = ring(g, 1.5);
         if (b.length >= 6) buildings.push(b);
@@ -192,12 +207,26 @@ export async function convert(
       pois.push({ kind, name: `${DEFAULT_NAME[kind]} (terrain libre)`, x: centre.x + (i - 1) * 300, y: centre.y + 200 });
     }
   });
+  // Sensitive places: bars, schools, nursing homes, stadiums, stations.
+  const HOT = (t: Record<string, string>): HotspotKind | null =>
+    /^(bar|pub|nightclub)$/.test(t.amenity) ? 'bar' : t.amenity === 'school' ? 'ecole'
+      : t.amenity === 'nursing_home' || t.social_facility === 'nursing_home' ? 'ehpad'
+      : t.leisure === 'stadium' ? 'stade' : t.railway === 'station' ? 'gare' : null;
+  const hotspots: NonNullable<CityFile['hotspots']> = [];
+  const perKind: Record<string, number> = {};
+  for (const e of els) {
+    const kind = e.tags ? HOT(e.tags) : null;
+    if (!kind) continue;
+    const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon;
+    if (lat === undefined || (perKind[kind] = (perKind[kind] ?? 0) + 1) > 60) continue;
+    hotspots.push({ kind, name: e.tags.name ?? '', x: px(lon), y: py(lat) });
+  }
   const rel = els.find((e) => e.type === 'relation' && e.tags?.boundary === 'administrative');
   return {
     name: rel?.tags?.name ?? fallbackName,
     source: 'osm',
     attribution: '© contributeurs OpenStreetMap (ODbL)',
-    width, height, nodes, edges: keptEdges, names, water, parks, buildings,
+    width, height, nodes, edges: keptEdges, names, water, parks, buildings, zones, hotspots,
     pois: (['fire', 'hospital', 'police'] as PoiKind[]).flatMap((k) => pois.filter((p) => p.kind === k).slice(0, 6)),
   };
 }

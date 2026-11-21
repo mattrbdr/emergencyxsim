@@ -5,6 +5,8 @@ import type { City } from './city.ts';
 import { spawnCall, updateCall } from './calls.ts';
 import { TIME_SCALE } from './clock.ts';
 import { chargeUpkeep } from './economy.ts';
+import { emptyDay, updateContracts } from './contracts.ts';
+import { updateTutorial } from './tutorial.ts';
 import { say } from './log.ts';
 import { mulberry } from './rng.ts';
 import type { World } from './types.ts';
@@ -19,7 +21,8 @@ export function newWorld(city: City, seed: number): World {
     log: [], toast: { id: 0, t: 0, text: '', tone: 'info' }, logId: 0, dirty: true,
     stationTrees: new Map(), callTrees: new Map(),
     cam: { cx: city.width / 2, cy: city.height / 2, zoom: 0.2, tx: city.width / 2, ty: city.height / 2, tz: 0.2, seq: 1, touched: false },
-    view: { w: 0, h: 0 }, pointers: new Map(), pinch: null, placing: null,
+    view: { w: 0, h: 0 }, pointers: new Map(), pinch: null, placing: null, overlay: false,
+    contracts: [], dayStats: emptyDay(1), streak: 0, tutorial: 0, tip: '', tipsSeen: [],
   };
   say(w, `Bienvenue à ${city.name}. Construisez votre première caserne : elle est offerte.`, 'info', true);
   return w;
@@ -28,6 +31,7 @@ export function newWorld(city: City, seed: number): World {
 /** Advance by `realMs` of wall time at the current speed. */
 export function tick(w: World, realMs: number) {
   for (const u of w.units) { u.px = u.x; u.py = u.y; }
+  updateTutorial(w);
   if (w.paused || w.buildings.length === 0) return;
   let dt = (realMs / 1000) * TIME_SCALE * w.speed;
   while (dt > 0) {
@@ -45,6 +49,8 @@ function advance(w: World, dt: number) {
   for (const u of w.units) moveUnit(w, u, dt);
   for (const call of w.calls) if (call.state !== 'clos') updateCall(w, call, dt);
   chargeUpkeep(w, before);
+  updateContracts(w);
+  updateTutorial(w);
   // Hospitals discharge a patient every 40 minutes.
   if (Math.floor(before / 2400) !== Math.floor(w.t / 2400)) for (const b of w.buildings) b.patients = Math.max(0, b.patients - 1);
   if (w.calls.length > 60) w.calls = w.calls.filter((c) => c.state !== 'clos' || w.t - c.closedAt < 3600);

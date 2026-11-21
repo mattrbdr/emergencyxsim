@@ -16,6 +16,7 @@ export function reward(w: World, kind: CallKind, secondsEarly: number): number {
 export function earn(w: World, amount: number) {
   w.money += amount;
   w.stats.earned += amount;
+  w.dayStats.earned += amount;
   w.dirty = true;
 }
 

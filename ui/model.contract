@@ -34,6 +34,19 @@ shape Engaged
   status: string
   eta: string
 
+shape Choice
+  id: string
+  label: string
+  detail: string
+  enabled: bool
+
+shape Decision
+  pending: bool
+  from: string
+  report: string
+  left: string
+  choices: Choice[]
+
 shape CallRow
   id: string
   title: string
@@ -51,6 +64,8 @@ shape CallRow
   timeText: string
   fraction: number
   reward: string
+  risk: string
+  decision: Decision
   needs: Need[]
   units: Engaged[]
 
@@ -137,6 +152,23 @@ shape Stats
   earned: string
   spent: string
 
+shape ContractRow
+  id: string
+  label: string
+  progressText: string
+  fraction: number
+  reward: string
+  xp: number
+  state: string
+
+shape Guide
+  kind: string
+  title: string
+  text: string
+  hint: string
+  index: number
+  total: number
+
 shape Snap
   seq: number
   city: string
@@ -158,6 +190,11 @@ shape Snap
   showUnlock: bool
   newCalls: number
   placing: string
+  aimed: bool
+  aimText: string
+  placingPrice: string
+  overlay: bool
+  coverage: number
   firstBuilding: bool
   calls: CallRow[]
   closed: CallRow[]
@@ -169,6 +206,10 @@ shape Snap
   log: LogLine[]
   toast: LogLine
   stats: Stats
+  guide: Guide
+  contracts: ContractRow[]
+  contractsDone: number
+  streak: number
 
 shape Option
   id: string

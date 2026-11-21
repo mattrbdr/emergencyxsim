@@ -8,6 +8,7 @@ import { loadCity, type City, type CityFile } from '../sim/city.ts';
 import { mulberry } from '../sim/rng.ts';
 import type { Unit, World } from '../sim/types.ts';
 import { newWorld } from '../sim/world.ts';
+import { STEPS } from '../sim/tutorial.ts';
 import { deleteCareer, loadCityFile, loadSave, saveCity, writeSave, type Save } from './persistence.ts';
 
 const demo = demoFile as unknown as CityFile;
@@ -74,7 +75,11 @@ function restore(city: City, s: Save): World {
     reputation: s.reputation, nextId: s.nextId, nextCallAt: s.nextCallAt, stats: s.stats,
     buildings: s.buildings.filter((b) => BUILDINGS[b.kind] && b.node < city.nx.length),
     log: s.log, dirty: false,
+    contracts: s.contracts ?? [], streak: s.streak ?? 0, tipsSeen: s.tipsSeen ?? [],
+    // A career started before the tutorial existed has no need of it.
+    tutorial: s.tutorial ?? STEPS.length,
   });
+  if (s.dayStats) w.dayStats = s.dayStats;
   // A fresh stream of random numbers, moved on by the time already played.
   w.rng = mulberry((s.seed + Math.floor(s.t)) % 2147483646 || 1);
   w.units = s.units
