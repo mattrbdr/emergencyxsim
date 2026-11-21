@@ -1,12 +1,12 @@
 // On scene: the first crew's report may change the situation (a twist), and the
 // player decides — reinforcements, make do, or evacuate now. Each choice has a
 // price: time, chance of success, reward.
+import { RULES } from './catalog/rules.ts';
 import { TWISTS } from './catalog/twists.ts';
 import { UNITS, type UnitType } from './catalog/units.ts';
 import { say } from './log.ts';
 import type { Call, World } from './types.ts';
 
-import { RULES } from './catalog/rules.ts';
 
 export type ChoiceId = 'renfort' | 'surplace' | 'evacuer';
 
@@ -24,6 +24,7 @@ function unavailable(w: World, call: Call, add: UnitType[]): UnitType[] {
   for (const t of add) want[t] = (want[t] ?? 0) + 1;
   return (Object.keys(want) as UnitType[]).filter((t) => spare(t) < want[t]!);
 }
+const pct = (f: number) => Math.round(f * 100);
 const names = (types: UnitType[]) => [...new Set(types)].map((t) => UNITS[t].label).join(' + ');
 
 /** Called once, the first time a call has a vehicle on scene. */
@@ -50,13 +51,13 @@ export function choices(w: World, call: Call): Choice[] {
   const out: Choice[] = [
     {
       id: 'renfort', label: `Demander ${names(add)}`,
-      detail: missing.length ? `Aucun ${names(missing)} de plus dans votre flotte` : 'Le plus sûr. Prime +30 % si l\'intervention réussit',
+      detail: missing.length ? `Aucun ${names(missing)} de plus dans votre flotte` : `Le plus sûr. Prime +${pct(RULES.reinforcement.bonus - 1)} % si l'intervention réussit`,
       enabled: missing.length === 0,
     },
-    { id: 'surplace', label: 'Faire avec les moyens présents', detail: '60 % de réussite, intervention 50 % plus longue', enabled: true },
+    { id: 'surplace', label: 'Faire avec les moyens présents', detail: `${pct(RULES.makeDo.success)} % de réussite, intervention ${pct(RULES.makeDo.workFactor - 1)} % plus longue`, enabled: true },
   ];
   if (call.kind.transport && call.kind.victims > 0) {
-    out.push({ id: 'evacuer', label: 'Évacuer immédiatement', detail: '75 % de réussite, prime réduite de 20 %', enabled: true });
+    out.push({ id: 'evacuer', label: 'Évacuer immédiatement', detail: `${pct(RULES.evacuate.success)} % de réussite, prime réduite de ${pct(1 - RULES.evacuate.bonus)} %`, enabled: true });
   }
   return out;
 }

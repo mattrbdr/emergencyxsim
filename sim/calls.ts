@@ -91,7 +91,7 @@ export function qualify(w: World, callId: string, family: Family): boolean {
   } else {
     w.stats.qualifyWrong++;
     adjustReputation(w, RULES.reputation.wrongQualification);
-    say(w, `Mauvaise qualification, requalifié en ${call.kind.title.toLowerCase()}. Réputation −2`, 'bad', true);
+    say(w, `Mauvaise qualification, requalifié en ${call.kind.title.toLowerCase()}. Réputation ${RULES.reputation.wrongQualification}`, 'bad', true);
   }
   w.seq++;
   return call.guessedRight;

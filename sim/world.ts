@@ -52,7 +52,7 @@ function advance(w: World, dt: number) {
   chargeUpkeep(w, before);
   updateContracts(w);
   updateTutorial(w);
-  // Hospitals discharge a patient every 40 minutes.
+  // Hospitals discharge a patient every RULES.dischargeEvery.
   if (Math.floor(before / RULES.dischargeEvery) !== Math.floor(w.t / RULES.dischargeEvery)) for (const b of w.buildings) b.patients = Math.max(0, b.patients - 1);
   if (w.calls.length > 60) w.calls = w.calls.filter((c) => c.state !== 'clos' || w.t - c.closedAt < 3600);
   for (const key of [...w.callTrees.keys()]) {

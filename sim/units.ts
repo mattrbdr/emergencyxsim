@@ -2,7 +2,8 @@
 // on scene, carrying victims to hospital, going home.
 import { RULES } from './catalog/rules.ts';
 import { UNITS } from './catalog/units.ts';
-import { say } from './log.ts';
+import { earn } from './economy.ts';
+import { euros, say } from './log.ts';
 import { edgeBetween, edgeSpeed, pathTo, type Tree } from './routing.ts';
 import { freshTree, trafficAt, treeFromStation } from './traffic.ts';
 import type { Unit, World } from './types.ts';
@@ -121,9 +122,8 @@ export function arrive(w: World, u: Unit) {
     const own = w.buildings.find((b) => b.kind === 'hopital' && Math.hypot(b.x - u.x, b.y - u.y) < 40);
     if (own) {
       own.patients++;
-      w.money += RULES.ownHospitalFee;
-      w.stats.earned += RULES.ownHospitalFee;
-      say(w, `${u.name} · statut 5 · ${own.name}, soins facturés +${RULES.ownHospitalFee} €`, 'money');
+      earn(w, RULES.ownHospitalFee);
+      say(w, `${u.name} · statut 5 · ${own.name}, soins facturés +${euros(RULES.ownHospitalFee)}`, 'money');
     } else {
       say(w, `${u.name} · statut 5 · victime déposée aux urgences`, 'good');
     }
