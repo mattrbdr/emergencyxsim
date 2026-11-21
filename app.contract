@@ -1,24 +1,756 @@
-// Emergency Sim: the view. app.ts answers what it asks for. Colours, fonts,
-// sizes and the safe area are left unsaid, so each platform supplies its own:
-// the header is the navigation bar, its heading the title, its button a bar item.
-shape Greeting
-  text: string
+// Emergency Sim — centre de traitement des appels d'urgence.
+// The map is two canvases drawn by app.ts (render/map.ts); everything else is
+// this file: the shift bar, the call queue, the call sheet (qualify, dispatch),
+// the fleet, the log, toasts, the welcome and the end-of-shift report.
+// The control room is dark on every platform (color-scheme="dark").
 
-routes nav
-  home "/"
+shape Time
+  seed: number
+
+shape Viewport
+  width: number
+  height: number
+
+shape Ack
+  seq: number
+  cam: number
+  picked: string
+
+shape Need
+  type: string
+  label: string
+  service: string
+  state: string
+
+shape Engaged
+  id: string
+  name: string
+  service: string
+  status: string
+  eta: string
+
+shape CallRow
+  id: string
+  title: string
+  family: string
+  familyLabel: string
+  priority: number
+  address: string
+  caller: string
+  state: string
+  stateLabel: string
+  outcome: string
+  qualified: bool
+  escalated: bool
+  at: string
+  timeText: string
+  fraction: number
+  needs: Need[]
+  units: Engaged[]
+
+shape UnitRow
+  id: string
+  name: string
+  type: string
+  long: string
+  service: string
+  serviceLabel: string
+  status: string
+  statusLabel: string
+  station: string
+  callTitle: string
+  eta: string
+  missions: number
+
+shape StationRow
+  index: number
+  name: string
+  kind: string
+  home: number
+  total: number
+  beds: string
+
+shape LogLine
+  id: number
+  at: string
+  text: string
+  tone: string
+
+shape Snap
+  seq: number
+  started: bool
+  clock: string
+  progress: number
+  speed: number
+  paused: bool
+  over: bool
+  score: number
+  saved: number
+  lost: number
+  failed: number
+  handled: number
+  newCalls: number
+  waiting: number
+  avgResponse: string
+  cost: string
+  accuracy: number
+  city: string
+  attribution: string
+  free: number
+  fleet: number
+  calls: CallRow[]
+  closed: CallRow[]
+  units: UnitRow[]
+  stations: StationRow[]
+  log: LogLine[]
+  toast: LogLine
+
+shape Option
+  id: string
+  name: string
+  type: string
+  long: string
+  service: string
+  station: string
+  eta: string
+  suggested: bool
+  needed: bool
+  returning: bool
+
+// ---------------------------------------------------------------- palette
+
+fn serviceColor(s: string): string = s == "pompiers" ? "#ff453a" : s == "samu" ? "#30d158" : s == "police" ? "#0a84ff" : "#8b9ab8"
+fn priorityColor(p: number): string = p == 1 ? "#ff375f" : p == 2 ? "#ff9f0a" : "#ffd60a"
+fn priorityLabel(p: number): string = p == 1 ? "P1 · URGENT" : p == 2 ? "P2" : "P3"
+fn needColor(s: string): string = s == "surplace" ? "#30d158" : s == "engage" ? "#ff9f0a" : "#ff375f"
+fn needIcon(s: string): string = s == "surplace" ? "symbol:checkmark" : s == "engage" ? "symbol:forward" : "symbol:alert"
+fn toneColor(t: string): string = t == "good" ? "#30d158" : t == "bad" ? "#ff375f" : t == "alert" ? "#ff9f0a" : "#64d2ff"
+fn statusColor(s: string): string = s == "dispo" ? "#30d158" : s == "route" ? "#ff9f0a" : s == "surplace" ? "#ff375f" : s == "transport" ? "#bf5af2" : s == "hopital" ? "#bf5af2" : "#64d2ff"
+fn familyColor(f: string): string = f == "feu" ? "#ff453a" : f == "sap" ? "#30d158" : f == "police" ? "#0a84ff" : f == "mixte" ? "#ff9f0a" : "#8b9ab8"
+fn outcomeColor(o: string): string = o == "sauve" ? "#30d158" : o == "perdu" ? "#ff375f" : "#ff9f0a"
+fn plural(n: number, one: string, many: string): string = `${n} ${n == 1 ? one : many}`
 
 component EmergencySim
-  resource greeting = greeting("Emergency Sim") as shape Greeting
-  state liked = false
-  action like
-    liked = not liked
+  resource time = exactTime() as shape Time
+  resource viewport = exactViewport() as shape Viewport
+  resource snap = snapshot() as shape Snap else empty() transient
+  resource opts = dispatchOptions(selected) when selected != "" as shape Option[] else empty() transient
+  mutation ticked as shape Ack refreshes snap, opts
+  mutation commanded as shape Ack queue refreshes snap, opts
+  mutation moved as shape Ack queue then afterMove
+  mutation cammed as shape Ack queue then afterCam
+
+  state selected = ""
+  state unitSel = ""
+  state tab = "appels"
+  state drawerOpen = true
+  state picks: string[] = []
+  state showAll = false
+  state camSeq = 0
+  state lastTick = 0
+  state hiddenToast = 0
+  state best = 0 persist
+  state recordSaved = false
+
+  derive wide = viewport.width >= 900
+  derive call = first(snap.calls.filter(c => c.id == selected))
+  derive unit = first(snap.units.filter(u => u.id == unitSel))
+  derive mapSel = selected != "" ? `call:${selected}` : unitSel != "" ? `unit:${unitSel}` : ""
+  derive moveReply = match moved { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
+  derive camReply = match cammed { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
+  derive suggestedIds = opts.filter(o => o.suggested).map(o => o.id)
+  derive pompiers = snap.units.filter(u => u.service == "pompiers")
+  derive samu = snap.units.filter(u => u.service == "samu")
+  derive police = snap.units.filter(u => u.service == "police")
+  derive insetLeft = wide ? 396 : 0
+  derive insetRight = wide ? 444 : 0
+  derive insetBottom = wide ? 0 : viewport.height * 0.56
+  derive showToast = snap.toast.id > hiddenToast and snap.toast.text != "" and snap.started and not snap.over
+
+  task loop when snap.started and not snap.over
+    every(250, step)
+  task toastTimer when showToast key=snap.toast.id
+    after(4200, hideToast)
+  task buzz when showToast and snap.toast.tone == "alert" key=snap.toast.id
+    after(16, alertHaptic)
+
+  // ------------------------------------------------------------ the shift
+
+  action step
+    let now = performanceNow()
+    send ticked = tick(min(1000, max(0, now - lastTick)))
+    lastTick = now
+    if snap.over and not recordSaved
+      best = max(best, snap.score)
+      recordSaved = true
+
+  action startShift
+    lastTick = performanceNow()
+    selected = ""
+    unitSel = ""
+    picks = []
+    recordSaved = false
+    hiddenToast = 0
+    // exact-accept type-performance-now-persisted
+    send commanded = start(time.seed + performanceNow())
+
+  action setSpeed(s: number)
+    send commanded = setSpeed(s)
+    haptic("selection")
+
+  action togglePause
+    send commanded = setPaused(not snap.paused)
+
+  action hideToast
+    hiddenToast = snap.toast.id
+
+  action alertHaptic
+    haptic("warning")
+
+  action openToast
+    hiddenToast = snap.toast.id
+
+  // ------------------------------------------------------------ selection
+
+  action pickCall(id: string)
+    selected = id
+    showAll = false
+    unitSel = ""
+    picks = []
+    drawerOpen = true
+    send cammed = camera("call", id, insetLeft, insetRight, 80, insetBottom)
+    haptic("selection")
+
+  action closeCall
+    selected = ""
+    picks = []
+
+  action pickUnit(id: string)
+    unitSel = id
+    selected = ""
+    send cammed = camera("unit", id, insetLeft, 0, 80, insetBottom)
+
+  action closeUnit
+    unitSel = ""
+
+  action showTab(t: string)
+    tab = t
+    drawerOpen = true
+
+  action toggleDrawer
+    drawerOpen = not drawerOpen
+
+  // ------------------------------------------------------------ orders
+
+  action qualifyAs(family: string)
+    send commanded = qualifyCall(selected, family)
+    haptic("selection")
+
+  action toggleAll
+    showAll = not showAll
+
+  action togglePick(id: string)
+    picks = picks.includes(id) ? picks.filter(x => x != id) : picks.concat([id])
+
+  action useSuggestion
+    picks = suggestedIds
+
+  action engage
+    send commanded = send(selected, picks)
+    picks = []
+    haptic("success")
+
+  action engageSuggested
+    send commanded = send(selected, suggestedIds)
+    picks = []
+    haptic("success")
+
+  action recallUnit(id: string)
+    send commanded = recallUnit(id)
+
+  // ------------------------------------------------------------ the map
+
+  action down(e: PointerEvent)
+    send moved = gesture("down", e.pointerId, e.offsetX, e.offsetY)
+
+  action drag(e: PointerEvent)
+    send moved = gesture("move", e.pointerId, e.offsetX, e.offsetY)
+
+  action up(e: PointerEvent)
+    send moved = gesture("up", e.pointerId, e.offsetX, e.offsetY)
+
+  action zoomWheel(e: WheelEvent)
+    send moved = wheelZoom(e.deltaY, e.offsetX, e.offsetY)
+
+  action afterMove
+    camSeq = moveReply.cam
+    if moveReply.picked.startsWith("call:")
+      selected = moveReply.picked.slice(5)
+      unitSel = ""
+      picks = []
+      drawerOpen = true
+      haptic("selection")
+    else if moveReply.picked.startsWith("unit:")
+      unitSel = moveReply.picked.slice(5)
+      selected = ""
+      haptic("selection")
+    else if moveReply.picked == ""
+      camSeq = moveReply.cam
+    else
+      tab = "unites"
+      drawerOpen = true
+      selected = ""
+      unitSel = ""
+
+  action afterCam
+    camSeq = camReply.cam
+
+  action zoomIn
+    send cammed = camera("in", "", 0, 0, 0, 0)
+
+  action zoomOut
+    send cammed = camera("out", "", 0, 0, 0, 0)
+
+  action fit
+    send cammed = camera("fit", "", 0, 0, 0, 0)
+
   view
-    main testId="root" navigationKey=`${top(nav).id}` width="100%" height="100%"
-      for e in stack(nav) key=e.id
-        column navigationKey=`${e.id}` navigationScroll="content" position="absolute" inset=0 display="flex" flex-direction="column"
-          header display="flex" align-items="center"
-            text "Emergency Sim" role="heading" aria-level=1 flex=1
-            button press=like aria-label=(liked ? "Unlike" : "Like") testId="like"
-              image (liked ? "symbol:heart-fill" : "symbol:heart")
-          scroll id="content" flex=1 min-height=0 padding=16
-            text greeting.text testId="greeting"
+    main testId="app" color-scheme="dark" width="100%" height="100%" position="relative" overflow="hidden" background-color="#060a13" color="#e8eefc" font-family="-apple-system, system-ui, sans-serif"
+      canvas surface=city(camSeq) position="absolute" left=0 top=0 width="100%" height="100%" aria-hidden=true testId="map-city"
+      canvas surface=live(mapSel) position="absolute" left=0 top=0 width="100%" height="100%" touch-action="none" pointerdown=down pointermove=drag pointerup=up wheel=zoomWheel role="img" aria-label=`Carte de ${snap.city} : ${plural(snap.calls.length, "appel en cours", "appels en cours")}` testId="map"
+
+      if snap.started
+        // Shift bar.
+        row position="absolute" top="calc(env(safe-area-inset-top) + 10px)" left=12 right=12 align-items="center" gap=12 padding="8px 10px 8px 16px" border-radius=20 backgroundMaterial="dark" background-color="rgba(10,15,27,0.72)" border="1px solid rgba(255,255,255,0.08)" testId="bar"
+          if wide
+            column gap=0 min-width=0
+              text "EMERGENCY·SIM" font-size="0.7rem" font-weight=800 letter-spacing="0.18em" color="#ff453a"
+              text snap.city font-size="0.8rem" color="#8b9ab8" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+          column gap=4 min-width="4.5rem"
+            text snap.clock font-size="1.6rem" font-weight=700 font-variant-numeric="tabular-nums" line-height=1 testId="clock"
+            view height=3 border-radius=2 background-color="rgba(255,255,255,0.1)" overflow="hidden"
+              view height="100%" width=`${snap.progress * 100}%` background-color="#64d2ff"
+          view flex=1
+          if wide
+            row gap=18 align-items="center"
+              Stat(label="Sauvés", value=`${snap.saved}`, color="#30d158")
+              Stat(label="Perdus", value=`${snap.lost}`, color=(snap.lost > 0 ? "#ff375f" : "#e8eefc"))
+              Stat(label="Délai moyen", value=snap.avgResponse, color="#e8eefc")
+              Stat(label="Disponibles", value=`${snap.free}/${snap.fleet}`, color="#64d2ff")
+          column align-items="flex-end" gap=0
+            text "SCORE" font-size="0.6rem" font-weight=800 letter-spacing="0.14em" color="#8b9ab8"
+            text `${snap.score}` font-size="1.35rem" font-weight=800 font-variant-numeric="tabular-nums" testId="score"
+          row role="radiogroup" aria-label="Vitesse" gap=2 padding=3 border-radius=12 background-color="rgba(255,255,255,0.06)" appearance="none"
+            button role="radio" aria-checked=snap.paused aria-label=(snap.paused ? "Reprendre" : "Pause") press=togglePause appearance="none" width="2.1rem" height="2rem" border-radius=9 display="flex" align-items="center" justify-content="center" background-color=(snap.paused ? "#ff9f0a" : "transparent") testId="pause"
+              image (snap.paused ? "symbol:play-fill" : "symbol:pause-fill") width=14 height=14 color=(snap.paused ? "#060a13" : "#e8eefc")
+            for s in [1, 2, 4] key=s
+              button role="radio" aria-checked=(not snap.paused and snap.speed == s) aria-label=`Vitesse ×${s}` press=setSpeed(s) appearance="none" width="2.1rem" height="2rem" border-radius=9 background-color=(not snap.paused and snap.speed == s ? "#e8eefc" : "transparent") testId=`speed-${s}`
+                text `×${s}` font-size="0.8rem" font-weight=800 color=(not snap.paused and snap.speed == s ? "#060a13" : "#e8eefc")
+
+        // Map controls.
+        column position="absolute" right=(wide and selected != "" ? "27rem" : 12) top="calc(env(safe-area-inset-top) + 80px)" gap=8
+          MapButton(symbol="symbol:add", label="Zoomer", go=zoomIn, id="zoom-in")
+          MapButton(symbol="symbol:minus", label="Dézoomer", go=zoomOut, id="zoom-out")
+          MapButton(symbol="symbol:location", label="Vue d'ensemble", go=fit, id="fit")
+
+        // Toast.
+        if showToast
+          row position="absolute" top="calc(env(safe-area-inset-top) + 76px)" left=0 right=0 justify-content="center" padding="0 16px" pointer-events="none"
+            row max-width="34rem" pointer-events="auto" gap=10 align-items="center" padding="10px 16px" border-radius=16 backgroundMaterial="dark" background-color="rgba(10,15,27,0.85)" border-width=1 border-style="solid" border-color=toneColor(snap.toast.tone) animation="toast-in 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2)" press=openToast testId="toast"
+              view width=8 height=8 border-radius=4 background-color=toneColor(snap.toast.tone) flex-shrink=0
+              text snap.toast.text font-size="0.9rem" font-weight=600
+
+        if wide
+          // Left: queue, fleet, log.
+          column position="absolute" top="calc(env(safe-area-inset-top) + 84px)" left=12 bottom=12 width="23.25rem" border-radius=22 backgroundMaterial="dark" background-color="rgba(10,15,27,0.78)" border="1px solid rgba(255,255,255,0.08)" overflow="hidden" testId="panel"
+            Tabs(tab=tab, calls=snap.calls.length, fresh=snap.newCalls, show=showTab)
+            scroll flex=1 min-height=0 padding="4px 12px 16px"
+              Panel(tab=tab, snap=snap, selected=selected, pickCall=pickCall, pickUnit=pickUnit, pompiers=pompiers, samu=samu, police=police)
+          // Right: the call sheet.
+          match call
+            case some(c)
+              column position="absolute" top="calc(env(safe-area-inset-top) + 84px)" right=12 bottom=12 width="25.5rem" border-radius=22 backgroundMaterial="dark" background-color="rgba(10,15,27,0.84)" border-width=1 border-style="solid" border-color=`${priorityColor(c.priority)}55` overflow="hidden" animation="sheet-in 280ms cubic-bezier(0.2, 0.9, 0.3, 1)" testId="sheet"
+                scroll flex=1 min-height=0 padding=18
+                  CallSheet(c=c, opts=opts, picks=picks, showAll=showAll, toggleAll=toggleAll, close=closeCall, qualify=qualifyAs, toggle=togglePick, suggest=useSuggestion, engage=engage, engageSuggested=engageSuggested, recall=recallUnit, pickUnit=pickUnit)
+            case none
+              column
+        else
+          // Phone: a bottom drawer.
+          column position="absolute" left=0 right=0 bottom=0 max-height=(drawerOpen ? "56%" : "auto") border-radius="24px 24px 0 0" backgroundMaterial="dark" background-color="rgba(10,15,27,0.86)" border-top="1px solid rgba(255,255,255,0.1)" padding-bottom="env(safe-area-inset-bottom)" overflow="hidden" testId="drawer"
+            column align-items="center" padding-top=8 press=toggleDrawer role="button" aria-label=(drawerOpen ? "Réduire le panneau" : "Ouvrir le panneau") aria-expanded=drawerOpen testId="drawer-handle"
+              view width=40 height=5 border-radius=3 background-color="rgba(255,255,255,0.25)"
+            match call
+              case some(c)
+                scroll flex=1 min-height=0 padding="8px 16px 16px"
+                  CallSheet(c=c, opts=opts, picks=picks, showAll=showAll, toggleAll=toggleAll, close=closeCall, qualify=qualifyAs, toggle=togglePick, suggest=useSuggestion, engage=engage, engageSuggested=engageSuggested, recall=recallUnit, pickUnit=pickUnit)
+              case none
+                Tabs(tab=tab, calls=snap.calls.length, fresh=snap.newCalls, show=showTab)
+                if drawerOpen
+                  scroll flex=1 min-height=0 padding="4px 12px 12px"
+                    Panel(tab=tab, snap=snap, selected=selected, pickCall=pickCall, pickUnit=pickUnit, pompiers=pompiers, samu=samu, police=police)
+
+        // The unit card.
+        match unit
+          case some(u)
+            column position="absolute" left=(wide ? "24.75rem" : 12) right=(wide ? "auto" : 12) bottom=(wide ? 12 : "calc(56% + 12px)") width=(wide ? 320 : "auto") gap=8 padding=16 border-radius=20 backgroundMaterial="dark" background-color="rgba(10,15,27,0.88)" border-width=1 border-style="solid" border-color=`${serviceColor(u.service)}66` testId="unit-card"
+              row align-items="center" gap=10
+                UnitBadge(type=u.type, service=u.service)
+                column flex=1 min-width=0
+                  text u.name font-weight=700
+                  text u.long font-size="0.8rem" color="#8b9ab8"
+                button press=closeUnit aria-label="Fermer" appearance="none" padding=6 testId="unit-close"
+                  image "symbol:close" width=14 height=14 color="#8b9ab8"
+              row gap=8 align-items="center" flex-wrap="wrap"
+                Chip(text=u.statusLabel, color=statusColor(u.status))
+                if u.eta != ""
+                  text `Arrivée ${u.eta}` font-size="0.85rem" color="#8b9ab8"
+              if u.callTitle != ""
+                text `Mission : ${u.callTitle}` font-size="0.85rem"
+              text `${u.station} · ${plural(u.missions, "mission", "missions")} cette garde` font-size="0.8rem" color="#8b9ab8"
+              if u.status == "route"
+                button press=recallUnit(u.id) buttonStyle="bordered" testId="unit-recall"
+                  text "Désengager"
+          case none
+            column
+
+      // Welcome.
+      if not snap.started
+        column position="absolute" inset=0 align-items="center" justify-content="center" padding=24 background-color="rgba(6,10,19,0.55)" testId="intro"
+          column max-width="34rem" width="100%" box-sizing="border-box" gap=22 padding=28 border-radius=28 backgroundMaterial="dark" background-color="rgba(10,15,27,0.82)" border="1px solid rgba(255,255,255,0.1)" animation="sheet-in 500ms cubic-bezier(0.2, 0.9, 0.3, 1)"
+            column gap=6
+              row gap=8 align-items="center"
+                view width=10 height=10 border-radius=5 background-color="#ff453a" animation="pulse 1.2s ease-in-out infinite"
+                text "CENTRE DE TRAITEMENT DES APPELS" font-size="0.72rem" font-weight=800 letter-spacing="0.16em" color="#ff453a"
+              text "Emergency Sim" font-size="2.6rem" font-weight=800 line-height=1.05 role="heading" aria-level=1
+              text `Garde de 12 heures à ${snap.city}. Recevez les appels, qualifiez-les, engagez pompiers, SAMU et police sur les vraies rues de la ville.` font-size="1rem" color="#a9b6cf" line-height=1.45
+            column gap=12
+              Feature(symbol="symbol:phone", color="#ff9f0a", title="Qualifiez chaque appel", text="Écoutez l'appelant : incendie, secours à personne, police ou accident ?")
+              Feature(symbol="symbol:location", color="#0a84ff", title="Engagez les bons moyens", text="FPT, VSAV, EPA, SMUR, ambulances, Police-secours, BAC : chaque minute compte.")
+              Feature(symbol="symbol:heart", color="#30d158", title="Sauvez des vies", text="Les feux se propagent, les victimes partent à l'hôpital, la circulation change aux heures de pointe.")
+            column gap=10
+              button press=startShift buttonStyle="filled" testId="start"
+                text "Prendre la garde"
+              if best > 0
+                text `Meilleur score : ${best}` text-align="center" font-size="0.85rem" color="#8b9ab8" testId="best"
+              text snap.attribution text-align="center" font-size="0.7rem" color="#5d6b88"
+
+      // End of shift.
+      if snap.over
+        column position="absolute" inset=0 align-items="center" justify-content="center" padding=24 background-color="rgba(6,10,19,0.7)" testId="report"
+          column max-width="30rem" width="100%" box-sizing="border-box" gap=18 padding=28 border-radius=28 backgroundMaterial="dark" background-color="rgba(10,15,27,0.9)" border="1px solid rgba(255,255,255,0.1)" animation="sheet-in 500ms cubic-bezier(0.2, 0.9, 0.3, 1)"
+            text "FIN DE GARDE" font-size="0.72rem" font-weight=800 letter-spacing="0.16em" color="#64d2ff"
+            text `${snap.score}` font-size="3.4rem" font-weight=800 font-variant-numeric="tabular-nums" line-height=1 testId="final-score"
+            text "points" color="#8b9ab8" margin-top=-12
+            row flex-wrap="wrap" gap=10
+              Tile(label="Victimes sauvées", value=`${snap.saved}`, color="#30d158")
+              Tile(label="Victimes perdues", value=`${snap.lost}`, color="#ff375f")
+              Tile(label="Interventions réussies", value=`${snap.handled}`, color="#e8eefc")
+              Tile(label="Échecs", value=`${snap.failed}`, color="#ff9f0a")
+              Tile(label="Délai moyen", value=snap.avgResponse, color="#64d2ff")
+              Tile(label="Qualification juste", value=`${snap.accuracy} %`, color="#bf5af2")
+            text `Coût des engagements : ${snap.cost}` font-size="0.85rem" color="#8b9ab8"
+            button press=startShift buttonStyle="filled" testId="restart"
+              text "Nouvelle garde"
+
+keyframes toast-in
+  from opacity=0 translate="0px -12px" scale=0.96
+keyframes sheet-in
+  from opacity=0 translate="0px 16px"
+keyframes pulse
+  50% opacity=0.3
+
+// ---------------------------------------------------------------- parts
+
+component Stat
+  props
+    label: string
+    value: string
+    color: string
+  view
+    column gap=0 align-items="flex-start"
+      text label font-size="0.6rem" font-weight=800 letter-spacing="0.12em" text-transform="uppercase" color="#8b9ab8"
+      text value font-size="1rem" font-weight=700 font-variant-numeric="tabular-nums" color=color
+
+component Tile
+  props
+    label: string
+    value: string
+    color: string
+  view
+    column flex="1 1 8rem" gap=2 padding=12 border-radius=14 background-color="rgba(255,255,255,0.05)"
+      text value font-size="1.4rem" font-weight=800 color=color font-variant-numeric="tabular-nums"
+      text label font-size="0.75rem" color="#8b9ab8"
+
+component Feature
+  props
+    symbol: string
+    color: string
+    title: string
+    text: string
+  view
+    row gap=12 align-items="flex-start"
+      view width=36 height=36 border-radius=10 background-color="rgba(255,255,255,0.06)" display="flex" align-items="center" justify-content="center" flex-shrink=0
+        image symbol width=18 height=18 color=color
+      column gap=2 min-width=0
+        text title font-weight=700
+        text text font-size="0.88rem" color="#a9b6cf"
+
+component MapButton
+  props
+    symbol: string
+    label: string
+    go: action
+    id: string
+  view
+    button press=go aria-label=label appearance="none" width=44 height=44 border-radius=14 display="flex" align-items="center" justify-content="center" backgroundMaterial="dark" background-color="rgba(10,15,27,0.78)" border="1px solid rgba(255,255,255,0.1)" testId=id
+      image symbol width=18 height=18 color="#e8eefc"
+
+component Chip
+  props
+    text: string
+    color: string
+  view
+    row align-items="center" gap=6 padding="3px 9px" border-radius=999 background-color="rgba(255,255,255,0.06)" border-width=1 border-style="solid" border-color=`${color}55`
+      view width=6 height=6 border-radius=3 background-color=color
+      text text font-size="0.75rem" font-weight=700 color=color white-space="nowrap"
+
+component UnitBadge
+  props
+    type: string
+    service: string
+  view
+    view min-width="2.6rem" padding="4px 6px" border-radius=8 background-color=serviceColor(service) display="flex" align-items="center" justify-content="center" flex-shrink=0
+      text type font-size="0.72rem" font-weight=900 color="#ffffff" letter-spacing="0.04em"
+
+component Tabs
+  props
+    tab: string
+    calls: number
+    fresh: number
+    show: action
+  view
+    row role="tablist" gap=4 padding="10px 12px 8px"
+      for t in ["appels", "unites", "journal"] key=t
+        button role="tab" aria-selected=(tab == t) aria-controls=`panel-${t}` press=show(t) appearance="none" flex=1 padding="8px 6px" border-radius=12 background-color=(tab == t ? "rgba(255,255,255,0.1)" : "transparent") display="flex" align-items="center" justify-content="center" gap=6 testId=`tab-${t}`
+          text (t == "appels" ? "Appels" : t == "unites" ? "Unités" : "Journal") font-size="0.88rem" font-weight=700 color=(tab == t ? "#ffffff" : "#8b9ab8")
+          if t == "appels" and calls > 0
+            view min-width=20 height=20 padding="0 6px" border-radius=10 background-color=(fresh > 0 ? "#ff375f" : "rgba(255,255,255,0.14)") display="flex" align-items="center" justify-content="center"
+              text `${calls}` font-size="0.72rem" font-weight=800 color="#ffffff"
+
+component Panel
+  props
+    tab: string
+    snap: Snap
+    selected: string
+    pickCall: action
+    pickUnit: action
+    pompiers: UnitRow[]
+    samu: UnitRow[]
+    police: UnitRow[]
+  view
+    column gap=10
+      if tab == "appels"
+        column role="tabpanel" id="panel-appels" gap=10
+          if snap.calls.length == 0
+            column align-items="center" gap=8 padding="28px 12px" testId="no-calls"
+              image "symbol:phone" width=26 height=26 color="#5d6b88"
+              text "Ligne calme. Restez à l'écoute." color="#8b9ab8"
+          for c in snap.calls key=c.id
+            CallCard(c=c, active=(c.id == selected), pick=pickCall(c.id))
+          if snap.closed.length > 0
+            text "TERMINÉS" font-size="0.65rem" font-weight=800 letter-spacing="0.14em" color="#5d6b88" margin-top=8
+            for c in snap.closed key=c.id
+              row gap=10 align-items="center" padding="8px 10px" border-radius=12 background-color="rgba(255,255,255,0.03)"
+                view width=6 height=6 border-radius=3 background-color=outcomeColor(c.outcome)
+                column flex=1 min-width=0
+                  text c.title font-size="0.85rem" font-weight=600 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+                  text c.address font-size="0.75rem" color="#8b9ab8" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+                text c.stateLabel font-size="0.72rem" font-weight=700 color=outcomeColor(c.outcome)
+      if tab == "unites"
+        column role="tabpanel" id="panel-unites" gap=14
+          Fleet(title="Sapeurs-pompiers", color="#ff453a", units=pompiers, pick=pickUnit)
+          Fleet(title="SAMU", color="#30d158", units=samu, pick=pickUnit)
+          Fleet(title="Police", color="#0a84ff", units=police, pick=pickUnit)
+          text "STRUCTURES" font-size="0.65rem" font-weight=800 letter-spacing="0.14em" color="#5d6b88"
+          for s in snap.stations key=s.index
+            row gap=10 align-items="center" padding="8px 10px" border-radius=12 background-color="rgba(255,255,255,0.03)"
+              view width=8 height=8 border-radius=2 background-color=(s.kind == "fire" ? "#ff453a" : s.kind == "hospital" ? "#30d158" : "#0a84ff")
+              column flex=1 min-width=0
+                text s.name font-size="0.85rem" font-weight=600
+                if s.beds != ""
+                  text s.beds font-size="0.75rem" color="#8b9ab8"
+              text `${s.home}/${s.total} au quartier` font-size="0.75rem" color="#8b9ab8"
+      if tab == "journal"
+        column role="tabpanel" id="panel-journal" gap=2
+          for l in snap.log key=l.id
+            row gap=10 align-items="flex-start" padding="7px 4px" border-bottom="1px solid rgba(255,255,255,0.05)"
+              text l.at font-size="0.75rem" font-variant-numeric="tabular-nums" color="#5d6b88" padding-top=1
+              view width=6 height=6 border-radius=3 background-color=toneColor(l.tone) margin-top=6 flex-shrink=0
+              text l.text font-size="0.85rem" color="#c9d4ea" flex=1 min-width=0
+
+component CallCard
+  props
+    c: CallRow
+    active: bool
+    pick: action
+  view
+    column press=pick role="button" aria-label=`${priorityLabel(c.priority)} ${c.title}, ${c.address}, ${c.stateLabel}, ${c.timeText}` gap=8 padding="12px 12px 12px 16px" border-radius=16 position="relative" overflow="hidden" background-color=(active ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)") border-width=1 border-style="solid" border-color=(active ? priorityColor(c.priority) : "rgba(255,255,255,0.06)") -exact-layout-transition="all 260ms" testId=`call-${c.id}`
+      view position="absolute" left=0 top=0 bottom=0 width=4 background-color=priorityColor(c.priority)
+      row align-items="center" gap=8
+        text priorityLabel(c.priority) font-size="0.65rem" font-weight=900 letter-spacing="0.08em" color=priorityColor(c.priority)
+        if not c.qualified
+          text "NOUVEAU" font-size="0.62rem" font-weight=900 letter-spacing="0.08em" padding="2px 6px" border-radius=6 background-color="#ff375f" color="#ffffff" animation="pulse 1s ease-in-out infinite"
+        if c.escalated
+          text "PROPAGATION" font-size="0.62rem" font-weight=900 letter-spacing="0.08em" padding="2px 6px" border-radius=6 background-color="#ff9f0a" color="#060a13"
+        view flex=1
+        text c.at font-size="0.72rem" color="#5d6b88" font-variant-numeric="tabular-nums"
+      column gap=2
+        text c.title font-weight=700 font-size="0.98rem"
+        text c.address font-size="0.82rem" color="#8b9ab8"
+      row gap=8 align-items="center"
+        Chip(text=c.stateLabel, color=(c.state == "traitement" ? "#64d2ff" : c.state == "engage" ? "#ff9f0a" : "#ff375f"))
+        view flex=1
+        image "symbol:timer" width=12 height=12 color="#8b9ab8"
+        text c.timeText font-size="0.8rem" font-weight=700 font-variant-numeric="tabular-nums" color=(c.fraction < 0.3 and c.state != "traitement" ? "#ff375f" : "#c9d4ea") testId=`time-${c.id}`
+      view height=4 border-radius=2 background-color="rgba(255,255,255,0.08)" overflow="hidden"
+        view height="100%" width=`${c.fraction * 100}%` border-radius=2 background-color=(c.state == "traitement" ? "#64d2ff" : priorityColor(c.priority)) 
+      if c.needs.length > 0
+        row gap=6 flex-wrap="wrap"
+          for n, i in c.needs key=i
+            text n.type font-size="0.68rem" font-weight=800 padding="2px 7px" border-radius=6 color=needColor(n.state) border-width=1 border-style="solid" border-color=`${needColor(n.state)}88`
+
+component Fleet
+  props
+    title: string
+    color: string
+    units: UnitRow[]
+    pick: action
+  view
+    column gap=6
+      row align-items="center" gap=8
+        view width=8 height=8 border-radius=4 background-color=color
+        text title.toUpperCase() font-size="0.68rem" font-weight=800 letter-spacing="0.12em" color="#c9d4ea"
+        view flex=1
+        text `${units.filter(u => u.status == "dispo" or u.status == "retour").length}/${units.length} ${units.filter(u => u.status == "dispo" or u.status == "retour").length == 1 ? "disponible" : "disponibles"}` font-size="0.72rem" color="#8b9ab8"
+      for u in units key=u.id
+        row press=pick(u.id) role="button" aria-label=`${u.name}, ${u.statusLabel}` gap=10 align-items="center" padding="8px 10px" border-radius=12 background-color="rgba(255,255,255,0.04)" testId=`unit-${u.id}`
+          UnitBadge(type=u.type, service=u.service)
+          column flex=1 min-width=0
+            text u.name font-size="0.88rem" font-weight=700
+            text (u.callTitle != "" ? u.callTitle : u.station) font-size="0.75rem" color="#8b9ab8" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+          column align-items="flex-end" gap=2
+            Chip(text=u.statusLabel, color=statusColor(u.status))
+            if u.eta != ""
+              text u.eta font-size="0.7rem" color="#8b9ab8"
+
+component CallSheet
+  props
+    c: CallRow
+    opts: Option[]
+    picks: string[]
+    showAll: bool
+    toggleAll: action
+    close: action
+    qualify: action
+    toggle: action
+    suggest: action
+    engage: action
+    engageSuggested: action
+    recall: action
+    pickUnit: action
+  view
+    column gap=16
+      row align-items="flex-start" gap=10
+        column flex=1 min-width=0 gap=4
+          row gap=8 align-items="center"
+            text priorityLabel(c.priority) font-size="0.7rem" font-weight=900 letter-spacing="0.08em" padding="3px 8px" border-radius=7 background-color=priorityColor(c.priority) color="#060a13"
+            text c.familyLabel font-size="0.75rem" font-weight=700 color=familyColor(c.family)
+          text c.title font-size="1.35rem" font-weight=800 line-height=1.15 role="heading" aria-level=2 testId="sheet-title"
+          row gap=6 align-items="center"
+            image "symbol:location" width=12 height=12 color="#8b9ab8"
+            text c.address font-size="0.88rem" color="#a9b6cf"
+        button press=close aria-label="Fermer la fiche" appearance="none" width=34 height=34 border-radius=17 display="flex" align-items="center" justify-content="center" background-color="rgba(255,255,255,0.08)" testId="sheet-close"
+          image "symbol:close" width=14 height=14 color="#e8eefc"
+
+      row gap=8 align-items="center"
+        Chip(text=c.stateLabel, color=(c.state == "traitement" ? "#64d2ff" : c.state == "engage" ? "#ff9f0a" : "#ff375f"))
+        view flex=1
+        image "symbol:timer" width=13 height=13 color="#8b9ab8"
+        text c.timeText font-weight=800 font-variant-numeric="tabular-nums" color=(c.fraction < 0.3 and c.state != "traitement" ? "#ff375f" : "#e8eefc")
+
+      // The caller.
+      column gap=6 padding=14 border-radius=16 background-color="rgba(255,255,255,0.05)" border-left-width=3 border-left-style="solid" border-left-color=priorityColor(c.priority)
+        row gap=6 align-items="center"
+          image "symbol:phone" width=12 height=12 color="#8b9ab8"
+          text `Appelant · ${c.at}` font-size="0.72rem" font-weight=700 color="#8b9ab8" letter-spacing="0.04em"
+        text `« ${c.caller} »` font-size="0.98rem" line-height=1.45 font-style="italic" color="#e8eefc" testId="caller"
+
+      if not c.qualified
+        column gap=10 testId="qualify"
+          text "Qualifier l'appel" font-weight=800
+          row flex-wrap="wrap" gap=8
+            QualifyButton(label="Incendie", color="#ff453a", go=qualify("feu"), id="q-feu")
+            QualifyButton(label="Secours à personne", color="#30d158", go=qualify("sap"), id="q-sap")
+            QualifyButton(label="Police", color="#0a84ff", go=qualify("police"), id="q-police")
+            QualifyButton(label="Accident / mixte", color="#ff9f0a", go=qualify("mixte"), id="q-mixte")
+      else
+        column gap=8
+          text "Moyens nécessaires" font-weight=800
+          row gap=8 flex-wrap="wrap"
+            for n, i in c.needs key=i
+              row gap=6 align-items="center" padding="6px 10px" border-radius=10 background-color="rgba(255,255,255,0.04)" border-width=1 border-style="solid" border-color=`${needColor(n.state)}77` aria-label=`${n.label} : ${n.state == "surplace" ? "sur place" : n.state == "engage" ? "engagé" : "manquant"}`
+                image needIcon(n.state) width=11 height=11 color=needColor(n.state)
+                text n.type font-size="0.8rem" font-weight=800 color=needColor(n.state)
+
+        if c.units.length > 0
+          column gap=6
+            text "Engagés" font-size="0.72rem" font-weight=800 letter-spacing="0.12em" color="#8b9ab8"
+            for u in c.units key=u.id
+              row gap=10 align-items="center" padding="8px 10px" border-radius=12 background-color="rgba(255,255,255,0.04)"
+                view width=8 height=8 border-radius=4 background-color=serviceColor(u.service)
+                text u.name font-size="0.88rem" font-weight=700 flex=1 press=pickUnit(u.id)
+                text (u.eta != "" ? `${u.status} · ${u.eta}` : u.status) font-size="0.78rem" color="#a9b6cf"
+                if u.eta != ""
+                  button press=recall(u.id) aria-label=`Désengager ${u.name}` appearance="none" padding=4 testId=`recall-${u.id}`
+                    image "symbol:close" width=12 height=12 color="#8b9ab8"
+
+        if c.state != "traitement" and c.state != "clos"
+          column gap=8 testId="dispatch"
+            row align-items="center"
+              text "Engager des moyens" font-weight=800 flex=1
+              button press=suggest appearance="none" padding="4px 8px" testId="use-suggestion"
+                text "Sélection suggérée" font-size="0.8rem" font-weight=700 color="#64d2ff"
+            if opts.length == 0
+              text "Aucun véhicule disponible pour le moment." font-size="0.85rem" color="#8b9ab8"
+            for o in opts.filter(x => showAll or x.needed or picks.includes(x.id)).slice(0, 14) key=o.id
+              row press=toggle(o.id) role="checkbox" aria-checked=picks.includes(o.id) aria-label=`${o.name}, ${o.long}, arrivée ${o.eta}` gap=10 align-items="center" padding="9px 10px" border-radius=12 background-color=(picks.includes(o.id) ? "rgba(100,210,255,0.14)" : "rgba(255,255,255,0.04)") border-width=1 border-style="solid" border-color=(picks.includes(o.id) ? "#64d2ff" : "rgba(255,255,255,0.05)") opacity=(o.needed ? 1 : 0.55) testId=`opt-${o.id}`
+                view width=20 height=20 border-radius=6 border=(picks.includes(o.id) ? "none" : "1.5px solid #5d6b88") background-color=(picks.includes(o.id) ? "#64d2ff" : "transparent") display="flex" align-items="center" justify-content="center" flex-shrink=0
+                  if picks.includes(o.id)
+                    image "symbol:checkmark" width=12 height=12 color="#060a13"
+                UnitBadge(type=o.type, service=o.service)
+                column flex=1 min-width=0
+                  row gap=6 align-items="center"
+                    text o.name font-size="0.88rem" font-weight=700
+                    if o.suggested
+                      text "SUGGÉRÉ" font-size="0.58rem" font-weight=900 letter-spacing="0.08em" padding="1px 5px" border-radius=5 background-color="#30d158" color="#060a13"
+                  text (o.returning ? `${o.station} · en retour` : o.station) font-size="0.72rem" color="#8b9ab8" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+                text o.eta font-size="0.85rem" font-weight=800 font-variant-numeric="tabular-nums" color="#e8eefc"
+            if opts.filter(x => not x.needed).length > 0
+              button press=toggleAll appearance="none" padding="6px 0" testId="toggle-all"
+                text (showAll ? "Masquer les autres véhicules" : `Tous les véhicules (${opts.length})`) font-size="0.82rem" font-weight=700 color="#64d2ff"
+            if picks.length > 0
+              button press=engage buttonStyle="filled" testId="engage"
+                text `Engager ${plural(picks.length, "véhicule", "véhicules")}`
+            else
+              button press=engageSuggested buttonStyle="filled" disabled=(opts.filter(o => o.suggested).length == 0) testId="engage-suggested"
+                text "Engager la suggestion"
+
+component QualifyButton
+  props
+    label: string
+    color: string
+    go: action
+    id: string
+  view
+    button press=go appearance="none" flex="1 1 40%" padding="12px 10px" border-radius=14 background-color="rgba(255,255,255,0.05)" border-width="1.5px" border-style="solid" border-color=color display="flex" align-items="center" justify-content="center" testId=id
+      text label font-size="0.88rem" font-weight=800 color=color text-align="center"

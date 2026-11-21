@@ -1,7 +1,56 @@
-test "the greeting loads"
-  expect tree has "root"
-  expect text "greeting" == "Hello from Emergency Sim."
+seed 3
 
-test "the header's button likes it"
-  tap "like"
-  expect state liked == true
+test "the welcome screen opens the shift"
+  expect tree has "intro"
+  tap "start"
+  clock data
+  expect tree missing "intro"
+  expect state snap.started == true
+  expect text "clock" == "07:00"
+
+test "a call is qualified, dispatched and handled"
+  tap "start"
+  clock data
+  clock +3000
+  clock data
+  expect state snap.calls.length == 1
+  tap "call-c1"
+  clock data
+  expect tree has "qualify"
+  tap "q-feu"
+  clock data
+  expect text "sheet-title" == "Feu de poubelles"
+  expect state snap.score == 20
+  tap "engage-suggested"
+  clock data
+  expect state snap.calls.0 .state == "engage"
+  expect state snap.free == 20
+  clock +60000
+  clock data
+  expect state snap.handled == 1
+  expect tree missing "sheet"
+
+test "a wrong qualification costs points and reveals the call"
+  tap "start"
+  clock data
+  clock +3000
+  clock data
+  tap "call-c1"
+  clock data
+  tap "q-police"
+  clock data
+  expect state snap.score == -30
+  expect text "sheet-title" == "Feu de poubelles"
+
+test "speed and pause"
+  tap "start"
+  clock data
+  tap "speed-4"
+  clock data
+  expect state snap.speed == 4
+  tap "pause"
+  clock data
+  expect state snap.paused == true
+  clock +10000
+  clock data
+  expect text "clock" == "07:00"
