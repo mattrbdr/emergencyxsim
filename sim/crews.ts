@@ -1,5 +1,6 @@
 // Crews and vehicles wear out: crews tire with every intervention and rest at
 // their base; vehicles wear with the kilometres and break down now and then.
+import { homeHas } from './upgrades.ts';
 import { UNITS } from './catalog/units.ts';
 import { hourOf } from './clock.ts';
 import { spend } from './economy.ts';
@@ -30,11 +31,14 @@ export const CREW = {
   serviceCost: 0.04,
 };
 
-// What the station's upgrades change (sim/upgrades.ts, lot 4.3); neutral for now.
-const recovery = (_w: World, _u: Unit) => 1;
-const breakdownFactor = (_w: World, _u: Unit) => 1;
-const repairCostFactor = (_w: World, _u: Unit) => 1;
-const repairTimeFactor = (_w: World, _u: Unit) => 1;
+// What the station's upgrades change.
+const recovery = (w: World, u: Unit) => (homeHas(w, u, 'dortoir') ? 2 : 1);
+const breakdownFactor = (w: World, u: Unit) => (homeHas(w, u, 'atelier') ? 0.5 : 1);
+const repairCostFactor = (w: World, u: Unit) => (homeHas(w, u, 'atelier') ? 0.5 : 1);
+const repairTimeFactor = (w: World, u: Unit) => (homeHas(w, u, 'atelier') ? 0.5 : 1);
+
+/** Seconds between the alarm and the vehicle leaving its base. */
+export const turnout = (w: World, u: Unit) => (homeHas(w, u, 'garde') ? 15 : 60);
 
 export const isTired = (u: Unit) => u.fatigue > TIRED;
 /** Speed and work-rate factor of a tired crew. */

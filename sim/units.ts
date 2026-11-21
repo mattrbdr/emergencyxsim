@@ -2,8 +2,9 @@
 // on scene, carrying victims to hospital, going home.
 import { RULES } from './catalog/rules.ts';
 import { UNITS, type UnitDef } from './catalog/units.ts';
-import { checkBreakdown, pace, wearOut } from './crews.ts';
-import { earn } from './economy.ts';
+import { checkBreakdown, pace, turnout, wearOut } from './crews.ts';
+import { has } from './upgrades.ts';
+import { adjustReputation, earn } from './economy.ts';
 import { euros, say } from './log.ts';
 import { edgeBetween, edgeSpeed, pathTo, type Tree } from './routing.ts';
 import { freshTree, trafficAt, treeFromStation } from './traffic.ts';
@@ -26,10 +27,11 @@ export function routeTo(u: Unit, tree: Tree) {
 }
 
 /** Seconds a unit needs from where it is to `tree`'s source (or to a point, flying). */
-export function etaFrom(u: Unit, tree: Tree, x: number, y: number): number {
+export function etaFrom(w: World, u: Unit, tree: Tree, x: number, y: number): number {
   const def = UNITS[u.type];
-  if (def.flySpeed) return Math.hypot(u.x - x, u.y - y) / def.flySpeed + 60; // take-off
-  return tree.time[startNode(u)] / (def.speed * pace(u)) + (u.along > 0 ? 10 : 0);
+  const leave = u.status === 'dispo' ? turnout(w, u) : 0;
+  if (def.flySpeed) return Math.hypot(u.x - x, u.y - y) / def.flySpeed + 60 + leave; // take-off
+  return tree.time[startNode(u)] / (def.speed * pace(u)) + (u.along > 0 ? 10 : 0) + leave;
 }
 
 /** Seconds to finish the current trip. */
@@ -59,6 +61,10 @@ export function moveUnit(w: World, u: Unit, dt: number) {
 }
 
 function step(w: World, u: Unit, dt: number) {
+  if (u.status === 'route' && u.wait > 0) {
+    u.wait -= dt; // gearing up at the base
+    return;
+  }
   if (u.status === 'hopital') {
     u.wait -= dt;
     if (u.wait <= 0) goHome(w, u);
@@ -127,12 +133,18 @@ export function arrive(w: World, u: Unit) {
     say(w, `${u.name} · statut 3 · ${call.street}`, 'info');
   } else if (u.status === 'transport') {
     u.status = 'hopital';
-    u.wait = RULES.hospitalStay;
     const own = w.buildings.find((b) => b.kind === 'hopital' && Math.hypot(b.x - u.x, b.y - u.y) < 40);
+    const family = w.calls.find((c) => c.id === u.callId)?.kind.family;
+    // Specialised services bill more and free the vehicle sooner.
+    const burns = family === 'feu' && has(own, 'brules');
+    const trauma = family === 'route' && has(own, 'trauma');
+    u.wait = RULES.hospitalStay * (trauma ? 0.6 : 1) * (has(own, 'pharmacie') ? 0.7 : 1);
     if (own) {
       own.patients++;
-      earn(w, RULES.ownHospitalFee);
-      say(w, `${u.name} · statut 5 · ${own.name}, soins facturés +${euros(RULES.ownHospitalFee)}`, 'money');
+      const fee = RULES.ownHospitalFee * (burns || trauma ? 1.5 : 1);
+      earn(w, fee);
+      if (burns) adjustReputation(w, 0.5);
+      say(w, `${u.name} · statut 5 · ${own.name}${burns ? ', service des brûlés' : trauma ? ', traumatologie' : ''}, soins facturés +${euros(fee)}`, 'money');
     } else {
       say(w, `${u.name} · statut 5 · victime déposée aux urgences`, 'good');
     }

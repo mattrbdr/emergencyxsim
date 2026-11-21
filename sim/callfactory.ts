@@ -1,6 +1,7 @@
 // Building a call at a place: position along a street, address (landmark,
 // floor and door code for homes). Used for everyday calls and for the phases
 // of major incidents.
+import { anyHas } from './upgrades.ts';
 import type { CallKind } from './catalog/calls.ts';
 import { landmark } from './places.ts';
 import { pick } from './rng.ts';
@@ -24,7 +25,7 @@ export function spotOn(w: World, edge: number): Spot {
 export function createCall(w: World, kind: CallKind, spot: Spot, caller = pick(w.rng, kind.callers)): Call {
   const call: Call = {
     id: `c${w.nextId++}`, kind, node: spot.node, x: spot.x, y: spot.y, address: '', street: spot.street,
-    caller, at: w.t, deadline: w.t + kind.deadline * 60, priority: kind.priority,
+    caller, at: w.t, deadline: w.t + kind.deadline * 60 + (anyHas(w, 'centre_ops') ? 120 : 0), priority: kind.priority,
     state: 'nouveau', qualified: false, guessedRight: false, needs: [...kind.needs], assigned: [],
     workLeft: kind.work * 60, escalated: false, outcome: '', firstOnScene: -1, closedAt: 0, earned: 0,
     twistRolled: false, twist: null, decisionLeft: 0, risk: 1, bonus: 1, hold: false, majorId: '', prompt: null,

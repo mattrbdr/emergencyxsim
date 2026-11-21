@@ -22,6 +22,8 @@ export interface Building {
   /** Index of the real site it took over, or -1 when built on a plot. */
   site: number;
   patients: number;
+  /** Upgrades bought for this station (sim/catalog/upgrades.ts). */
+  upgrades: string[];
 }
 
 export interface Unit {

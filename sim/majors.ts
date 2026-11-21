@@ -2,6 +2,7 @@
 // arrival, work and transport are the everyday ones); this module opens the
 // phases in turn, asks the command decisions, carries crews over from one
 // phase to the next, and settles the incident.
+import { anyHas } from './upgrades.ts';
 import type { CallKind } from './catalog/calls.ts';
 import { MAJORS, type MajorKind } from './catalog/majors.ts';
 import { RULES } from './catalog/rules.ts';
@@ -192,7 +193,7 @@ function apply(w: World, call: Call, option: MajorChoice) {
   const phase = m?.kind.phases[m.phase];
   call.needs = [...option.needs];
   call.workLeft = option.work * 60;
-  call.risk = option.success;
+  call.risk = Math.min(1, option.success + (anyHas(w, 'salle_crise') ? 0.1 : 0));
   call.bonus = option.bonus;
   call.deadline = w.t + (phase?.deadline ?? 15) * 60;
   call.prompt = null;

@@ -31,8 +31,15 @@ function regulate(w: World) {
 }
 
 /** A careful chief: rests a tired crew when another of its kind is free, services worn vehicles. */
-async function care(w: World) {
+async function care(w: World, upgrade = false) {
   const { rest, service } = await import('../sim/crews.ts');
+  if (upgrade) {
+    const { upgradesFor, cannotUpgrade, buyUpgrade } = await import('../sim/upgrades.ts');
+    // Spends what is above a 50 000 € reserve on the cheapest upgrade available.
+    const offers = w.buildings.flatMap((b) => upgradesFor(b).filter((u) => cannotUpgrade(w, b, u.id) === '').map((u) => ({ b, u })));
+    const best = offers.sort((a, b) => a.u.price - b.u.price)[0];
+    if (best && w.money - best.u.price > 50000) buyUpgrade(w, best.b.id, best.u.id);
+  }
   for (const u of w.units) {
     if (u.status !== 'dispo') continue;
     const spare = w.units.some((x) => x !== u && x.type === u.type && x.status === 'dispo' && x.fatigue < 50);
@@ -519,7 +526,7 @@ test('five days at level 12 with a medium fleet: crises come, end, and the servi
       if (best) decideMajor(w, c, best.id);
     }
     regulate(w);
-    if (Math.floor(w.t) % 600 < 60) await care(w);
+    if (Math.floor(w.t) % 600 < 60) await care(w, true);
     lowest = Math.min(lowest, w.money);
   }
   const done = w.majors.filter((m) => m.state !== 'actif');
@@ -530,6 +537,9 @@ test('five days at level 12 with a medium fleet: crises come, end, and the servi
   expect(w.majors.filter((m) => m.state === 'actif').length).toBeLessThanOrEqual(1);
   expect(won / done.length).toBeGreaterThanOrEqual(0.3);
   expect(lowest).toBeGreaterThan(0);
+  // Upgrades soak up part of the money a large service makes (it was over 1.3 M€ without them).
+  expect(w.buildings.reduce((n, b) => n + b.upgrades.length, 0)).toBeGreaterThanOrEqual(5);
+  expect(w.money).toBeLessThan(600000);
 });
 
 test('a crisis can requisition a crew driving to a lesser call; that call waits for another', async () => {
@@ -663,4 +673,53 @@ test('worn vehicles break down; regular services keep them on the road', async (
   console.log('breakdowns without service', plain.breakdowns, 'with', kept.breakdowns);
   expect(plain.breakdowns).toBeGreaterThan(0);
   expect(kept.breakdowns).toBeLessThan(plain.breakdowns);
+});
+
+test('upgrades: locked by level, paid once, and each one changes its rule', async () => {
+  const { buyUpgrade, cannotUpgrade, maxSlots } = await import('../sim/upgrades.ts');
+  const { updateCrews, turnout } = await import('../sim/crews.ts');
+  const w = newWorld(city, 51);
+  const fire = buildAt(w, 'caserne', centre.x, centre.y)!;
+  w.money = 1e6;
+  expect(cannotUpgrade(w, fire, 'dortoir')).toBe('Niveau 4');
+  expect(buyUpgrade(w, fire.id, 'dortoir')).toBe(false);
+  w.level = 25;
+  const before = w.money;
+  expect(buyUpgrade(w, fire.id, 'dortoir')).toBe(true);
+  expect(w.money).toBe(before - 25000);
+  expect(buyUpgrade(w, fire.id, 'dortoir')).toBe(false);
+  expect(cannotUpgrade(w, fire, 'brules')).toBe('Pas ici');
+  // Dortoir: twice the recovery.
+  const u = w.units[0];
+  u.fatigue = 80;
+  updateCrews(w, 3600);
+  const rested = 80 - u.fatigue;
+  const w2 = newWorld(city, 51);
+  buildAt(w2, 'caserne', centre.x, centre.y);
+  w2.units[0].fatigue = 80;
+  updateCrews(w2, 3600);
+  expect(rested).toBeCloseTo((80 - w2.units[0].fatigue) * 2, 5);
+  // Salle de garde: leaves in 15 s.
+  expect(turnout(w, u)).toBe(60);
+  buyUpgrade(w, fire.id, 'garde');
+  expect(turnout(w, u)).toBe(15);
+  // Burns unit: a fire victim brought to its hospital pays half as much again.
+  const hosp = buySite(w, city.pois.findIndex((p) => p.kind === 'hospital'))!;
+  expect(maxSlots(hosp)).toBe(6);
+  buyUpgrade(w, hosp.id, 'heliport');
+  expect(maxSlots(hosp)).toBe(8);
+  const fee = async (burns: boolean) => {
+    const { arrive } = await import('../sim/units.ts');
+    const { createCall, spotOn } = await import('../sim/callfactory.ts');
+    if (burns && !hosp.upgrades.includes('brules')) buyUpgrade(w, hosp.id, 'brules');
+    const call = createCall(w, CALL_KINDS.find((k) => k.family === 'feu')!, spotOn(w, city.callEdges[2]), 'x');
+    w.calls.push(call);
+    const v = w.units.find((x) => x.type === 'VSAV')!;
+    Object.assign(v, { status: 'transport', callId: call.id, x: hosp.x, y: hosp.y });
+    const m = w.money;
+    arrive(w, v);
+    return w.money - m;
+  };
+  const plain = await fee(false);
+  expect(await fee(true)).toBe(plain * 1.5);
 });

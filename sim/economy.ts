@@ -1,4 +1,5 @@
 // Money and reputation: rewards for interventions, hourly upkeep, purchases.
+import { upgradesUpkeep } from './upgrades.ts';
 import { BUILDINGS } from './catalog/buildings.ts';
 import { RULES } from './catalog/rules.ts';
 import type { CallKind } from './catalog/calls.ts';
@@ -41,7 +42,7 @@ export function adjustReputation(w: World, delta: number) {
 /** Euros per game hour for the whole service. */
 export function upkeepPerHour(w: World): number {
   const units = w.units.reduce((s, u) => s + UNITS[u.type].upkeep, 0);
-  const buildings = w.buildings.reduce((s, b) => s + BUILDINGS[b.kind].upkeep + (b.slots - BUILDINGS[b.kind].slots) * 10, 0);
+  const buildings = w.buildings.reduce((s, b) => s + BUILDINGS[b.kind].upkeep + (b.slots - BUILDINGS[b.kind].slots) * 10 + upgradesUpkeep(b), 0);
   return units + buildings;
 }
 

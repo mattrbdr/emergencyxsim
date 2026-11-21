@@ -17,7 +17,7 @@ component UnlockCard
             text `${unlock.level}` class=Mono font-size="1.5rem" font-weight=600 color="#e6edf3"
           column gap=2
             text "NIVEAU ATTEINT" class=Caps color="#e6edf3"
-            text (unlock.level == 1 ? "Prise de poste" : unlock.vehicles.length + unlock.buildings.length > 0 ? "Nouveaux moyens disponibles" : "Nouvelles missions") font-size="1.2rem" font-weight=600 role="heading" aria-level=2
+            text (unlock.level == 1 ? "Prise de poste" : unlock.vehicles.length + unlock.buildings.length + unlock.upgrades.length > 0 ? "Nouveaux moyens disponibles" : "Nouvelles missions") font-size="1.2rem" font-weight=600 role="heading" aria-level=2
         if unlock.buildings.length > 0
           column gap=6
             Heading(text="Bâtiment", detail="")
@@ -38,6 +38,13 @@ component UnlockCard
           column gap=6
             Heading(text="Interventions", detail=`${unlock.calls.length}`)
             text unlock.calls.join(" · ") font-size="0.85rem" color="#9aa4b2" line-height=1.5
+        if unlock.upgrades.length > 0
+          column gap=6
+            Heading(text="Amélioration de bâtiment", detail="")
+            for t in unlock.upgrades key=t
+              row gap=8 align-items="center"
+                Icon(name="build", size=16, color="#e6edf3")
+                text t font-weight=500
         if unlock.majors.length > 0
           column gap=6
             Heading(text="Intervention exceptionnelle", detail="")

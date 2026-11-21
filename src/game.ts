@@ -79,7 +79,7 @@ export function restore(city: City, s: Save, epoch = 0): World {
   Object.assign(w, {
     t: s.t, speed: s.speed, money: s.money, xp: s.xp, level: s.level, seenLevel: s.seenLevel,
     reputation: s.reputation, nextId: s.nextId, nextCallAt: s.nextCallAt, stats: { ...w.stats, ...s.stats },
-    buildings: s.buildings.filter((b) => BUILDINGS[b.kind] && b.node < city.nx.length),
+    buildings: s.buildings.filter((b) => BUILDINGS[b.kind] && b.node < city.nx.length).map((b) => ({ ...b, upgrades: b.upgrades ?? [] })),
     log: s.log, dirty: false,
     contracts: s.contracts ?? [], streak: s.streak ?? 0, tipsSeen: s.tipsSeen ?? [],
     // A career started before the tutorial existed has no need of it.

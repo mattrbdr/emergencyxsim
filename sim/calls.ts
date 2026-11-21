@@ -8,7 +8,8 @@ import { adjustReputation, earn, reward } from './economy.ts';
 import { euros, say } from './log.ts';
 import { gainXp } from './progression.ts';
 import { createCall, spotOn } from './callfactory.ts';
-import { isTired } from './crews.ts';
+import { isTired, turnout } from './crews.ts';
+import { homeHas } from './upgrades.ts';
 import { pickStreet } from './places.ts';
 import { callWeight, draws, rateFactor } from './weather.ts';
 import { decisionTimeout, rollTwist } from './scenes.ts';
@@ -89,6 +90,8 @@ export function dispatch(w: World, callId: string, unitIds: string[]): number {
     const u = w.units.find((x) => x.id === id);
     if (!u || !available(w, u, call)) continue;
     if (!isFree(u)) divert(w, u, call);
+    // From the base, the crew needs a moment to gear up and leave.
+    u.wait = u.status === 'dispo' ? turnout(w, u) : 0;
     sendTo(u, tree, call.x, call.y);
     u.status = 'route';
     u.callId = call.id;
@@ -151,7 +154,7 @@ export function options(w: World, callId: string) {
   const missing = missingTypes(w, call);
   const free = w.units
     .filter((u) => available(w, u, call))
-    .map((u) => ({ unit: u, eta: etaFrom(u, tree, call.x, call.y), diverted: divertedFrom(w, u, call)?.street ?? '', tired: isTired(u) }))
+    .map((u) => ({ unit: u, eta: etaFrom(w, u, tree, call.x, call.y), diverted: divertedFrom(w, u, call)?.street ?? '', tired: isTired(u) }))
     .filter((o) => Number.isFinite(o.eta))
     .sort((a, b) => a.eta - b.eta);
   const want = [...missing];
@@ -194,8 +197,11 @@ export function needState(w: World, call: Call) {
 export function updateCall(w: World, call: Call, dt: number) {
   if (call.state === 'traitement') {
     // A tired crew on scene works slower.
-    const slow = call.assigned.some((id) => { const u = w.units.find((x) => x.id === id); return u?.status === 'surplace' && isTired(u); });
-    call.workLeft -= slow ? dt / 1.2 : dt;
+    const scene = call.assigned.map((id) => w.units.find((x) => x.id === id)).filter((u): u is Unit => u?.status === 'surplace');
+    const slow = scene.some(isTired) ? 1.2 : 1;
+    // Crews trained on the station's tower (fire) or tactical room (police) work faster.
+    const drilled = scene.some((u) => homeHas(w, u, 'manoeuvre') || homeHas(w, u, 'chenil')) ? 1.15 : 1;
+    call.workLeft -= (dt * drilled) / slow;
     if (call.workLeft <= 0) finish(w, call);
     return;
   }

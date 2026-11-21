@@ -3,6 +3,7 @@ import { BUILDINGS, BUILDING_ORDER, type BuildingKind } from './catalog/building
 import { kindsUnlockedAt } from './catalog/calls.ts';
 import { levelFor } from './catalog/levels.ts';
 import { MAJORS } from './catalog/majors.ts';
+import { UPGRADES } from './catalog/upgrades.ts';
 import { UNIT_ORDER, UNITS, type UnitType } from './catalog/units.ts';
 import { say } from './log.ts';
 import type { World } from './types.ts';
@@ -36,5 +37,6 @@ export function unlocksAt(level: number) {
     buildings: BUILDING_ORDER.filter((k) => BUILDINGS[k].level === level),
     calls: kindsUnlockedAt(level),
     majors: MAJORS.filter((k) => k.level === level),
+    upgrades: UPGRADES.filter((u) => u.level === level),
   };
 }

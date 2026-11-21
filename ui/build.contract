@@ -1,6 +1,6 @@
 // Building: the build menu, the placement banner, a station's sheet with its
 // garage and vehicle shop, a real site's sheet.
-use BuildingRow, SiteRow, BuildOption, ShopItem, Ack from "./model.contract"
+use BuildingRow, SiteRow, BuildOption, ShopItem, UpgradeRow, Ack from "./model.contract"
 use Icon from "./icons.contract"
 use Tag, CallSign, Heading, Meter from "./parts.contract"
 use Mono, Caps, Primary, Secondary, Quiet, Row, money, plural from "./theme.contract"
@@ -58,12 +58,17 @@ component BuildingSheet
     close: action
     hint: string
   resource items = shop(b.id, seq) as shape ShopItem[] else empty() transient
+  resource ups = upgrades(b.id, seq) as shape UpgradeRow[] else empty() transient
   mutation bought as shape Ack queue refreshes items
+  mutation upgraded as shape Ack queue refreshes ups
   action buy(type: string)
     send bought = buyVehicle(b.id, type)
     haptic("success")
   action grow
     send bought = expandBuilding(b.id)
+  action improve(id: string)
+    send upgraded = buyUpgrade(b.id, id)
+    haptic("success")
   view
     column gap=14 testId="building-sheet"
       row align-items="flex-start" gap=10
@@ -88,6 +93,25 @@ component BuildingSheet
           text "Taille maximale atteinte." font-size="0.78rem" color="#6b7686"
       if b.kind == "hopital"
         text `${b.patients} patient${b.patients == 1 ? "" : "s"} hospitalisé${b.patients == 1 ? "" : "s"} : chaque victime amenée ici rapporte 600 €.` font-size="0.8rem" color="#9aa4b2"
+      column gap=6 testId="upgrades"
+        Heading(text="Améliorations", detail=`${ups.filter(u => u.owned).length} / ${ups.length}`)
+        for up in ups key=up.id
+          row gap=10 align-items="center" padding="8px 10px" class=Row opacity=(up.owned or up.why == "" or up.why == "Fonds insuffisants" ? 1 : 0.55) border-left-width=3 border-left-style="solid" border-left-color=(up.owned ? "#3fb950" : "#30394a") testId=`upgrade-${up.id}`
+            column flex=1 min-width=0 gap=2
+              text up.label font-size="0.82rem" font-weight=600
+              text up.detail font-size="0.74rem" color="#9aa4b2" line-height=1.35
+              if not up.owned
+                text up.upkeep class=Mono font-size="0.64rem" color="#6b7686"
+            if up.owned
+              Icon(name="check", size=16, color="#3fb950")
+            else if up.why == ""
+              button press=improve(up.id) class=Primary padding="6px 10px" testId=`buy-upgrade-${up.id}`
+                text up.price class=Mono font-size="0.75rem" font-weight=600 color="#0b0e12"
+            else
+              row gap=4 align-items="center"
+                if up.why.startsWith("Niveau")
+                  Icon(name="lock", size=12, color="#6b7686")
+                text (up.why == "Fonds insuffisants" ? up.price : up.why) class=Mono font-size="0.68rem" color="#9aa4b2" text-align="right"
       column gap=6
         Heading(text="Acheter un véhicule", detail="")
         for it in items key=it.type

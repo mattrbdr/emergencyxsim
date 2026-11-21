@@ -1,6 +1,7 @@
 // The view model: turns the world into the shapes ui/model.contract declares.
 import type { Result } from '../app.contract.d.ts';
 import { CREW, isTired, servicePrice } from '../sim/crews.ts';
+import { cannotUpgrade, has, maxSlots, upgradesFor, upgradesUpkeep } from '../sim/upgrades.ts';
 import { bulletin, dateText, eventHours, shiftHour, today } from '../sim/weather.ts';
 import { BUILDING_ORDER, BUILDINGS, KIND_OF_POI } from '../sim/catalog/buildings.ts';
 import { FAMILY_LABEL } from '../sim/catalog/calls.ts';
@@ -87,6 +88,13 @@ function callRow(w: World, c: Call): Snap['calls'][number] {
   };
 }
 
+export function upgradeItems(w: World, b: Building) {
+  return upgradesFor(b).map((u) => ({
+    id: u.id, label: u.label, detail: u.detail, price: euros(u.price), upkeep: `+${euros(u.upkeep)}/h`,
+    why: has(b, u.id) ? '' : cannotUpgrade(w, b, u.id), owned: has(b, u.id),
+  }));
+}
+
 export function shopItems(w: World, b: Building): Snap['unlock']['vehicles'] {
   return UNIT_ORDER.filter((t) => UNITS[t].building === b.kind).map((t) => shopItem(w, t, cannotBuy(w, b, t)));
 }
@@ -105,8 +113,8 @@ function buildingRow(w: World, b: Building): Snap['buildings'][number] {
   return {
     id: b.id, name: b.name, kind: b.kind, label: def.label, service: def.service,
     slots: b.slots, used: units.length, maxSlots: def.maxSlots, home: units.filter((u) => u.status === 'dispo').length,
-    canExpand: b.slots < def.maxSlots, expandPrice: euros(def.expand),
-    upkeep: `${euros(def.upkeep + units.reduce((s, u) => s + UNITS[u.type].upkeep, 0))}/h`,
+    canExpand: b.slots < maxSlots(b), expandPrice: euros(def.expand),
+    upkeep: `${euros(def.upkeep + upgradesUpkeep(b) + units.reduce((s, u) => s + UNITS[u.type].upkeep, 0))}/h`,
     patients: b.patients,
   };
 }
@@ -183,6 +191,7 @@ function unlockCard(w: World): Snap['unlock'] {
     buildings: unlock.buildings.map((k) => BUILDINGS[k].label),
     calls: unlock.calls.map((k) => k.title),
     majors: unlock.majors.map((k) => k.title),
+    upgrades: [...new Set(unlock.upgrades.map((u) => u.label))],
   };
 }
 

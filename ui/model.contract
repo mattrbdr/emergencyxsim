@@ -145,6 +145,16 @@ shape Unlock
   buildings: string[]
   calls: string[]
   majors: string[]
+  upgrades: string[]
+
+shape UpgradeRow
+  id: string
+  label: string
+  detail: string
+  price: string
+  upkeep: string
+  why: string
+  owned: bool
 
 shape LogLine
   id: number

@@ -1,6 +1,7 @@
 // On scene: the first crew's report may change the situation (a twist), and the
 // player decides — reinforcements, make do, or evacuate now. Each choice has a
 // price: time, chance of success, reward.
+import { anyHas } from './upgrades.ts';
 import { RULES } from './catalog/rules.ts';
 import { TWISTS } from './catalog/twists.ts';
 import { UNITS, type UnitType } from './catalog/units.ts';
@@ -54,13 +55,16 @@ export function choices(w: World, call: Call): Choice[] {
       detail: missing.length ? `Aucun ${names(missing)} de plus dans votre flotte` : `Le plus sûr. Prime +${pct(RULES.reinforcement.bonus - 1)} % si l'intervention réussit`,
       enabled: missing.length === 0,
     },
-    { id: 'surplace', label: 'Faire avec les moyens présents', detail: `${pct(RULES.makeDo.success)} % de réussite, intervention ${pct(RULES.makeDo.workFactor - 1)} % plus longue`, enabled: true },
+    { id: 'surplace', label: 'Faire avec les moyens présents', detail: `${pct(makeDo(w))} % de réussite, intervention ${pct(RULES.makeDo.workFactor - 1)} % plus longue`, enabled: true },
   ];
   if (call.kind.transport && call.kind.victims > 0) {
     out.push({ id: 'evacuer', label: 'Évacuer immédiatement', detail: `${pct(RULES.evacuate.success)} % de réussite, prime réduite de ${pct(1 - RULES.evacuate.bonus)} %`, enabled: true });
   }
   return out;
 }
+
+/** Chance of making do: trained crews (centre de formation) do better. */
+const makeDo = (w: World) => Math.min(1, RULES.makeDo.success + (anyHas(w, 'formation') ? 0.1 : 0));
 
 export function decide(w: World, call: Call, choice: ChoiceId): boolean {
   if (call.state !== 'bilan' || !call.twist) return false;
@@ -72,7 +76,7 @@ export function decide(w: World, call: Call, choice: ChoiceId): boolean {
     call.deadline = Math.max(call.deadline, w.t + RULES.reinforcement.extraTime);
     say(w, `Demande de renfort ${names(call.twist.add)} · ${call.street}`, 'info');
   } else if (choice === 'surplace') {
-    call.risk = RULES.makeDo.success;
+    call.risk = makeDo(w);
     call.workLeft *= RULES.makeDo.workFactor;
     say(w, `${call.street} · poursuite avec les moyens sur place`, 'info');
   } else {

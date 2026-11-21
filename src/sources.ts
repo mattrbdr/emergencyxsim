@@ -7,6 +7,8 @@ import { UNITS, type UnitType } from '../sim/catalog/units.ts';
 import { buildAt, buySite, buyUnit, expand, sellUnit } from '../sim/buildings.ts';
 import { dispatch, findCall, options, qualify, recall } from '../sim/calls.ts';
 import { rest, service } from '../sim/crews.ts';
+import { buyUpgrade } from '../sim/upgrades.ts';
+import type { UpgradeId } from '../sim/catalog/upgrades.ts';
 import { decide, type ChoiceId } from '../sim/scenes.ts';
 import { decideMajor } from '../sim/majors.ts';
 import { dismissTip, skipTutorial } from '../sim/tutorial.ts';
@@ -17,7 +19,7 @@ import { focus, overview, zoomBy } from '../render/camera.ts';
 import { pointer, wheel } from '../render/gestures.ts';
 import { downloadCommune, searchCommune, status } from './city-loader.ts';
 import { autosave, boot, demoCity, game, resetCareer, save, startCareer } from './game.ts';
-import { shopItems, snapshot } from './snapshot.ts';
+import { shopItems, snapshot, upgradeItems } from './snapshot.ts';
 
 const ack = (picked = ''): Result<'tick'> => ({ seq: game.world.seq, cam: game.world.cam.seq, picked });
 
@@ -34,6 +36,11 @@ export const sources: Sources = {
       station: o.diverted ? `Réquisition · en route ${o.diverted}` : game.world.buildings.find((b) => b.id === o.unit.building)?.name ?? '',
       eta: minutesText(o.eta), suggested: o.suggested, needed: o.needed, returning: o.unit.status === 'retour', tired: o.tired,
     })),
+  upgrades: ([buildingId]) => {
+    const b = game.world.buildings.find((x) => x.id === buildingId);
+    return b ? upgradeItems(game.world, b) : [];
+  },
+  buyUpgrade: ([buildingId, id], _store, storage) => { if (buyUpgrade(game.world, buildingId, id as UpgradeId)) save(storage); game.world.seq++; return ack(); },
   shop: ([buildingId]) => {
     const b = game.world.buildings.find((x) => x.id === buildingId);
     return b ? shopItems(game.world, b) : [];

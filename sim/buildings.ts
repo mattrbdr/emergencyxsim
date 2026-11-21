@@ -1,4 +1,5 @@
 // Building and buying stations, extending garages, buying and selling vehicles.
+import { maxSlots } from './upgrades.ts';
 import { BUILDINGS, KIND_OF_POI, type BuildingKind } from './catalog/buildings.ts';
 import { UNITS, type UnitType } from './catalog/units.ts';
 import { nearestNode } from './city.ts';
@@ -27,7 +28,7 @@ export function sitePrice(w: World, kind: BuildingKind) {
 function add(w: World, kind: BuildingKind, node: number, name: string, site: number): Building {
   const b: Building = {
     id: `b${w.nextId++}`, kind, name, node, x: w.city.nx[node], y: w.city.ny[node],
-    slots: BUILDINGS[kind].slots, site, patients: 0,
+    slots: BUILDINGS[kind].slots, site, patients: 0, upgrades: [],
   };
   const first = isFirstBuilding(w);
   w.buildings.push(b);
@@ -69,7 +70,7 @@ export function expand(w: World, buildingId: string): boolean {
   const b = w.buildings.find((x) => x.id === buildingId);
   if (!b) return false;
   const def = BUILDINGS[b.kind];
-  if (b.slots >= def.maxSlots) return false;
+  if (b.slots >= maxSlots(b)) return false;
   if (!spend(w, def.expand, `agrandir ${b.name}`)) return false;
   b.slots += 2;
   say(w, `${b.name} agrandi, ${b.slots} places de garage`, 'info');
