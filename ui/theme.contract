@@ -15,17 +15,8 @@ font "IBM Plex Mono"
 
 // ---------------------------------------------------------------- colours
 
-fn ink(): string = "#e6edf3"
-fn ink2(): string = "#9aa4b2"
-fn ink3(): string = "#6b7686"
-fn surface(): string = "#11151b"
-fn raised(): string = "#171c24"
-fn rule(): string = "#252c36"
 fn money(): string = "#c9d1d9"
 
-fn serviceColor(s: string): string = s == "pompiers" ? "#f2555a" : s == "samu" ? "#3fb950" : s == "police" ? "#4c8dff" : "#9aa4b2"
-fn kindColor(k: string): string = k == "caserne" ? "#f2555a" : k == "hopital" ? "#3fb950" : k == "police" ? "#4c8dff" : "#9aa4b2"
-fn priorityColor(p: number): string = p == 1 ? "#f2555a" : p == 2 ? "#f0a531" : "#c9b037"
 fn familyColor(f: string): string = f == "feu" ? "#f2555a" : f == "sap" ? "#3fb950" : f == "police" ? "#4c8dff" : f == "route" ? "#f0a531" : f == "technique" ? "#b48ef0" : "#9aa4b2"
 fn familyIcon(f: string): string = f == "" ? "phone" : f
 fn needColor(s: string): string = s == "surplace" ? "#3fb950" : s == "engage" ? "#f0a531" : "#f2555a"

@@ -1,6 +1,7 @@
 // The life of a call: it comes in, the player qualifies it, dispatches, the
 // scene is worked, and it closes saved, lost or failed.
 import { CALL_KINDS, type Family } from './catalog/calls.ts';
+import { RULES } from './catalog/rules.ts';
 import { UNITS, type UnitType } from './catalog/units.ts';
 import { hourOf } from './clock.ts';
 import { adjustReputation, earn, reward } from './economy.ts';
@@ -14,7 +15,6 @@ import { treeFromCall } from './traffic.ts';
 import type { Call, World } from './types.ts';
 import { etaFrom, goHome, isFree, sendTo, toHospital } from './units.ts';
 
-const MAX_ACTIVE = 10;
 
 // ---------------------------------------------------------------- arrivals
 
@@ -29,7 +29,7 @@ export function callsPerHour(w: World): number {
 export function spawnCall(w: World) {
   w.nextCallAt = w.t + (3600 / callsPerHour(w)) * (0.55 + w.rng() * 0.9);
   const active = w.calls.filter((c) => c.state !== 'clos');
-  if (w.buildings.length === 0 || active.length >= MAX_ACTIVE) return;
+  if (w.buildings.length === 0 || active.length >= RULES.maxOpenCalls) return;
 
   // A kind of call comes in once the fleet has every type it needs: buying a
   // vehicle opens its interventions.
@@ -90,7 +90,7 @@ export function qualify(w: World, callId: string, family: Family): boolean {
     say(w, `${call.kind.title} · ${call.street}`, 'info');
   } else {
     w.stats.qualifyWrong++;
-    adjustReputation(w, -2);
+    adjustReputation(w, RULES.reputation.wrongQualification);
     say(w, `Mauvaise qualification, requalifié en ${call.kind.title.toLowerCase()}. Réputation −2`, 'bad', true);
   }
   w.seq++;
@@ -106,7 +106,7 @@ export function dispatch(w: World, callId: string, unitIds: string[]): number {
   for (const id of unitIds) {
     const u = w.units.find((x) => x.id === id);
     if (!u || !isFree(u)) continue;
-    sendTo(w, u, tree, call.x, call.y);
+    sendTo(u, tree, call.x, call.y);
     u.status = 'route';
     u.callId = call.id;
     u.missions++;
@@ -151,7 +151,7 @@ export function options(w: World, callId: string) {
   const missing = missingTypes(w, call);
   const free = w.units
     .filter(isFree)
-    .map((u) => ({ unit: u, eta: etaFrom(w, u, tree, call.x, call.y) }))
+    .map((u) => ({ unit: u, eta: etaFrom(u, tree, call.x, call.y) }))
     .filter((o) => Number.isFinite(o.eta))
     .sort((a, b) => a.eta - b.eta);
   const want = [...missing];
@@ -216,21 +216,21 @@ export function updateCall(w: World, call: Call, dt: number) {
   if (call.kind.escalate && !call.escalated) {
     call.escalated = true;
     call.needs = call.needs.concat(call.kind.escalate);
-    call.deadline = w.t + 10 * 60;
+    call.deadline = w.t + RULES.escalationTime;
     call.priority = 1;
-    adjustReputation(w, -3);
+    adjustReputation(w, RULES.reputation.escalation);
     say(w, `Propagation · ${call.street} · renfort ${call.kind.escalate.map((t) => UNITS[t].label).join(', ')} demandé`, 'alert', true);
     return;
   }
   if (call.kind.victims > 0) {
     call.outcome = 'perdu';
     w.stats.lost += call.kind.victims;
-    adjustReputation(w, -4 * call.kind.victims);
+    adjustReputation(w, RULES.reputation.victimLost * call.kind.victims);
     say(w, `${call.street} · victime décédée avant l'arrivée des secours`, 'bad', true);
   } else {
     call.outcome = 'echec';
     w.stats.failed++;
-    adjustReputation(w, -3);
+    adjustReputation(w, RULES.reputation.failure);
     say(w, `${call.street} · délai dépassé, intervention manquée`, 'bad', true);
   }
   close(w, call);
@@ -242,12 +242,12 @@ function finish(w: World, call: Call) {
     if (call.kind.victims > 0) {
       call.outcome = 'perdu';
       w.stats.lost += call.kind.victims;
-      adjustReputation(w, -4 * call.kind.victims);
+      adjustReputation(w, RULES.reputation.victimLost * call.kind.victims);
       say(w, `${call.street} · décès malgré la prise en charge`, 'bad', true);
     } else {
       call.outcome = 'echec';
       w.stats.failed++;
-      adjustReputation(w, -3);
+      adjustReputation(w, RULES.reputation.failure);
       say(w, `${call.street} · échec, moyens insuffisants`, 'bad', true);
     }
     close(w, call);
@@ -259,7 +259,7 @@ function finish(w: World, call: Call) {
   call.earned = money;
   earn(w, money);
   gainXp(w, call.kind.xp);
-  adjustReputation(w, call.priority === 1 ? 2 : 1);
+  adjustReputation(w, call.priority === 1 ? RULES.reputation.successP1 : RULES.reputation.success);
   if (call.kind.victims > 0) w.stats.saved += call.kind.victims;
   say(w, `Fin d'intervention · ${call.street} · +${euros(money)}, +${call.kind.xp} XP`, 'money', call.priority === 1);
   close(w, call, call.kind.transport);

@@ -16,7 +16,7 @@ import { euros } from '../sim/log.ts';
 import { unlocksAt } from '../sim/progression.ts';
 import type { Building, Call, World } from '../sim/types.ts';
 import { STATUS } from '../sim/catalog/status.ts';
-import { etaOf } from '../sim/units.ts';
+import { etaOf, isFree } from '../sim/units.ts';
 
 type Snap = Result<'snapshot'>;
 
@@ -93,13 +93,82 @@ function buildingRow(w: World, b: Building): Snap['buildings'][number] {
   };
 }
 
+type Row<K extends keyof Snap> = Snap[K] extends (infer T)[] ? T : never;
+
+function unitRow(w: World, u: World['units'][number]): Row<'units'> {
+  const moving = u.status === 'route' || u.status === 'transport' || u.status === 'retour';
+  return {
+    id: u.id, name: u.name, type: u.type, long: UNITS[u.type].long, service: u.service,
+    status: u.status, statusCode: STATUS[u.status].code, statusLabel: STATUS[u.status].label,
+    building: u.building, buildingName: w.buildings.find((x) => x.id === u.building)?.name ?? '',
+    callTitle: w.calls.find((c) => c.id === u.callId)?.kind.title ?? '',
+    eta: moving ? minutesText(etaOf(w, u)) : '',
+    missions: u.missions, canSell: u.status === 'dispo', resale: euros(UNITS[u.type].price / 2),
+  };
+}
+
+function siteRows(w: World): Snap['sites'] {
+  return w.city.pois.flatMap((p, index) => {
+    if (w.buildings.some((b) => b.site === index)) return [];
+    const kind = KIND_OF_POI[p.kind];
+    const def = BUILDINGS[kind];
+    return [{
+      index, name: p.name, kind, label: def.label, service: def.service,
+      price: euros(sitePrice(w, kind)), open: def.level <= w.level, level: def.level,
+    }];
+  });
+}
+
+function buildOptions(w: World): Snap['build'] {
+  return BUILDING_ORDER.map((k) => ({
+    kind: k, label: BUILDINGS[k].label, service: BUILDINGS[k].service,
+    price: euros(buildPrice(w, k)), buyPrice: euros(sitePrice(w, k)),
+    open: BUILDINGS[k].level <= w.level, level: BUILDINGS[k].level,
+  }));
+}
+
+function contractRow(w: World, c: World['contracts'][number]): Row<'contracts'> {
+  const capped = Math.min(c.progress, c.target);
+  const progressText =
+    c.kind === 'earn' ? `${euros(capped)} / ${euros(c.target)}`
+    : c.kind === 'coverage' ? `${c.progress} % / ${c.target} %`
+    : c.kind === 'no_loss' ? (c.state === 'failed' ? 'Victime perdue' : c.state === 'done' ? 'Tenu' : 'En cours')
+    : `${capped} / ${c.target}`;
+  return {
+    id: c.id, label: c.label, state: c.state, xp: c.xp, progressText,
+    fraction: c.state === 'done' ? 1 : c.target > 0 ? Math.min(1, c.progress / c.target) : 0,
+    reward: euros(Math.round(c.reward * streakBonus(w))),
+  };
+}
+
+function statsRow(w: World): Snap['stats'] {
+  const s = w.stats;
+  const graded = s.qualifyRight + s.qualifyWrong;
+  return {
+    calls: s.calls, saved: s.saved, lost: s.lost, failed: s.failed,
+    avgResponse: s.responses ? minutesText(s.responseSum / s.responses) : 'n.d.',
+    accuracy: graded ? Math.round((s.qualifyRight / graded) * 100) : 100,
+    earned: euros(s.earned), spent: euros(s.spent),
+  };
+}
+
+function unlockCard(w: World): Snap['unlock'] {
+  const level = Math.min(w.level, w.seenLevel + 1);
+  const unlock = unlocksAt(level);
+  return {
+    level,
+    vehicles: unlock.units.map((t) => shopItem(w, t, '')),
+    buildings: unlock.buildings.map((k) => BUILDINGS[k].label),
+    calls: unlock.calls.map((k) => k.title),
+  };
+}
+
 export function snapshot(w: World): Snap {
   const active = w.calls.filter((c) => c.state !== 'clos').sort((a, b) => a.priority - b.priority || a.at - b.at);
   const closed = w.calls.filter((c) => c.state === 'clos').sort((a, b) => b.closedAt - a.closedAt).slice(0, 10);
-  const s = w.stats;
-  const shown = Math.min(w.level, w.seenLevel + 1);
-  const unlock = unlocksAt(shown);
   const next = w.level < MAX_LEVEL ? XP_FOR_LEVEL[w.level] : w.xp;
+  const upkeep = upkeepPerHour(w);
+  const aim = w.placing && w.placing.node >= 0 ? w.placing : null;
   return {
     seq: w.seq,
     city: w.city.name,
@@ -110,79 +179,36 @@ export function snapshot(w: World): Snap {
     paused: w.paused,
     money: Math.round(w.money),
     moneyText: euros(w.money),
-    upkeepText: upkeepPerHour(w) > 0 ? `−${euros(upkeepPerHour(w))}/h` : 'Entretien 0 €/h',
+    upkeepText: upkeep > 0 ? `−${euros(upkeep)}/h` : 'Entretien 0 €/h',
     level: w.level,
     maxLevel: MAX_LEVEL,
     xp: w.xp,
     xpText: w.level < MAX_LEVEL ? `${w.xp} / ${next} XP` : `${w.xp} XP`,
     levelProgress: levelProgress(w.xp),
     reputation: Math.round(w.reputation),
-    unlock: {
-      level: shown,
-      vehicles: unlock.units.map((t) => shopItem(w, t, '')),
-      buildings: unlock.buildings.map((k) => BUILDINGS[k].label),
-      calls: unlock.calls.map((k) => k.title),
-    },
+    unlock: unlockCard(w),
     showUnlock: w.level > w.seenLevel,
     newCalls: active.filter((c) => !c.qualified).length,
     placing: w.placing?.kind ?? '',
-    aimed: (w.placing?.node ?? -1) >= 0,
-    aimText: w.placing && w.placing.node >= 0
-      ? `+${Math.round(w.placing.gain * 100)} % · ${Math.round(w.placing.after * 100)} % de la ville à moins de 3 min`
-      : '',
+    aimed: aim !== null,
+    aimText: aim ? `+${Math.round(aim.gain * 100)} % · ${Math.round(aim.after * 100)} % de la ville à moins de 3 min` : '',
     placingPrice: w.placing ? euros(buildPrice(w, w.placing.kind)) : '',
     overlay: w.overlay,
     coverage: Math.round(coverageShare(w) * 100),
     firstBuilding: isFirstBuilding(w),
     calls: active.map((c) => callRow(w, c)),
     closed: closed.map((c) => callRow(w, c)),
-    units: w.units.map((u) => {
-      const b = w.buildings.find((x) => x.id === u.building);
-      return {
-        id: u.id, name: u.name, type: u.type, long: UNITS[u.type].long, service: u.service,
-        status: u.status, statusCode: STATUS[u.status].code, statusLabel: STATUS[u.status].label, building: u.building, buildingName: b?.name ?? '',
-        callTitle: w.calls.find((c) => c.id === u.callId)?.kind.title ?? '',
-        eta: u.status === 'route' || u.status === 'transport' || u.status === 'retour' ? minutesText(etaOf(w, u)) : '',
-        missions: u.missions, canSell: u.status === 'dispo', resale: euros(UNITS[u.type].price / 2),
-      };
-    }),
-    free: w.units.filter((u) => u.status === 'dispo' || u.status === 'retour').length,
+    units: w.units.map((u) => unitRow(w, u)),
+    free: w.units.filter(isFree).length,
     buildings: w.buildings.map((b) => buildingRow(w, b)),
-    sites: w.city.pois
-      .map((p, index) => ({ p, index }))
-      .filter(({ index }) => !w.buildings.some((b) => b.site === index))
-      .map(({ p, index }) => {
-        const kind = KIND_OF_POI[p.kind];
-        const def = BUILDINGS[kind];
-        return {
-          index, name: p.name, kind, label: def.label, service: def.service,
-          price: euros(sitePrice(w, kind)), open: def.level <= w.level, level: def.level,
-        };
-      }),
-    build: BUILDING_ORDER.map((k) => ({
-      kind: k, label: BUILDINGS[k].label, service: BUILDINGS[k].service,
-      price: euros(buildPrice(w, k)), buyPrice: euros(sitePrice(w, k)),
-      open: BUILDINGS[k].level <= w.level, level: BUILDINGS[k].level,
-    })),
+    sites: siteRows(w),
+    build: buildOptions(w),
     log: w.log.slice(0, 40).map((l) => ({ id: l.id, at: clockText(l.t), text: l.text, tone: l.tone })),
     toast: { id: w.toast.id, at: clockText(w.toast.t), text: w.toast.text, tone: w.toast.tone },
     guide: guide(w),
-    contracts: w.contracts.map((c) => ({
-      id: c.id, label: c.label, state: c.state, xp: c.xp,
-      progressText: c.kind === 'earn' ? `${euros(Math.min(c.progress, c.target))} / ${euros(c.target)}`
-        : c.kind === 'coverage' ? `${c.progress} % / ${c.target} %`
-        : c.kind === 'no_loss' ? (c.state === 'failed' ? 'Victime perdue' : c.state === 'done' ? 'Tenu' : 'En cours')
-        : `${Math.min(c.progress, c.target)} / ${c.target}`,
-      fraction: c.state === 'done' ? 1 : c.target > 0 ? Math.min(1, c.progress / c.target) : 0,
-      reward: euros(Math.round(c.reward * streakBonus(w))),
-    })),
+    contracts: w.contracts.map((c) => contractRow(w, c)),
     contractsDone: w.contracts.filter((c) => c.state === 'done').length,
     streak: w.streak,
-    stats: {
-      calls: s.calls, saved: s.saved, lost: s.lost, failed: s.failed,
-      avgResponse: s.responses ? minutesText(s.responseSum / s.responses) : 'n.d.',
-      accuracy: s.qualifyRight + s.qualifyWrong ? Math.round((s.qualifyRight / (s.qualifyRight + s.qualifyWrong)) * 100) : 100,
-      earned: euros(s.earned), spent: euros(s.spent),
-    },
+    stats: statsRow(w),
   };
 }

@@ -41,8 +41,8 @@ const encode = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
 async function readJson<T>(storage: Storage, path: string): Promise<T | null> {
   try {
     return JSON.parse(new TextDecoder().decode(await storage.fs.readFile(path))) as T;
-  } catch (e: any) {
-    if (e?.code === 'ENOENT') return null;
+  } catch (e) {
+    if ((e as { code?: string } | null)?.code === 'ENOENT') return null;
     throw e;
   }
 }

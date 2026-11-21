@@ -2,7 +2,8 @@
 // (time, priority, reason, address, means, time left), open calls by priority.
 use CallRow from "./model.contract"
 use Heading, Empty from "./parts.contract"
-use Mono, priorityColor, needColor, outcomeColor from "./theme.contract"
+use Mono, needColor, outcomeColor from "./theme.contract"
+use priorityColor from "./palette.contract"
 
 fn stateCode(s: string): string = s == "nouveau" ? "À QUALIFIER" : s == "attente" ? "À ENGAGER" : s == "engage" ? "ENGAGÉ" : s == "bilan" ? "BILAN" : s == "traitement" ? "EN COURS" : ""
 fn stateColor(s: string): string = s == "nouveau" or s == "bilan" ? "#f2555a" : s == "attente" ? "#f0a531" : "#9aa4b2"

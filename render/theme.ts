@@ -1,8 +1,9 @@
 // The map's palette: an operations console at night — slate, no glow.
 import type { Service } from '../sim/catalog/units.ts';
+import { PALETTE } from './palette.ts';
 
 export const MAP = {
-  bg: '#0b0e12',
+  bg: PALETTE.bg,
   land: '#11151b',
   water: '#13263a',
   waterEdge: '#1b3550',
@@ -12,13 +13,13 @@ export const MAP = {
   roads: ['#4a5462', '#3b4451', '#2f3743', '#272e38'],
   label: '#768294',
   halo: '#0b0e12',
-  ink: '#e6edf3',
+  ink: PALETTE.ink,
   muted: '#8b949e',
 };
 
-export const SERVICE: Record<Service, string> = { pompiers: '#f2555a', samu: '#3fb950', police: '#4c8dff' };
-export const PRIORITY = ['', '#f2555a', '#f0a531', '#c9b037'];
-export const WORKING = '#56c2e6';
+export const SERVICE: Record<Service, string> = PALETTE.service;
+export const PRIORITY = ['', PALETTE.priority[1], PALETTE.priority[2], PALETTE.priority[3]];
+export const WORKING = PALETTE.working;
 export const COVERAGE = { fast: '#3fb950', slow: '#f0a531', far: '#f2555a' };
 export const ZONE_TINT: Record<string, string> = {
   industriel: 'rgba(180,142,240,0.08)', commercial: 'rgba(216,166,74,0.07)', parc: 'rgba(0,0,0,0)',

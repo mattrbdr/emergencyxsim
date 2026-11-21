@@ -2,7 +2,8 @@
 use BuildingRow, UnitRow, Ack from "./model.contract"
 use Icon from "./icons.contract"
 use Tag, CallSign, Heading, Empty from "./parts.contract"
-use Mono, Caps, Secondary, Quiet, serviceColor, kindColor, statusColor, plural from "./theme.contract"
+use Mono, Caps, Secondary, Quiet, statusColor, plural from "./theme.contract"
+use serviceColor, kindColor from "./palette.contract"
 
 fn statusTone(code: number): string = code == 1 ? "#3fb950" : code == 3 ? "#f2555a" : code == 2 ? "#f0a531" : code == 6 ? "#9aa4b2" : "#b48ef0"
 

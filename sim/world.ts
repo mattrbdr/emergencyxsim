@@ -1,6 +1,7 @@
 // The career: creates the world and advances it. Every rule lives in its own
 // module (calls, units, economy, progression, buildings); this file only orders them.
 import { START_MONEY, START_REPUTATION } from './catalog/levels.ts';
+import { RULES } from './catalog/rules.ts';
 import type { City } from './city.ts';
 import { spawnCall, updateCall } from './calls.ts';
 import { TIME_SCALE } from './clock.ts';
@@ -52,7 +53,7 @@ function advance(w: World, dt: number) {
   updateContracts(w);
   updateTutorial(w);
   // Hospitals discharge a patient every 40 minutes.
-  if (Math.floor(before / 2400) !== Math.floor(w.t / 2400)) for (const b of w.buildings) b.patients = Math.max(0, b.patients - 1);
+  if (Math.floor(before / RULES.dischargeEvery) !== Math.floor(w.t / RULES.dischargeEvery)) for (const b of w.buildings) b.patients = Math.max(0, b.patients - 1);
   if (w.calls.length > 60) w.calls = w.calls.filter((c) => c.state !== 'clos' || w.t - c.closedAt < 3600);
   for (const key of [...w.callTrees.keys()]) {
     const c = w.calls.find((x) => x.id === key);

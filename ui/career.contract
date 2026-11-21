@@ -2,7 +2,8 @@
 use Unlock, Stats, ShopItem from "./model.contract"
 use Icon from "./icons.contract"
 use CallSign, Heading, Meter from "./parts.contract"
-use Mono, Caps, Primary, Secondary, Quiet, serviceColor, money from "./theme.contract"
+use Mono, Caps, Primary, Secondary, Quiet, money from "./theme.contract"
+use serviceColor from "./palette.contract"
 
 component UnlockCard
   props

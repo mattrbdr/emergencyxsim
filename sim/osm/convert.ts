@@ -5,6 +5,13 @@
 import type { HotspotKind, ZoneKind } from '../catalog/places.ts';
 import type { CityFile, PoiKind } from '../city.ts';
 import { ROAD_CLASSES } from './query.ts';
+import type { OsmElement, OsmResponse } from './types.ts';
+
+/** A node's position, or a way's / relation's centre. */
+const where = (e: OsmElement) => {
+  const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon;
+  return lat === undefined || lon === undefined ? null : { lat, lon };
+};
 
 /** Called every few thousand items so a native host's turn budget is never exceeded. */
 export type Pause = () => Promise<void>;
@@ -20,8 +27,8 @@ const DEFAULT_NAME: Record<PoiKind, string> = { fire: 'Centre de secours', hospi
 const PAD = 150;
 
 export async function convert(
-  roads: { elements: any[] },
-  areas: { elements: any[] } | null,
+  roads: OsmResponse,
+  areas: OsmResponse | null,
   fallbackName: string,
   pause: Pause = none,
 ): Promise<CityFile> {
@@ -31,12 +38,13 @@ export async function convert(
   const nodeLL = new Map<number, [number, number]>();
   let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
   for (const e of els) {
-    if (e.type !== 'node' || e.lat === undefined) continue;
-    nodeLL.set(e.id, [e.lon, e.lat]);
-    if (e.lat < minLat) minLat = e.lat;
-    if (e.lat > maxLat) maxLat = e.lat;
-    if (e.lon < minLon) minLon = e.lon;
-    if (e.lon > maxLon) maxLon = e.lon;
+    if (e.type !== 'node' || e.lat === undefined || e.lon === undefined) continue;
+    const { lat, lon } = e;
+    nodeLL.set(e.id, [lon, lat]);
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+    if (lon < minLon) minLon = lon;
+    if (lon > maxLon) maxLon = lon;
   }
   if (nodeLL.size === 0) throw new Error('Aucune route trouvée pour cette commune.');
   const kx = Math.cos(((minLat + maxLat) / 2) * Math.PI / 180) * 111320;
@@ -48,7 +56,9 @@ export async function convert(
 
   // ------------------------------------------------ roads → graph
   const roadRe = new RegExp(`^(${ROAD_CLASSES})$`);
-  const ways = els.filter((e) => e.type === 'way' && e.nodes && roadRe.test(e.tags?.highway ?? ''));
+  const ways = els
+    .filter((e) => e.type === 'way' && e.nodes && roadRe.test(e.tags?.highway ?? ''))
+    .map((e) => ({ nodes: e.nodes!, tags: e.tags! }));
   const uses = new Map<number, number>();
   for (const w of ways) {
     w.nodes.forEach((n: number, i: number) => {
@@ -134,13 +144,13 @@ export async function convert(
   // ------------------------------------------------ stations
   const pois: CityFile['pois'] = [];
   for (const e of els) {
-    const kind = KIND[e.tags?.amenity];
-    if (!kind) continue;
-    const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon;
-    if (lat === undefined) continue;
-    const x = px(lon), y = py(lat);
+    const tags = e.tags;
+    const kind = tags ? KIND[tags.amenity] : undefined;
+    const at = where(e);
+    if (!tags || !kind || !at) continue;
+    const x = px(at.lon), y = py(at.lat);
     if (pois.some((p) => p.kind === kind && Math.hypot(p.x - x, p.y - y) < 150)) continue;
-    pois.push({ kind, name: e.tags.name ?? DEFAULT_NAME[kind], x, y });
+    pois.push({ kind, name: tags.name ?? DEFAULT_NAME[kind], x, y });
   }
 
   // ------------------------------------------------ areas
@@ -196,7 +206,7 @@ export async function convert(
         if (b.length >= 6) buildings.push(b);
       }
     } else if (e.type === 'relation' && t.natural === 'water' && e.members) {
-      for (const m of e.members) if (m.role === 'outer' && m.geometry?.length > 3) water.push(ring(m.geometry, 4));
+      for (const m of e.members) if (m.role === 'outer' && m.geometry && m.geometry.length > 3) water.push(ring(m.geometry, 4));
     }
   }
 
@@ -216,10 +226,9 @@ export async function convert(
   const perKind: Record<string, number> = {};
   for (const e of els) {
     const kind = e.tags ? HOT(e.tags) : null;
-    if (!kind) continue;
-    const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon;
-    if (lat === undefined || (perKind[kind] = (perKind[kind] ?? 0) + 1) > 60) continue;
-    hotspots.push({ kind, name: e.tags.name ?? '', x: px(lon), y: py(lat) });
+    const at = where(e);
+    if (!kind || !at || (perKind[kind] = (perKind[kind] ?? 0) + 1) > 60) continue;
+    hotspots.push({ kind, name: e.tags?.name ?? '', x: px(at.lon), y: py(at.lat) });
   }
   const rel = els.find((e) => e.type === 'relation' && e.tags?.boundary === 'administrative');
   return {

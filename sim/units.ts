@@ -1,5 +1,6 @@
 // Vehicles on the move: driving the road graph (or flying straight), arriving
 // on scene, carrying victims to hospital, going home.
+import { RULES } from './catalog/rules.ts';
 import { UNITS } from './catalog/units.ts';
 import { say } from './log.ts';
 import { edgeBetween, edgeSpeed, pathTo, type Tree } from './routing.ts';
@@ -21,7 +22,7 @@ export function routeTo(u: Unit, tree: Tree) {
 }
 
 /** Seconds a unit needs from where it is to `tree`'s source (or to a point, flying). */
-export function etaFrom(w: World, u: Unit, tree: Tree, x: number, y: number): number {
+export function etaFrom(u: Unit, tree: Tree, x: number, y: number): number {
   const def = UNITS[u.type];
   if (def.flySpeed) return Math.hypot(u.x - x, u.y - y) / def.flySpeed + 60; // take-off
   return tree.time[startNode(u)] / def.speed + (u.along > 0 ? 10 : 0);
@@ -42,7 +43,7 @@ export function etaOf(w: World, u: Unit): number {
   return s;
 }
 
-export function sendTo(w: World, u: Unit, tree: Tree, x: number, y: number) {
+export function sendTo(u: Unit, tree: Tree, x: number, y: number) {
   if (flies(u)) u.flight = { x, y };
   else routeTo(u, tree);
 }
@@ -116,13 +117,13 @@ export function arrive(w: World, u: Unit) {
     say(w, `${u.name} · statut 3 · ${call.street}`, 'info');
   } else if (u.status === 'transport') {
     u.status = 'hopital';
-    u.wait = 240;
+    u.wait = RULES.hospitalStay;
     const own = w.buildings.find((b) => b.kind === 'hopital' && Math.hypot(b.x - u.x, b.y - u.y) < 40);
     if (own) {
       own.patients++;
-      w.money += 600;
-      w.stats.earned += 600;
-      say(w, `${u.name} · statut 5 · ${own.name}, soins facturés +600 €`, 'money');
+      w.money += RULES.ownHospitalFee;
+      w.stats.earned += RULES.ownHospitalFee;
+      say(w, `${u.name} · statut 5 · ${own.name}, soins facturés +${RULES.ownHospitalFee} €`, 'money');
     } else {
       say(w, `${u.name} · statut 5 · victime déposée aux urgences`, 'good');
     }

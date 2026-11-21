@@ -1,5 +1,7 @@
 // Overpass queries for a French commune: finding it by name, then its roads,
 // stations and (in a second, bounded request) its buildings, water and parks.
+import type { OsmResponse } from './types.ts';
+
 export const OVERPASS = 'https://overpass-api.de/api/interpreter';
 
 export const ROAD_CLASSES =
@@ -58,16 +60,16 @@ export interface CommuneMatch {
   population: number;
 }
 
-export function parseSearch(json: { elements: any[] }): CommuneMatch[] {
+export function parseSearch(json: OsmResponse): CommuneMatch[] {
   return json.elements
-    .filter((e) => e.tags?.['ref:INSEE'])
-    .map((e) => {
-      const insee = String(e.tags['ref:INSEE']);
+    .flatMap((e) => (e.tags?.['ref:INSEE'] ? [e.tags] : []))
+    .map((tags) => {
+      const insee = tags['ref:INSEE'];
       return {
         insee,
-        name: e.tags.name ?? insee,
+        name: tags.name ?? insee,
         department: insee.startsWith('97') ? insee.slice(0, 3) : insee.slice(0, 2),
-        population: Number(e.tags.population ?? 0) || 0,
+        population: Number(tags.population ?? 0) || 0,
       };
     })
     .sort((a, b) => b.population - a.population);

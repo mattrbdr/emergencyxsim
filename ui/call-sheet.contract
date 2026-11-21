@@ -3,7 +3,8 @@
 use CallRow, Option, Ack, Decision from "./model.contract"
 use Icon from "./icons.contract"
 use Tag, CallSign, Heading from "./parts.contract"
-use Mono, Caps, Primary, Secondary, Quiet, priorityColor, familyColor, familyIcon, needColor, serviceColor, callStateColor, plural, money from "./theme.contract"
+use Mono, Caps, Primary, Secondary, Quiet, familyColor, familyIcon, needColor, callStateColor, plural, money from "./theme.contract"
+use priorityColor, serviceColor from "./palette.contract"
 
 component CallSheet
   props

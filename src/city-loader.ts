@@ -3,6 +3,9 @@
 import { convert } from '../sim/osm/convert.ts';
 import { areasQuery, OVERPASS, parseSearch, roadsQuery, searchQuery, type CommuneMatch } from '../sim/osm/query.ts';
 import type { CityFile } from '../sim/city.ts';
+import type { OsmResponse } from '../sim/osm/types.ts';
+
+const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export const NET_GRANT = `net.fetch ${new URL(OVERPASS).origin}`;
 
@@ -39,7 +42,7 @@ async function overpass(query: string, maxBytes: number) {
   }
   if (res.status === 429 || res.status === 504) throw new Error('Le serveur OpenStreetMap est saturé. Réessayez dans une minute.');
   if (!res.ok) throw new Error(`OpenStreetMap a répondu ${res.status}.`);
-  return (await res.json()) as { elements: any[] };
+  return (await res.json()) as OsmResponse;
 }
 
 export async function searchCommune(name: string): Promise<CommuneMatch[]> {
@@ -51,8 +54,8 @@ export async function searchCommune(name: string): Promise<CommuneMatch[]> {
   try {
     status.matches = parseSearch(await overpass(searchQuery(name), 1 << 20));
     set('idle', status.matches.length === 0 ? `Aucune commune française nommée « ${name.trim()} ».` : '');
-  } catch (e: any) {
-    set('error', e.message);
+  } catch (e) {
+    set('error', messageOf(e));
     status.matches = [];
   }
   return status.matches;
@@ -70,8 +73,8 @@ export async function downloadCommune(insee: string, name: string): Promise<City
     if (city.edges.length < 40) throw new Error('Trop peu de routes dans cette commune pour jouer.');
     set('done');
     return city;
-  } catch (e: any) {
-    set('error', e.message ?? String(e));
+  } catch (e) {
+    set('error', messageOf(e));
     return null;
   }
 }

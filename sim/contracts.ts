@@ -2,6 +2,7 @@
 // and a streak of perfect days that raises every contract's reward.
 import type { Family } from './catalog/calls.ts';
 import { FAMILY_LABEL } from './catalog/calls.ts';
+import { RULES } from './catalog/rules.ts';
 import { UNITS } from './catalog/units.ts';
 import { hourOf } from './clock.ts';
 import { coverageShare } from './coverage.ts';
@@ -121,7 +122,7 @@ export function recordCall(w: World, call: Call) {
   }
 }
 
-export const streakBonus = (w: World) => 1 + Math.min(5, w.streak) * 0.1;
+export const streakBonus = (w: World) => 1 + Math.min(RULES.streak.maxDays, w.streak) * RULES.streak.perDay;
 
 /** Grades every open contract; pays those just completed. */
 export function updateContracts(w: World) {

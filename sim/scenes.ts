@@ -6,8 +6,7 @@ import { UNITS, type UnitType } from './catalog/units.ts';
 import { say } from './log.ts';
 import type { Call, World } from './types.ts';
 
-/** Game seconds the player has to decide before the crew makes do. */
-export const DECISION_TIME = 4 * 60;
+import { RULES } from './catalog/rules.ts';
 
 export type ChoiceId = 'renfort' | 'surplace' | 'evacuer';
 
@@ -36,7 +35,7 @@ export function rollTwist(w: World, call: Call) {
     if (w.rng() >= twist.chance) continue;
     const crew = w.units.find((u) => u.callId === call.id && u.status === 'surplace');
     call.twist = { id: twist.id, report: twist.report, add: twist.add, from: crew?.name ?? 'Le premier engin' };
-    call.decisionLeft = DECISION_TIME;
+    call.decisionLeft = RULES.decisionTime;
     call.state = 'bilan';
     say(w, `${call.twist.from} · ${call.street} : ${twist.report}`, 'alert', true);
     w.seq++;
@@ -68,17 +67,17 @@ export function decide(w: World, call: Call, choice: ChoiceId): boolean {
   if (!option || !option.enabled) return false;
   if (choice === 'renfort') {
     call.needs = call.needs.concat(call.twist.add);
-    call.bonus = 1.3;
-    call.deadline = Math.max(call.deadline, w.t + 14 * 60);
+    call.bonus = RULES.reinforcement.bonus;
+    call.deadline = Math.max(call.deadline, w.t + RULES.reinforcement.extraTime);
     say(w, `Demande de renfort ${names(call.twist.add)} · ${call.street}`, 'info');
   } else if (choice === 'surplace') {
-    call.risk = 0.6;
-    call.workLeft *= 1.5;
+    call.risk = RULES.makeDo.success;
+    call.workLeft *= RULES.makeDo.workFactor;
     say(w, `${call.street} · poursuite avec les moyens sur place`, 'info');
   } else {
-    call.risk = 0.75;
-    call.bonus = 0.8;
-    call.workLeft = Math.min(call.workLeft, 180);
+    call.risk = RULES.evacuate.success;
+    call.bonus = RULES.evacuate.bonus;
+    call.workLeft = Math.min(call.workLeft, RULES.evacuate.maxWork);
     say(w, `${call.street} · évacuation immédiate demandée`, 'info');
   }
   call.twist = null;

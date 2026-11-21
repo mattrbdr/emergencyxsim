@@ -10,7 +10,7 @@ export const grants = 'net.fetch https://overpass-api.de\nfs.read app:/data\nfs.
 export const answer: Answer = (source, args, store, storage, native) => sources[source](args, store, storage, native);
 
 export const surfaces: Record<string, number> = { city: 1, live: 1 };
-export function draw(surface: string, args: any[], ctx: Ctx2D, frame: Frame): boolean {
+export function draw(surface: string, args: unknown[], ctx: Ctx2D, frame: Frame): boolean {
   if (surface === 'city') return drawCity(game.world, ctx, frame);
   return drawLive(game.world, ctx, frame, String(args[0] ?? ''));
 }

@@ -1,15 +1,17 @@
 // Money and reputation: rewards for interventions, hourly upkeep, purchases.
 import { BUILDINGS } from './catalog/buildings.ts';
+import { RULES } from './catalog/rules.ts';
 import type { CallKind } from './catalog/calls.ts';
 import { UNITS } from './catalog/units.ts';
 import { euros, say } from './log.ts';
 import type { World } from './types.ts';
 
 /** Reputation 0–100 scales rewards from ×0.75 to ×1.25. */
-export const reputationFactor = (w: World) => 0.75 + (w.reputation / 100) * 0.5;
+export const reputationFactor = (w: World) =>
+  RULES.reputationFactor.min + (w.reputation / 100) * (RULES.reputationFactor.max - RULES.reputationFactor.min);
 
 export function reward(w: World, kind: CallKind, secondsEarly: number): number {
-  const speedBonus = 1 + Math.min(0.3, Math.max(0, secondsEarly / 60) * 0.02);
+  const speedBonus = 1 + Math.min(RULES.earlyBonus.max, Math.max(0, secondsEarly / 60) * RULES.earlyBonus.perMinute);
   return Math.round((kind.reward * speedBonus * reputationFactor(w)) / 10) * 10;
 }
 

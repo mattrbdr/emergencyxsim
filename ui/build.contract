@@ -3,7 +3,8 @@
 use BuildingRow, SiteRow, BuildOption, ShopItem, Ack from "./model.contract"
 use Icon from "./icons.contract"
 use Tag, CallSign, Heading, Meter from "./parts.contract"
-use Mono, Caps, Primary, Secondary, Quiet, Row, serviceColor, kindColor, money, plural from "./theme.contract"
+use Mono, Caps, Primary, Secondary, Quiet, Row, money, plural from "./theme.contract"
+use serviceColor, kindColor from "./palette.contract"
 
 component BuildMenu
   props
