@@ -158,7 +158,8 @@ test('a twist on scene asks a decision; reinforcements add needs and a bonus', (
         seen++;
         const before = c.needs.length;
         const renfort = choices(w, c).find((o) => o.id === 'renfort')!;
-        expect(renfort.enabled).toBe(true); // the twists of level 1 only ask for a VSAV
+        // Level-1 twists ask for a VSAV; one is spare unless both are busy.
+        if (!renfort.enabled) { decide(w, c, 'surplace'); continue; }
         expect(decide(w, c, 'renfort')).toBe(true);
         expect(c.needs.length).toBe(before + 1);
         expect(c.bonus).toBe(1.3);
@@ -259,4 +260,16 @@ test('the tutorial follows the player and then gives tips once', async () => {
   tick(w, 250);
   expect(w.tipsSeen).toContain('contracts');
   expect(w.tip).not.toBe('contracts');
+});
+
+test('reinforcements need a spare vehicle: the only VSAV on scene cannot reinforce itself', async () => {
+  const { choices } = await import('../sim/scenes.ts');
+  const w = newWorld(city, 31);
+  buildAt(w, 'caserne', centre.x, centre.y);
+  while (w.calls.length === 0) tick(w, 250);
+  const c = w.calls[0];
+  c.twist = { id: 't', report: 'r', add: ['VSAV'], from: 'VSAV 1' };
+  c.state = 'bilan';
+  w.units[0].callId = c.id;
+  expect(choices(w, c).find((o) => o.id === 'renfort')!.enabled).toBe(false);
 });

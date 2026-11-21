@@ -13,7 +13,9 @@ Construit avec [Exact](https://github.com/expo/exact) : une seule source pour le
 |---|---|---|---|---|
 | ![](screenshots/iphone-1-ville.png) | ![](screenshots/iphone-2-construire.png) | ![](screenshots/iphone-3-caserne.png) | ![](screenshots/iphone-5-fiche.png) | ![](screenshots/iphone-6-en-route.png) |
 
-![Console de régulation sur grand écran](screenshots/bureau-5-engagement.png)
+![Bilan sur place et décision](screenshots/bureau-10-bilan.png)
+
+![Couverture : viser avant de construire](screenshots/bureau-9-couverture.png)
 
 ## Le jeu
 
@@ -50,6 +52,22 @@ Construit avec [Exact](https://github.com/expo/exact) : une seule source pour le
 | 12 | VPMA | accident de car, plan rouge |
 
 En tout : **34 types d'interventions** et **12 véhicules**.
+
+**Sur place**
+- À l'arrivée, le premier engin peut découvrir une situation pire que prévu. Exemples : un malaise qui est en fait un arrêt cardiaque, un feu de poubelles qui gagne la façade, une seconde victime.
+- Vous décidez, avant la fin du délai de réponse :
+  - **demander le renfort** (+30 % de prime) ;
+  - **faire avec les moyens présents** (60 % de réussite) ;
+  - **évacuer immédiatement** (75 % de réussite).
+
+**Couverture et quartiers**
+- Le bouton calques colore les rues selon le temps d'arrivée depuis vos bases : vert à moins de 3 min, orange à moins de 5 min, rouge au-delà.
+- Pour construire, on vise d'abord : le jeu affiche le **gain de couverture** avant de confirmer.
+- Les appels se placent selon les lieux : rixes près des bars, chutes près des EHPAD, feux en zone industrielle, accidents sur les grands axes. Dans une vraie commune, ces lieux viennent d'OpenStreetMap.
+
+**Contrats du jour** : trois objectifs chaque jour à 07:00, payés en argent et en XP. Une **série de jours parfaits** augmente les primes jusqu'à +50 %.
+
+**Prise en main** : un tutoriel guidé en 6 étapes, qui met en évidence le bouton à toucher, puis des conseils au bon moment.
 
 **Régulation**
 - Pour chaque appel, l'appelant décrit la situation et vous qualifiez l'appel parmi 5 familles. Une erreur coûte de la réputation.
@@ -91,10 +109,10 @@ bun exact.mjs web --lan                      # ouvrez l'URL affichée dans Safar
 | Dossier | Rôle |
 |---|---|
 | `app.contract` | racine : état de session, carte, placement des panneaux |
-| `ui/` | interface en Contract, le langage d'Exact : `model` (formes partagées), `theme`, `icons` (généré), `parts`, `topbar`, `calls`, `call-sheet`, `fleet`, `build`, `career`, `city-picker` |
+| `ui/` | interface en Contract, le langage d'Exact : `model` (formes partagées), `theme`, `icons` (généré), `parts`, `topbar`, `calls`, `call-sheet`, `fleet`, `build`, `career`, `contracts`, `tutorial`, `city-picker` |
 | `app.ts` | point d'entrée du module de données (autorisations, sources, dessin) |
 | `src/` | `sources` (requêtes de l'interface), `snapshot` (modèle de vue), `game` (carrière en cours), `persistence` (sauvegarde), `city-loader` (téléchargement OSM) |
-| `sim/` | moteur pur et déterministe, sans dépendance à l'interface. `catalog/` (véhicules, bâtiments, interventions, niveaux, icônes), puis `world`, `calls`, `units`, `economy`, `progression`, `buildings`, `routing`, `traffic`, `osm/` |
+| `sim/` | moteur pur et déterministe, sans dépendance à l'interface. `catalog/` (véhicules, bâtiments, interventions, rebondissements, lieux, niveaux, icônes), puis `world`, `calls`, `scenes`, `units`, `economy`, `progression`, `buildings`, `coverage`, `places`, `contracts`, `tutorial`, `routing`, `traffic`, `osm/` |
 | `render/` | carte sur deux canvas : `layers` (fond), `live` (appels, véhicules, itinéraires), `sprites` (icônes), `camera`, `gestures`, `theme` |
 | `assets/fonts/` | IBM Plex Sans et Mono (licence OFL), réduites aux caractères latins |
 

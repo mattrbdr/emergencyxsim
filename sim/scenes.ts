@@ -18,7 +18,13 @@ export interface Choice {
   enabled: boolean;
 }
 
-const owns = (w: World, t: UnitType) => w.units.some((u) => u.type === t);
+/** Types the fleet cannot spare: it has no vehicle of that type beyond those already on this call. */
+function unavailable(w: World, call: Call, add: UnitType[]): UnitType[] {
+  const spare = (t: UnitType) => w.units.filter((u) => u.type === t && u.callId !== call.id).length;
+  const want: Partial<Record<UnitType, number>> = {};
+  for (const t of add) want[t] = (want[t] ?? 0) + 1;
+  return (Object.keys(want) as UnitType[]).filter((t) => spare(t) < want[t]!);
+}
 const names = (types: UnitType[]) => [...new Set(types)].map((t) => UNITS[t].label).join(' + ');
 
 /** Called once, the first time a call has a vehicle on scene. */
@@ -41,11 +47,11 @@ export function rollTwist(w: World, call: Call) {
 export function choices(w: World, call: Call): Choice[] {
   if (!call.twist) return [];
   const add = call.twist.add;
-  const missing = add.filter((t) => !owns(w, t));
+  const missing = unavailable(w, call, add);
   const out: Choice[] = [
     {
       id: 'renfort', label: `Demander ${names(add)}`,
-      detail: missing.length ? `Pas de ${names(missing)} dans votre flotte` : 'La bonne réponse : +30 % de prime si l\'intervention réussit',
+      detail: missing.length ? `Aucun ${names(missing)} de plus dans votre flotte` : 'La bonne réponse : +30 % de prime si l\'intervention réussit',
       enabled: missing.length === 0,
     },
     { id: 'surplace', label: 'Faire avec les moyens présents', detail: '60 % de réussite, intervention 50 % plus longue', enabled: true },
