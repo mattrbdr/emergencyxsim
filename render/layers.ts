@@ -31,7 +31,7 @@ function visibleCells(w: World, frame: Frame) {
   };
 }
 
-export function drawCity(w: World, ctx: Ctx2D, frame: Frame): boolean {
+export function drawCity(w: World, ctx: Ctx2D, frame: Frame, night = 0): boolean {
   syncView(w, frame);
   const moving = glide(w);
   const { city } = w;
@@ -88,8 +88,27 @@ export function drawCity(w: World, ctx: Ctx2D, frame: Frame): boolean {
   }
   const times = w.overlay ? overlayTimes(w) : null;
   const bands = times ? [COVERAGE.far, COVERAGE.slow, COVERAGE.fast] : [''];
+  // Main roads get a dark casing first, so they read as roads above the blocks.
+  if (!times) {
+    ctx.strokeStyle = MAP.casing;
+    for (const cls of [1, 0]) {
+      ctx.lineWidth = Math.max(cls === 0 ? 2 : 1, ROAD_WIDTH[cls] * z) + 2.5;
+      ctx.beginPath();
+      for (const i of visible) {
+        const e = city.edges[i];
+        if (e.cls !== cls) continue;
+        const [ax, ay] = toScreen(w, city.nx[e.a], city.ny[e.a]);
+        const [bx, by] = toScreen(w, city.nx[e.b], city.ny[e.b]);
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+      }
+      ctx.stroke();
+    }
+  }
   for (let cls = 3; cls >= 0; cls--) for (const band of bands) {
     if (cls === 3 && z < 0.05) continue; // a whole commune at a glance: main roads only
+    // Lanes and small streets fade out as the view widens.
+    ctx.globalAlpha = times || cls < 2 ? 1 : Math.max(0.35, Math.min(1, (z - 0.05) / 0.25));
     ctx.lineWidth = Math.max(cls === 0 ? 2 : times ? 1.5 : 1, ROAD_WIDTH[cls] * z);
     ctx.strokeStyle = band || MAP.roads[cls];
     ctx.beginPath();
@@ -104,7 +123,14 @@ export function drawCity(w: World, ctx: Ctx2D, frame: Frame): boolean {
     }
     ctx.stroke();
   }
+  ctx.globalAlpha = 1;
 
+  // Night: the town darkens, then its windows light up.
+  if (night > 0) {
+    ctx.fillStyle = `rgba(3,6,14,${(0.34 * night).toFixed(3)})`;
+    ctx.fillRect(0, 0, frame.width, frame.height);
+    if (z > 0.14) drawWindows(w, ctx, cells, night);
+  }
   if (z > 0.5) drawStreetNames(w, ctx, visible);
   drawPlaces(w, ctx);
   return moving;
@@ -133,13 +159,13 @@ const bandOf = (t: number) => (t <= TARGET ? COVERAGE.fast : t <= SLOW ? COVERAG
 function drawPlaces(w: World, ctx: Ctx2D) {
   const z = w.cam.zoom;
   if (z < 0.55) {
-    ctx.font = `600 10px ${FONT.mono}`;
+    ctx.font = `600 10.5px ${FONT.mono}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (const zone of w.city.zones) {
       if (zone.kind === 'parc' && z < 0.25) continue;
       const [x, y] = toScreen(w, zone.cx, zone.cy);
-      const text = (zone.name || ZONE_LABEL[zone.kind]).toUpperCase();
+      const text = spaced((zone.name || ZONE_LABEL[zone.kind]).toUpperCase());
       ctx.lineWidth = 3;
       ctx.strokeStyle = MAP.halo;
       ctx.strokeText(text, x, y);
@@ -196,4 +222,31 @@ function drawStreetNames(w: World, ctx: Ctx2D, visible: number[]) {
     ctx.fillText(label, 0, 0);
     ctx.restore();
   }
+}
+
+/** Letter-spaced capitals for district names (thin spaces: the canvas has no tracking here). */
+const spaced = (s: string) => [...s].join('\u2009');
+
+/** At night, some windows light up: a warm dot on about one building in three. */
+function drawWindows(w: World, ctx: Ctx2D, cells: { r0: number; r1: number; c0: number; c1: number }, night: number) {
+  const { city } = w;
+  const g = city.grid;
+  const size = Math.max(1.2, Math.min(3, 4 * w.cam.zoom));
+  ctx.fillStyle = MAP.window;
+  for (let r = cells.r0; r <= cells.r1; r++) {
+    for (let c = cells.c0; c <= cells.c1; c++) {
+      for (const i of g.buildings[r * g.cols + c]) {
+        const h = ((i * 2654435761) >>> 0) % 100;
+        if (h > 34 * night) continue;
+        const pts = city.file.buildings[i];
+        let x = 0, y = 0;
+        const n = pts.length / 2;
+        for (let k = 0; k < pts.length; k += 2) { x += pts[k]; y += pts[k + 1]; }
+        const [sx, sy] = toScreen(w, x / n, y / n);
+        ctx.globalAlpha = 0.35 + (h % 7) / 14;
+        ctx.fillRect(sx - size / 2, sy - size / 2, size, size);
+      }
+    }
+  }
+  ctx.globalAlpha = 1;
 }

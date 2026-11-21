@@ -262,6 +262,7 @@ shape Snap
   attribution: string
   day: number
   date: string
+  night: number
   weather: Weather
   posting: string
   cue: Cue

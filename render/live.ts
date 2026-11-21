@@ -5,7 +5,7 @@ import { BUILDINGS, KIND_OF_POI } from '../sim/catalog/buildings.ts';
 import type { IconName } from '../sim/catalog/icons.ts';
 import { UNITS } from '../sim/catalog/units.ts';
 import { siteOf } from '../sim/majors.ts';
-import { shiftHour, today } from '../sim/weather.ts';
+import { today } from '../sim/weather.ts';
 import type { Building, Call, Unit, World } from '../sim/types.ts';
 import { syncView, toScreen } from './camera.ts';
 import { beacon, drawFx } from './fx.ts';
@@ -63,13 +63,7 @@ function drawPerimeters(w: World, ctx: Ctx2D, now: number) {
 /** Night falls on the map, rain or snow over it, and the streets an event slows. */
 function drawWeather(w: World, ctx: Ctx2D, frame: Frame, now: number) {
   const W = frame.width, H = frame.height;
-  // Night: darker from 20 h, darkest 23 h – 5 h, light again by 7 h.
-  const h = shiftHour(w.t);
-  const night = h < 20 ? 0 : h < 23 ? (h - 20) / 3 : h < 29 ? 1 : Math.max(0, (31 - h) / 2);
-  if (night > 0) {
-    ctx.fillStyle = `rgba(3,6,14,${(0.32 * night).toFixed(3)})`;
-    ctx.fillRect(0, 0, W, H);
-  }
+  // Night falls on the city layer (render/layers.ts), under its lit windows.
   // Streets slowed by the match, the market or roadworks.
   if (w.slowEdges.size) {
     const { city } = w;
@@ -226,6 +220,14 @@ function drawBuilding(w: World, ctx: Ctx2D, b: Building, selected: boolean) {
   const [x, y] = toScreen(w, b.x, b.y);
   const color = SERVICE[BUILDINGS[b.kind].service];
   const home = w.units.filter((u) => u.building === b.id && u.status === 'dispo').length;
+  // A soft halo in the service's colour: the stations are the town's landmarks.
+  const halo = ctx.createRadialGradient(x, y, 0, x, y, 34);
+  halo.addColorStop(0, `${color}40`);
+  halo.addColorStop(1, `${color}00`);
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(x, y, 34, 0, Math.PI * 2);
+  ctx.fill();
   ctx.fillStyle = '#151a21';
   ctx.strokeStyle = selected ? MAP.ink : color;
   ctx.lineWidth = selected ? 2 : 1.5;

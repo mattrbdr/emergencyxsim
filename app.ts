@@ -12,6 +12,6 @@ export const answer: Answer = (source, args, store, storage, native) => sources[
 
 export const surfaces: Record<string, number> = { city: 1, live: 1 };
 export function draw(surface: string, args: unknown[], ctx: Ctx2D, frame: Frame): boolean {
-  if (surface === 'city') return drawCity(game.world, ctx, frame);
+  if (surface === 'city') return drawCity(game.world, ctx, frame, Number(args[1] ?? 0) / 4);
   return drawLive(game.world, ctx, frame, String(args[0] ?? ''));
 }

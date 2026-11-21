@@ -10,7 +10,11 @@ export const MAP = {
   park: '#13201a',
   building: '#171c24',
   buildingEdge: '#1e2530',
-  roads: ['#4a5462', '#3b4451', '#2f3743', '#272e38'],
+  roads: ['#6b7686', '#525c6b', '#363e4a', '#2a313b'],
+  /** Dark edge drawn under the main roads so they read as roads, not lines. */
+  casing: '#0b0e12',
+  /** Lit windows at night. */
+  window: '#e8b866',
   label: '#768294',
   halo: PALETTE.bg,
   ink: PALETTE.ink,

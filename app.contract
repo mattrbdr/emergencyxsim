@@ -370,7 +370,7 @@ component Regulation
     manageBuilding: action
   view
     view position="absolute" inset=0
-      canvas surface=city(camSeq) position="absolute" left=0 top=0 width="100%" height="100%" aria-hidden=true testId="map-city"
+      canvas surface=city(camSeq, snap.night) position="absolute" left=0 top=0 width="100%" height="100%" aria-hidden=true testId="map-city"
       canvas surface=live(mapSel) position="absolute" left=0 top=0 width="100%" height="100%" touch-action="none" pointerdown=down pointermove=drag pointerup=up wheel=zoomWheel role="img" aria-label=`Carte de ${snap.city}` testId="map"
       // Map tools: zoom, overview, coverage, build.
       column position="absolute" right=(wide ? (sideOpen ? 436 : 12) : 10) top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` gap=6

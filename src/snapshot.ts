@@ -246,6 +246,12 @@ export function roadmap() {
   });
 }
 
+function nightStep(w: World): number {
+  const h = shiftHour(w.t);
+  const level = h < 20 ? 0 : h < 23 ? (h - 20) / 3 : h < 29 ? 1 : Math.max(0, (31 - h) / 2);
+  return Math.round(level * 4);
+}
+
 const grouped = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 function weatherRow(w: World): Snap['weather'] {
@@ -272,6 +278,8 @@ export function snapshot(w: World): Snap {
     day: shiftDay(w),
     date: dateText(today(w).date),
     weather: weatherRow(w),
+    // Night on the map in five steps (0 day – 4 deep night), for the city canvas.
+    night: nightStep(w),
     posting: w.units.find((u) => u.id === w.posting)?.name ?? '',
     cue: { id: w.cue.id, name: w.cue.name },
     settings: { ...w.settings },
