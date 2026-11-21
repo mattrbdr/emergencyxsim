@@ -189,11 +189,20 @@ shape CrisisReport
   earned: string
   minutes: number
 
+shape Weather
+  label: string
+  icon: string
+  bulletin: string
+  event: string
+  eventIcon: string
+
 shape Snap
   seq: number
   city: string
   attribution: string
   day: number
+  date: string
+  weather: Weather
   clock: string
   speed: number
   paused: bool

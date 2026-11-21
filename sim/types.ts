@@ -7,6 +7,7 @@ import type { Rng } from './rng.ts';
 import type { Tree } from './routing.ts';
 import type { Contract, DayStats } from './contracts.ts';
 import type { Major, MajorReport } from './majors.ts';
+import type { Today } from './weather.ts';
 
 export type UnitStatus = 'dispo' | 'route' | 'surplace' | 'transport' | 'hopital' | 'retour';
 
@@ -181,4 +182,12 @@ export interface World {
   majorReport: MajorReport | null;
   /** Streets cut (flooded): routing goes around them. */
   blocked: Set<number>;
+  /** Midnight (UTC) of the career's first day, for the calendar. */
+  startDate: number;
+  /** The day's weather and events (worked out from the seed, not saved). */
+  today: Today | null;
+  conditionsKey: string;
+  /** Today's weather slowdown on every street, and the streets an event slows. */
+  trafficMul: number;
+  slowEdges: Map<number, number>;
 }

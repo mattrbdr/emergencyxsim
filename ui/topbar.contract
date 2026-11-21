@@ -24,7 +24,7 @@ component TopBar
               text snap.city.toUpperCase() class=Caps white-space="nowrap" overflow="hidden" text-overflow="ellipsis" max-width="14rem"
         row gap=8 align-items="baseline"
           if wide
-            text `J${snap.day}` class=Caps color="#9aa4b2"
+            text snap.date.toUpperCase() class=Caps color="#9aa4b2" white-space="nowrap" testId="date"
           text snap.clock class=Mono font-size=(wide ? "1.5rem" : "1.1rem") font-weight=500 line-height=1 testId="clock"
         // Speed: pause and ×1 ×2 ×4.
         row role="radiogroup" aria-label="Vitesse du temps" appearance="none" border="1px solid #252c36" border-radius=4 overflow="hidden" flex-shrink=0
@@ -37,6 +37,13 @@ component TopBar
           else
             button aria-label=`Vitesse ×${snap.speed}, changer` press=setSpeed(snap.speed == 4 ? 1 : snap.speed * 2) appearance="none" width="2.5rem" height="2rem" border-left="1px solid #252c36" testId="speed-cycle"
               text `×${snap.speed}` class=Mono font-size="0.78rem" font-weight=600
+        // The day's weather, and the town event under way or next.
+        row gap=6 align-items="center" flex-shrink=0 aria-label=`${snap.weather.label}${snap.weather.event != "" ? `, ${snap.weather.event}` : ""}` testId="weather"
+          Icon(name=snap.weather.icon, size=(wide ? 18 : 16), color="#c9d1d9")
+          if wide
+            text snap.weather.label class=Caps color="#c9d1d9" white-space="nowrap"
+          if snap.weather.event != ""
+            Icon(name=snap.weather.eventIcon, size=(wide ? 16 : 14), color="#f0a531")
         view flex=1
         if wide
           Figure(icon="money", label=snap.upkeepText, value=snap.moneyText, color=(snap.money < 0 ? "#f2555a" : money()))

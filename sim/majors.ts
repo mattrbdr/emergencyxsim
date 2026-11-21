@@ -303,7 +303,7 @@ function chase(w: World, m: Major, dt: number) {
   const call = w.calls.find((c) => c.id === m.callId);
   f.px = f.x;
   f.py = f.y;
-  let budget = FUGITIVE_SPEED * dt;
+  let budget = (FUGITIVE_SPEED / w.trafficMul) * dt; // rain and snow slow it too
   while (budget > 0) {
     const [a, b] = f.path;
     const len = Math.hypot(city.nx[b] - city.nx[a], city.ny[b] - city.ny[a]) || 1;

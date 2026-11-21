@@ -5,6 +5,7 @@ import { BUILDINGS, KIND_OF_POI } from '../sim/catalog/buildings.ts';
 import type { IconName } from '../sim/catalog/icons.ts';
 import { UNITS } from '../sim/catalog/units.ts';
 import { siteOf } from '../sim/majors.ts';
+import { shiftHour, today } from '../sim/weather.ts';
 import type { Building, Call, Unit, World } from '../sim/types.ts';
 import { syncView, toScreen } from './camera.ts';
 import { drawIcon } from './sprites.ts';
@@ -21,6 +22,7 @@ export function drawLive(w: World, ctx: Ctx2D, frame: Frame, selected: string): 
   const now = frame.time;
   ctx.clearRect(0, 0, frame.width, frame.height);
 
+  drawWeather(w, ctx, frame, now);
   drawMajorEffects(w, ctx, now, alpha);
   drawPerimeters(w, ctx, now);
   drawSites(w, ctx, now);
@@ -53,6 +55,72 @@ function drawPerimeters(w: World, ctx: Ctx2D, now: number) {
     ctx.stroke();
     ctx.restore();
     label(ctx, `${m.kind.effect === 'search' ? 'ZONE DE RECHERCHE' : m.spot2 ? `SITE ${site === m.spot2 ? 2 : 1}` : 'PÉRIMÈTRE'} · ${m.kind.title.toUpperCase()}`, x, y - r - 10, SERVICE.pompiers);
+  }
+}
+
+/** Night falls on the map, rain or snow over it, and the streets an event slows. */
+function drawWeather(w: World, ctx: Ctx2D, frame: Frame, now: number) {
+  const W = frame.width, H = frame.height;
+  // Night: darker from 20 h, darkest 23 h – 5 h, light again by 7 h.
+  const h = shiftHour(w.t);
+  const night = h < 20 ? 0 : h < 23 ? (h - 20) / 3 : h < 29 ? 1 : Math.max(0, (31 - h) / 2);
+  if (night > 0) {
+    ctx.fillStyle = `rgba(3,6,14,${(0.32 * night).toFixed(3)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  // Streets slowed by the match, the market or roadworks.
+  if (w.slowEdges.size) {
+    const { city } = w;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(240,165,49,0.75)';
+    ctx.lineWidth = Math.max(2, 6 * w.cam.zoom);
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    for (const [i] of w.slowEdges) {
+      if (city.edges[i].cls <= 1 && w.slowEdges.size > 60) continue; // holiday evenings: every main road, too much ink
+      const e = city.edges[i];
+      const [ax, ay] = toScreen(w, city.nx[e.a], city.ny[e.a]);
+      const [bx, by] = toScreen(w, city.nx[e.b], city.ny[e.b]);
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+  const kind = today(w).weather.id;
+  if (kind === 'pluie' || kind === 'orage') {
+    // Fine streaks falling, on a fixed pattern so the screen does not flicker.
+    ctx.save();
+    ctx.strokeStyle = kind === 'orage' ? 'rgba(160,190,230,0.22)' : 'rgba(160,190,230,0.16)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const n = Math.round((W * H) / (kind === 'orage' ? 5000 : 8000));
+    for (let i = 0; i < n; i++) {
+      const x = ((i * 7919) % W + now * 0.05) % W;
+      const y = ((i * 104729) % H + now * 0.6 * (1 + (i % 3) * 0.2)) % H;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - 2, y + 9);
+    }
+    ctx.stroke();
+    ctx.restore();
+    // A storm lights the sky now and then.
+    if (kind === 'orage' && (now % 9000) < 90) {
+      ctx.fillStyle = 'rgba(220,230,255,0.10)';
+      ctx.fillRect(0, 0, W, H);
+    }
+  } else if (kind === 'neige') {
+    ctx.save();
+    ctx.fillStyle = 'rgba(235,240,250,0.55)';
+    const n = Math.round((W * H) / 9000);
+    for (let i = 0; i < n; i++) {
+      const y = ((i * 104729) % H + now * 0.04 * (1 + (i % 4) * 0.25)) % H;
+      const x = ((i * 7919) % W + Math.sin(now / 1200 + i) * 12 + W) % W;
+      ctx.fillRect(x, y, i % 3 === 0 ? 2 : 1.5, i % 3 === 0 ? 2 : 1.5);
+    }
+    ctx.restore();
+  } else if (kind === 'canicule') {
+    ctx.fillStyle = 'rgba(240,140,40,0.05)';
+    ctx.fillRect(0, 0, W, H);
   }
 }
 

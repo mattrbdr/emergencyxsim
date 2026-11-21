@@ -52,7 +52,7 @@ test "a call is qualified, dispatched and paid"
   tap "q-sap"
   clock data
   clock +300
-  expect text "sheet-title" == "Malaise à domicile"
+  expect state snap.calls.0.family == "sap"
   tap "engage"
   clock data
   clock +300

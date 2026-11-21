@@ -7,6 +7,7 @@ use Mono, Caps, Primary, Secondary from "./theme.contract"
 component CityPicker
   props
     seed: number
+    epoch: number
     ready: action
   state query = ""
   state polling = false
@@ -33,10 +34,10 @@ component CityPicker
     tick = tick + 1
   action choose(insee: string, name: string)
     polling = true
-    send loaded = chooseCity(insee, name, seed)
+    send loaded = chooseCity(insee, name, seed, epoch + performanceNow())
   action demo
     polling = true
-    send loaded = useDemo(seed)
+    send loaded = useDemo(seed, epoch + performanceNow())
   action afterLoad
     polling = false
     tick = tick + 1

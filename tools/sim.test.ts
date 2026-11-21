@@ -216,7 +216,7 @@ test('districts draw their calls: falls near nursing homes, fires in the industr
   const share = (id: string, place: string) => {
     const kind = CALL_KINDS.find((k) => k.id === id)!;
     let hit = 0;
-    for (let i = 0; i < 400; i++) if (placesAt(city, pickStreet(city, kind, rng, () => false)).has(place as never)) hit++;
+    for (let i = 0; i < 400; i++) if (placesAt(city, pickStreet(city, kind, rng, {}, () => false)).has(place as never)) hit++;
     return hit / 400;
   };
   const base = (place: string) => share('malaise_domicile', place);
@@ -543,4 +543,68 @@ test('a crisis can requisition a crew driving to a lesser call; that call waits 
   const other = createCall(w, minor.kind, spotOn(w, city.callEdges[9]), 'test');
   w.calls.push(other);
   expect(options(w, other.id).some((o) => o.unit.callId === minor.id)).toBe(false);
+});
+
+test('weather: the same seed gives the same days, and the seasons differ', async () => {
+  const { today } = await import('../sim/weather.ts');
+  const run = (seed: number, start: number) => {
+    const w = newWorld(city, seed);
+    w.startDate = start;
+    const out: string[] = [];
+    for (let d = 0; d < 60; d++) { w.t = d * 86400 + 3600; w.today = null; out.push(today(w).weather.id); }
+    return out;
+  };
+  expect(run(4, Date.UTC(2026, 0, 1))).toEqual(run(4, Date.UTC(2026, 0, 1)));
+  const winter = run(4, Date.UTC(2026, 0, 1)), summer = run(4, Date.UTC(2026, 6, 1));
+  expect(winter.includes('neige')).toBe(true);
+  expect(summer.includes('neige')).toBe(false);
+  expect(summer.includes('canicule')).toBe(true);
+  expect(new Set(winter).size).toBeGreaterThan(1);
+});
+
+test('weather: rain slows the roads, a heatwave brings faintings, roadworks are driven round', async () => {
+  const { WEATHER } = await import('../sim/catalog/weather.ts');
+  const { EVENTS } = await import('../sim/catalog/events.ts');
+  const { today, updateConditions, callWeight } = await import('../sim/weather.ts');
+  const { freshTree } = await import('../sim/traffic.ts');
+  const w = newWorld(city, 3);
+  w.t = 3 * 3600; // 10:00
+  const t = today(w);
+  const a = city.pois[0].node, b = city.pois[1].node;
+  const set = (weather: keyof typeof WEATHER, events = t.events) => {
+    w.today = { ...t, weather: WEATHER[weather], events };
+    w.conditionsKey = '';
+    updateConditions(w);
+  };
+  set('beau', []);
+  const dry = freshTree(w, a).time[b];
+  set('pluie', []);
+  expect(freshTree(w, a).time[b]).toBeCloseTo(dry * 1.15, 3);
+  set('neige', []);
+  expect(freshTree(w, a).time[b]).toBeGreaterThan(dry * 1.5);
+  // A heatwave: more faintings in the street.
+  const malaise = CALL_KINDS.find((k) => k.id === 'malaise_vp')!;
+  set('canicule', []);
+  expect(callWeight(w, malaise)).toBeGreaterThan(2);
+  set('beau', []);
+  expect(callWeight(w, malaise)).toBe(1);
+  // Roadworks on the first street of the fastest way: the new way avoids it.
+  const way = pathTo(freshTree(w, a), b);
+  const first = city.adj[way[0]].find((e) => city.edges[e].a === way[1] || city.edges[e].b === way[1])!;
+  set('beau', [{ def: { ...EVENTS.find((e) => e.id === 'travaux')!, slow: 40 }, edges: [first] }]);
+  expect(w.slowEdges.get(first)).toBe(40);
+  const detour = pathTo(freshTree(w, a), b);
+  expect(detour[1] === way[1] && detour.length > 2 ? 'same street' : 'detour').toBe('detour');
+});
+
+test('calendar: the 14th of July brings its fireworks evening', async () => {
+  const { today, activeEvents } = await import('../sim/weather.ts');
+  const w = newWorld(city, 5);
+  w.startDate = Date.UTC(2026, 6, 14);
+  w.t = 15 * 3600; // 22:00
+  expect(today(w).events.map((e) => e.def.id)).toContain('quatorze');
+  expect(activeEvents(w).map((e) => e.def.id)).toContain('quatorze');
+  w.today = null;
+  w.t = 86400 + 15 * 3600; // the 15th
+  expect(today(w).events.map((e) => e.def.id)).not.toContain('quatorze');
 });

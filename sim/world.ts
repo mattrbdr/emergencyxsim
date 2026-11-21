@@ -13,6 +13,7 @@ import { say } from './log.ts';
 import { mulberry } from './rng.ts';
 import type { World } from './types.ts';
 import { moveUnit } from './units.ts';
+import { DEFAULT_START, updateConditions } from './weather.ts';
 
 export function newWorld(city: City, seed: number): World {
   const w: World = {
@@ -26,6 +27,7 @@ export function newWorld(city: City, seed: number): World {
     view: { w: 0, h: 0 }, pointers: new Map(), pinch: null, placing: null, overlay: false,
     contracts: [], dayStats: emptyDay(1), streak: 0, tutorial: 0, tip: '', tipsSeen: [],
     majors: [], nextMajorAt: firstMajorAt, majorReport: null, blocked: new Set(),
+    startDate: DEFAULT_START, today: null, conditionsKey: '', trafficMul: 1, slowEdges: new Map(),
   };
   say(w, `Prise de garde à ${city.name}. Aucune caserne pour l'instant, la première est offerte.`, 'info', true);
   return w;
@@ -48,6 +50,7 @@ export function tick(w: World, realMs: number) {
 function advance(w: World, dt: number) {
   const before = w.t;
   w.t += dt;
+  updateConditions(w);
   if (w.t >= w.nextCallAt) spawnCall(w);
   updateMajors(w, dt);
   for (const u of w.units) moveUnit(w, u, dt);

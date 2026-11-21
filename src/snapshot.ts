@@ -1,5 +1,6 @@
 // The view model: turns the world into the shapes ui/model.contract declares.
 import type { Result } from '../app.contract.d.ts';
+import { bulletin, dateText, eventHours, shiftHour, today } from '../sim/weather.ts';
 import { BUILDING_ORDER, BUILDINGS, KIND_OF_POI } from '../sim/catalog/buildings.ts';
 import { FAMILY_LABEL } from '../sim/catalog/calls.ts';
 import { MAX_LEVEL, XP_FOR_LEVEL, levelProgress } from '../sim/catalog/levels.ts';
@@ -180,6 +181,17 @@ function unlockCard(w: World): Snap['unlock'] {
   };
 }
 
+function weatherRow(w: World): Snap['weather'] {
+  const t = today(w);
+  // The event under way, or else the next one today.
+  const h = shiftHour(w.t);
+  const e = t.events.find((x) => h >= x.def.from && h < x.def.to) ?? t.events.find((x) => h < x.def.from);
+  return {
+    label: t.weather.label, icon: t.weather.icon, bulletin: bulletin(t),
+    event: e ? `${e.def.label} · ${eventHours(e.def)}` : '', eventIcon: e?.def.icon ?? '',
+  };
+}
+
 export function snapshot(w: World): Snap {
   const active = w.calls.filter((c) => c.state !== 'clos').sort((a, b) => a.priority - b.priority || a.at - b.at);
   const closed = w.calls.filter((c) => c.state === 'clos').sort((a, b) => b.closedAt - a.closedAt).slice(0, 10);
@@ -191,6 +203,8 @@ export function snapshot(w: World): Snap {
     city: w.city.name,
     attribution: w.city.file.attribution,
     day: shiftDay(w),
+    date: dateText(today(w).date),
+    weather: weatherRow(w),
     clock: clockText(w.t),
     speed: w.speed,
     paused: w.paused,

@@ -40,6 +40,7 @@ export interface Save {
   calls?: Omit<Call, 'assigned'>[];
   major?: Omit<Major, 'kind'> & { kind: string; fugitive: Fugitive | null };
   blocked?: number[];
+  startDate?: number;
 }
 
 const encode = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
@@ -75,6 +76,7 @@ export function snapshotSave(w: World): Save {
     calls: w.calls.filter((c) => c.state !== 'clos').map(({ assigned: _, ...c }) => c),
     major: majorToSave(w),
     blocked: [...w.blocked],
+    startDate: w.startDate,
   };
 }
 

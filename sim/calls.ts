@@ -9,6 +9,7 @@ import { euros, say } from './log.ts';
 import { gainXp } from './progression.ts';
 import { createCall, spotOn } from './callfactory.ts';
 import { pickStreet } from './places.ts';
+import { callWeight, draws, rateFactor } from './weather.ts';
 import { decisionTimeout, rollTwist } from './scenes.ts';
 import { endPhase, majorDecisionTimeout } from './majors.ts';
 import { recordCall } from './contracts.ts';
@@ -24,7 +25,7 @@ export function callsPerHour(w: World): number {
   const hour = hourOf(w.t);
   const night = hour < 6 || hour >= 23 ? 0.55 : 1;
   const busy = 1 + Math.max(0, 1 - Math.abs(hour - 12.5) / 2) * 0.3 + Math.max(0, 1 - Math.abs(hour - 18) / 1.5) * 0.5;
-  return (2 + w.units.length * 1.1) * night * busy * (0.6 + w.reputation / 125);
+  return (2 + w.units.length * 1.1) * night * busy * (0.6 + w.reputation / 125) * rateFactor(w);
 }
 
 export function spawnCall(w: World) {
@@ -37,13 +38,13 @@ export function spawnCall(w: World) {
   const owned = new Set(w.units.map((u) => u.type));
   const kinds = CALL_KINDS.filter((k) => k.level <= w.level && k.needs.every((t) => owned.has(t)));
   if (kinds.length === 0) return;
-  const weight = (k: (typeof kinds)[number]) => k.weight;
+  const weight = (k: (typeof kinds)[number]) => k.weight * callWeight(w, k);
   const total = kinds.reduce((s, k) => s + weight(k), 0);
   let r = w.rng() * total;
   let kind = kinds[0];
   for (const k of kinds) { r -= weight(k); if (r <= 0) { kind = k; break; } }
 
-  const edgeIndex = pickStreet(w.city, kind, w.rng, (edge) => {
+  const edgeIndex = pickStreet(w.city, kind, w.rng, draws(w), (edge) => {
     const e = w.city.edges[edge];
     return active.some((c) => Math.hypot(c.x - w.city.nx[e.a], c.y - w.city.ny[e.a]) < 250);
   });

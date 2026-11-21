@@ -17,6 +17,7 @@ use CrisisBar, CrisisReportCard from "./ui/major.contract"
 
 shape Time
   seed: number
+  epochAtZero: number
 
 shape Viewport
   width: number
@@ -25,7 +26,7 @@ shape Viewport
 component EmergencySim
   resource time = exactTime() as shape Time
   resource viewport = exactViewport() as shape Viewport
-  resource boot = boot(bootSeq) as shape Boot else empty() transient
+  resource boot = boot(bootSeq, time.epochAtZero) as shape Boot else empty() transient
   resource snap = snapshot() as shape Snap else empty() transient
   mutation ticked as shape Ack refreshes snap then afterTick
   mutation commanded as shape Ack queue refreshes snap
@@ -190,7 +191,7 @@ component EmergencySim
     main testId="app" color-scheme="dark" width="100%" height="100%" position="relative" overflow="hidden" background-color="#0b0e12" color="#e6edf3" class=Sans
       // exact-accept lower-screen-by-state
       if not ready
-        CityPicker(seed=time.seed, ready=onReady)
+        CityPicker(seed=time.seed, epoch=time.epochAtZero, ready=onReady)
       else
         canvas surface=city(camSeq) position="absolute" left=0 top=0 width="100%" height="100%" aria-hidden=true testId="map-city"
         canvas surface=live(mapSel) position="absolute" left=0 top=0 width="100%" height="100%" touch-action="none" pointerdown=down pointermove=drag pointerup=up wheel=zoomWheel role="img" aria-label=`Carte de ${snap.city}` testId="map"
@@ -346,7 +347,7 @@ component Detail
       if panel == "build"
         BuildMenu(options=snap.build, first=snap.firstBuilding, place=place, close=closePanel)
       if panel == "contracts"
-        ContractsPanel(contracts=snap.contracts, streak=snap.streak, day=snap.day, close=closePanel)
+        ContractsPanel(contracts=snap.contracts, streak=snap.streak, day=snap.day, date=snap.date, bulletin=snap.weather.bulletin, close=closePanel)
       if panel == "career"
         CareerPanel(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, stats=snap.stats, city=snap.city, close=closePanel, reset=resetCareer)
 

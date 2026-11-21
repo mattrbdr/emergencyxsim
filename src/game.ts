@@ -24,7 +24,7 @@ export const game = {
 };
 
 /** First request of a launch: resume the saved career if there is one. */
-export async function boot(storage: Storage) {
+export async function boot(storage: Storage, epoch = 0) {
   if (game.booted) return;
   game.booted = true;
   try {
@@ -32,7 +32,7 @@ export async function boot(storage: Storage) {
     if (!save) return;
     const file = (await loadCityFile(storage)) ?? demo;
     if (file.name !== save.city) return;
-    game.world = restore(loadCity(file), save);
+    game.world = restore(loadCity(file), save, epoch);
     game.ready = true;
   } catch {
     // A damaged save starts a new career rather than blocking the game.
@@ -40,9 +40,10 @@ export async function boot(storage: Storage) {
 }
 
 /** Starts a career in `file`, keeping the canvas size the old world learnt. */
-export function startCareer(storage: Storage, file: CityFile, seed: number, persistCity: boolean) {
+export function startCareer(storage: Storage, file: CityFile, seed: number, persistCity: boolean, date = 0) {
   const view = game.world.view;
   game.world = newWorld(loadCity(file), Math.floor(Math.abs(seed)) % 2147483646 || 1);
+  if (date > 0) game.world.startDate = midnight(date);
   game.world.view = view;
   game.ready = true;
   if (persistCity) saveCity(storage, file).catch(() => {});
@@ -70,7 +71,10 @@ export function autosave(storage: Storage) {
   if (++game.ticksSinceSave >= 20 && game.world.dirty) save(storage);
 }
 
-export function restore(city: City, s: Save): World {
+/** Midnight UTC of the day that contains `ms`. */
+const midnight = (ms: number) => Math.floor(ms / 86400000) * 86400000;
+
+export function restore(city: City, s: Save, epoch = 0): World {
   const w = newWorld(city, s.seed);
   Object.assign(w, {
     t: s.t, speed: s.speed, money: s.money, xp: s.xp, level: s.level, seenLevel: s.seenLevel,
@@ -83,6 +87,9 @@ export function restore(city: City, s: Save): World {
   });
   if (s.nextMajorAt !== undefined) w.nextMajorAt = s.nextMajorAt;
   if (s.dayStats) w.dayStats = s.dayStats;
+  // A career saved before the calendar starts on the day it is resumed.
+  if (s.startDate) w.startDate = s.startDate;
+  else if (epoch > 0) w.startDate = midnight(epoch) - Math.floor(s.t / 86400) * 86400000;
   // A fresh stream of random numbers, moved on by the time already played.
   w.rng = mulberry((s.seed + Math.floor(s.t)) % 2147483646 || 1);
   w.units = s.units

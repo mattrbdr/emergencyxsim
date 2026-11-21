@@ -22,8 +22,8 @@ const ack = (picked = ''): Result<'tick'> => ({ seq: game.world.seq, cam: game.w
 
 export const sources: Sources = {
   // ------------------------------------------------ reads
-  boot: async (_args, _store, storage) => {
-    await boot(storage);
+  boot: async ([, epoch], _store, storage) => {
+    await boot(storage, epoch);
     return { ready: game.ready, city: game.world.city.name };
   },
   snapshot: () => snapshot(game.world),
@@ -44,12 +44,12 @@ export const sources: Sources = {
 
   // ------------------------------------------------ the town
   searchCity: async ([name]) => { await searchCommune(name); return ack(); },
-  chooseCity: async ([insee, name, seed], _store, storage) => {
+  chooseCity: async ([insee, name, seed, date], _store, storage) => {
     const file = await downloadCommune(insee, name);
-    if (file) startCareer(storage, file, seed, true);
+    if (file) startCareer(storage, file, seed, true, date);
     return ack(file ? 'ready' : '');
   },
-  useDemo: ([seed], _store, storage) => { startCareer(storage, demoCity(), seed, false); return ack('ready'); },
+  useDemo: ([seed, date], _store, storage) => { startCareer(storage, demoCity(), seed, false, date); return ack('ready'); },
   newCareer: async (_args, _store, storage) => { await resetCareer(storage); return ack(); },
 
   // ------------------------------------------------ time

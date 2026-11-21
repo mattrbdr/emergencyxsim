@@ -11,7 +11,8 @@ export function trafficAt(w: World, edge: number): number {
   if (w.blocked.has(edge)) return 40; // flooded: only as a last resort
   const cls = w.city.edges[edge].cls;
   const noise = ((edge * 2654435761) >>> 0) / 4294967296;
-  return 1 + rush * (cls <= 1 ? 0.6 : 0.25) + noise * 0.2;
+  // Weather slows every street; a match, the market or roadworks slow theirs.
+  return (1 + rush * (cls <= 1 ? 0.6 : 0.25) + noise * 0.2) * w.trafficMul * (w.slowEdges.get(edge) ?? 1);
 }
 
 export function treeFromStation(w: World, node: number): Tree {

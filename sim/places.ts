@@ -19,14 +19,14 @@ export function placesAt(city: City, edge: number): Set<Place> {
 }
 
 /** Draws a street for `kind` among a few random candidates, weighted by affinity. */
-export function pickStreet(city: City, kind: CallKind, rng: Rng, avoid: (edge: number) => boolean): number {
+export function pickStreet(city: City, kind: CallKind, rng: Rng, extra: Partial<Record<Place, number>>, avoid: (edge: number) => boolean): number {
   const affinity = AFFINITY[kind.id] ?? {};
   const candidates: { edge: number; weight: number }[] = [];
   for (let i = 0; i < 14; i++) {
     const edge = city.callEdges[Math.floor(rng() * city.callEdges.length)];
     if (avoid(edge)) continue;
     let weight = 1;
-    for (const p of placesAt(city, edge)) weight += affinity[p] ?? 0;
+    for (const p of placesAt(city, edge)) weight += (affinity[p] ?? 0) + (extra[p] ?? 0);
     candidates.push({ edge, weight });
   }
   if (candidates.length === 0) return city.callEdges[Math.floor(rng() * city.callEdges.length)];
