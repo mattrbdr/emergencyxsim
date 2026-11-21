@@ -4,7 +4,7 @@ import type { BuildingKind } from './buildings.ts';
 export type Service = 'pompiers' | 'samu' | 'police';
 
 export type UnitType =
-  | 'VSAV' | 'FPT' | 'PS' | 'VSR' | 'AMB' | 'SMUR' | 'EPA' | 'BAC' | 'VTU' | 'FPTGP' | 'HELI' | 'VPMA' | 'BRI';
+  | 'VSAV' | 'FPT' | 'PS' | 'VSR' | 'AMB' | 'SMUR' | 'EPA' | 'BAC' | 'VTU' | 'FPTGP' | 'HELI' | 'VPMA' | 'BRI' | 'VPC' | 'CMIC';
 
 export interface UnitDef {
   type: UnitType;
@@ -37,6 +37,8 @@ export const UNITS: Record<UnitType, UnitDef> = {
   FPTGP: { type: 'FPTGP', service: 'pompiers', label: 'FPTGP', long: 'Fourgon pompe-tonne grande puissance', building: 'caserne', level: 10, price: 70000, upkeep: 330, speed: 0.9, carries: false },
   HELI: { type: 'HELI', service: 'samu', label: 'HÉLI', long: 'Hélicoptère du SAMU', building: 'hopital', level: 11, price: 250000, upkeep: 1200, speed: 1, flySpeed: 60, carries: true },
   BRI: { type: 'BRI', service: 'police', label: 'BRI', long: 'Brigade de recherche et d\'intervention', building: 'police', level: 10, price: 45000, upkeep: 300, speed: 1.2, carries: false },
+  VPC: { type: 'VPC', service: 'pompiers', label: 'VPC', long: 'Véhicule poste de commandement', building: 'caserne', level: 9, price: 50000, upkeep: 200, speed: 1.0, carries: false },
+  CMIC: { type: 'CMIC', service: 'pompiers', label: 'CMIC', long: 'Cellule mobile d\'intervention chimique', building: 'caserne', level: 10, price: 65000, upkeep: 260, speed: 0.95, carries: false },
   VPMA: { type: 'VPMA', service: 'pompiers', label: 'VPMA', long: 'Véhicule poste médical avancé', building: 'caserne', level: 12, price: 60000, upkeep: 270, speed: 0.95, carries: false },
 };
 

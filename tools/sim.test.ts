@@ -332,3 +332,41 @@ test('a major incident arrives on its own once unlocked', async () => {
   while (w.majors.length === 0 && w.t < 4 * 86400) tick(w, 1000);
   expect(w.majors.length).toBe(1);
 });
+
+test('every major incident runs through all its phases with a full fleet', async () => {
+  const { MAJORS } = await import('../sim/catalog/majors.ts');
+  const { startMajor, decideMajor, majorChoices } = await import('../sim/majors.ts');
+  for (const kind of MAJORS) {
+    const w = newWorld(city, 77);
+    w.level = 12;
+    w.money = 1e8;
+    const fire1 = buildAt(w, 'caserne', centre.x, centre.y)!;
+    const fire2 = buildAt(w, 'caserne', centre.x + 900, centre.y + 400)!;
+    const post = buySite(w, city.pois.findIndex((p) => p.kind === 'police'))!;
+    const hosp = buySite(w, city.pois.findIndex((p) => p.kind === 'hospital'))!;
+    for (const b of [fire1, fire2, post, hosp]) for (let i = 0; i < 3; i++) expand(w, b.id);
+    for (const t of ['FPT', 'FPT', 'EPA', 'VSAV', 'VSAV', 'VSAV', 'VTU', 'VTU'] as const) buyUnit(w, fire1.id, t);
+    for (const t of ['FPTGP', 'VPC', 'CMIC', 'VSR', 'VPMA', 'FPT'] as const) buyUnit(w, fire2.id, t);
+    for (const t of ['PS', 'PS', 'PS', 'BAC', 'BAC', 'BRI'] as const) buyUnit(w, post.id, t);
+    for (const t of ['SMUR', 'AMB', 'AMB'] as const) buyUnit(w, hosp.id, t);
+    w.nextCallAt = Infinity;
+    const m = startMajor(w, kind);
+    let lastPhase = 0;
+    for (let i = 0; i < 4 * 60 * 120 && m.state === 'actif'; i++) {
+      tick(w, 250);
+      lastPhase = Math.max(lastPhase, m.phase);
+      for (const c of w.calls) {
+        if (c.state === 'clos') continue;
+        if (c.state === 'bilan' && c.prompt) {
+          const best = [...c.prompt.options].filter((o) => majorChoices(w, c).find((x) => x.id === o.id)?.enabled).sort((a, b) => b.success - a.success)[0];
+          decideMajor(w, c, best.id);
+        } else {
+          const picks = options(w, c.id).filter((o) => o.suggested).map((o) => o.unit.id);
+          if (picks.length) dispatch(w, c.id, picks);
+        }
+      }
+    }
+    expect(m.state === 'actif' ? `${kind.id} stuck in phase ${m.phase}` : 'ended').toBe('ended');
+    expect(lastPhase === kind.phases.length - 1 || m.state === 'echec').toBe(true);
+  }
+});
