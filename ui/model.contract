@@ -76,6 +76,7 @@ shape UnitRow
   long: string
   service: string
   status: string
+  statusCode: number
   statusLabel: string
   building: string
   buildingName: string

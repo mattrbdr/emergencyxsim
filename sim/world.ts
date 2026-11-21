@@ -24,7 +24,7 @@ export function newWorld(city: City, seed: number): World {
     view: { w: 0, h: 0 }, pointers: new Map(), pinch: null, placing: null, overlay: false,
     contracts: [], dayStats: emptyDay(1), streak: 0, tutorial: 0, tip: '', tipsSeen: [],
   };
-  say(w, `Bienvenue à ${city.name}. Construisez votre première caserne : elle est offerte.`, 'info', true);
+  say(w, `Prise de garde à ${city.name}. Aucune caserne pour l'instant, la première est offerte.`, 'info', true);
   return w;
 }
 

@@ -23,7 +23,7 @@ export function earn(w: World, amount: number) {
 /** Spends if the player can afford it; says why not otherwise. */
 export function spend(w: World, amount: number, what: string): boolean {
   if (w.money < amount) {
-    say(w, `Fonds insuffisants pour ${what} (${euros(amount)}).`, 'bad', true);
+    say(w, `Fonds insuffisants pour ${what} : ${euros(amount)}`, 'bad', true);
     return false;
   }
   w.money -= amount;
@@ -51,5 +51,5 @@ export function chargeUpkeep(w: World, before: number) {
   w.money -= cost;
   w.stats.spent += cost;
   w.dirty = true;
-  say(w, `Entretien horaire : −${euros(cost)}.`, 'money');
+  say(w, `Entretien des moyens · −${euros(cost)}`, 'money');
 }

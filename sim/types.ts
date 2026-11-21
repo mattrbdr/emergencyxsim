@@ -54,7 +54,10 @@ export interface Call {
   node: number;
   x: number;
   y: number;
+  /** Full address for the call sheet (landmark, floor, door code). */
   address: string;
+  /** Number and street only, for the log. */
+  street: string;
   caller: string;
   at: number;
   deadline: number;

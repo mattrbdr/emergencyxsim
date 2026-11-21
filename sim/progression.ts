@@ -17,7 +17,7 @@ export function gainXp(w: World, amount: number) {
     const units = UNIT_ORDER.filter((t) => UNITS[t].level === level).map((t) => UNITS[t].label);
     const buildings = BUILDING_ORDER.filter((k) => BUILDINGS[k].level === level).map((k) => BUILDINGS[k].label);
     const calls = kindsUnlockedAt(level).length;
-    say(w, `Niveau ${level} : ${[...buildings, ...units].join(', ')} débloqué${units.length + buildings.length > 1 ? 's' : ''}, ${calls} nouvelles interventions.`, 'good', true);
+    say(w, `Niveau ${level} · ${[...buildings, ...units].join(', ')} disponible${units.length + buildings.length > 1 ? 's' : ''} · ${calls} nouveaux motifs d'appel`, 'good', true);
   }
   w.dirty = true;
 }

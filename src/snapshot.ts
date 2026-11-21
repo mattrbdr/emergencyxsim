@@ -14,14 +14,12 @@ import { shiftDay, streakBonus } from '../sim/contracts.ts';
 import { guide } from '../sim/tutorial.ts';
 import { euros } from '../sim/log.ts';
 import { unlocksAt } from '../sim/progression.ts';
-import type { Building, Call, UnitStatus, World } from '../sim/types.ts';
+import type { Building, Call, World } from '../sim/types.ts';
+import { STATUS } from '../sim/catalog/status.ts';
 import { etaOf } from '../sim/units.ts';
 
 type Snap = Result<'snapshot'>;
 
-const STATUS: Record<UnitStatus, string> = {
-  dispo: 'Disponible', route: 'En route', surplace: 'Sur place', transport: 'Transport', hopital: 'À l\'hôpital', retour: 'Retour',
-};
 const CALL_STATE: Record<Call['state'], string> = {
   nouveau: 'À qualifier', attente: 'À engager', engage: 'Moyens en route', bilan: 'Décision requise', traitement: 'Intervention', clos: 'Terminé',
 };
@@ -65,7 +63,7 @@ function callRow(w: World, c: Call): Snap['calls'][number] {
       .filter((u) => u !== undefined)
       .map((u) => ({
         id: u.id, name: u.name, service: u.service,
-        status: u.callId === c.id ? STATUS[u.status] : 'Libéré',
+        status: u.callId === c.id ? `${STATUS[u.status].code} ${STATUS[u.status].label}` : 'Libéré',
         eta: u.callId === c.id && u.status === 'route' ? minutesText(etaOf(w, u)) : '',
       })),
   };
@@ -142,7 +140,7 @@ export function snapshot(w: World): Snap {
       const b = w.buildings.find((x) => x.id === u.building);
       return {
         id: u.id, name: u.name, type: u.type, long: UNITS[u.type].long, service: u.service,
-        status: u.status, statusLabel: STATUS[u.status], building: u.building, buildingName: b?.name ?? '',
+        status: u.status, statusCode: STATUS[u.status].code, statusLabel: STATUS[u.status].label, building: u.building, buildingName: b?.name ?? '',
         callTitle: w.calls.find((c) => c.id === u.callId)?.kind.title ?? '',
         eta: u.status === 'route' || u.status === 'transport' || u.status === 'retour' ? minutesText(etaOf(w, u)) : '',
         missions: u.missions, canSell: u.status === 'dispo', resale: euros(UNITS[u.type].price / 2),
@@ -182,7 +180,7 @@ export function snapshot(w: World): Snap {
     streak: w.streak,
     stats: {
       calls: s.calls, saved: s.saved, lost: s.lost, failed: s.failed,
-      avgResponse: s.responses ? minutesText(s.responseSum / s.responses) : '—',
+      avgResponse: s.responses ? minutesText(s.responseSum / s.responses) : 'n.d.',
       accuracy: s.qualifyRight + s.qualifyWrong ? Math.round((s.qualifyRight / (s.qualifyRight + s.qualifyWrong)) * 100) : 100,
       earned: euros(s.earned), spent: euros(s.spent),
     },

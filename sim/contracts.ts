@@ -105,7 +105,7 @@ export function newDay(w: World) {
     if (!chosen.includes(k)) chosen.push(k);
   }
   w.contracts = chosen.map((k) => make(w, k));
-  say(w, `Jour ${day} : trois nouveaux contrats${w.streak > 0 ? ` (série de ${w.streak} jour${w.streak > 1 ? 's' : ''} parfaits, primes +${Math.min(5, w.streak) * 10} %)` : ''}.`, 'info', true);
+  say(w, `Jour ${day} · nouveaux contrats${w.streak > 0 ? ` · série de ${w.streak} jour${w.streak > 1 ? 's' : ''}, primes +${Math.min(5, w.streak) * 10} %` : ''}`, 'info', true);
   w.dirty = true;
 }
 
@@ -147,7 +147,7 @@ export function updateContracts(w: World) {
       w.money += money; // not counted in today's "earn" contract
       w.stats.earned += money;
       gainXp(w, c.xp);
-      say(w, `Contrat rempli : ${c.label} (+${euros(money)}, +${c.xp} XP).`, 'money', true);
+      say(w, `Contrat rempli : ${c.label} · +${euros(money)}, +${c.xp} XP`, 'money', true);
     }
   }
   if (w.contracts.length > 0 && w.contracts.every((c) => c.state !== 'open')) w.dirty = true;

@@ -72,7 +72,7 @@ export function expand(w: World, buildingId: string): boolean {
   if (b.slots >= def.maxSlots) return false;
   if (!spend(w, def.expand, `agrandir ${b.name}`)) return false;
   b.slots += 2;
-  say(w, `${b.name} agrandi : ${b.slots} places de garage.`, 'info');
+  say(w, `${b.name} agrandi, ${b.slots} places de garage`, 'info');
   return true;
 }
 
@@ -107,7 +107,7 @@ export function buyUnit(w: World, buildingId: string, type: UnitType): Unit | nu
   if (why) { say(w, `${UNITS[type].label} : ${why.toLowerCase()}.`, 'bad', true); return null; }
   if (!spend(w, UNITS[type].price, UNITS[type].label)) return null;
   const u = addUnit(w, b, type);
-  say(w, `${u.name} rejoint ${b.name} (−${euros(UNITS[type].price)}).`, 'money');
+  say(w, `${u.name} affecté à ${b.name} · −${euros(UNITS[type].price)}`, 'money');
   return u;
 }
 
@@ -119,6 +119,6 @@ export function sellUnit(w: World, unitId: string): boolean {
   w.units = w.units.filter((x) => x !== u);
   w.money += refund;
   w.dirty = true;
-  say(w, `${u.name} vendu (+${euros(refund)}).`, 'money');
+  say(w, `${u.name} réformé et revendu · +${euros(refund)}`, 'money');
   return true;
 }

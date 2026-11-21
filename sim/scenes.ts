@@ -38,7 +38,7 @@ export function rollTwist(w: World, call: Call) {
     call.twist = { id: twist.id, report: twist.report, add: twist.add, from: crew?.name ?? 'Le premier engin' };
     call.decisionLeft = DECISION_TIME;
     call.state = 'bilan';
-    say(w, `Bilan — ${call.address} : ${twist.report}`, 'alert', true);
+    say(w, `${call.twist.from} · ${call.street} : ${twist.report}`, 'alert', true);
     w.seq++;
     return;
   }
@@ -51,7 +51,7 @@ export function choices(w: World, call: Call): Choice[] {
   const out: Choice[] = [
     {
       id: 'renfort', label: `Demander ${names(add)}`,
-      detail: missing.length ? `Aucun ${names(missing)} de plus dans votre flotte` : 'La bonne réponse : +30 % de prime si l\'intervention réussit',
+      detail: missing.length ? `Aucun ${names(missing)} de plus dans votre flotte` : 'Le plus sûr. Prime +30 % si l\'intervention réussit',
       enabled: missing.length === 0,
     },
     { id: 'surplace', label: 'Faire avec les moyens présents', detail: '60 % de réussite, intervention 50 % plus longue', enabled: true },
@@ -70,16 +70,16 @@ export function decide(w: World, call: Call, choice: ChoiceId): boolean {
     call.needs = call.needs.concat(call.twist.add);
     call.bonus = 1.3;
     call.deadline = Math.max(call.deadline, w.t + 14 * 60);
-    say(w, `Renfort demandé : ${names(call.twist.add)} — ${call.address}.`, 'info');
+    say(w, `Demande de renfort ${names(call.twist.add)} · ${call.street}`, 'info');
   } else if (choice === 'surplace') {
     call.risk = 0.6;
     call.workLeft *= 1.5;
-    say(w, `Les équipes font avec les moyens présents — ${call.address}.`, 'info');
+    say(w, `${call.street} · poursuite avec les moyens sur place`, 'info');
   } else {
     call.risk = 0.75;
     call.bonus = 0.8;
     call.workLeft = Math.min(call.workLeft, 180);
-    say(w, `Évacuation immédiate — ${call.address}.`, 'info');
+    say(w, `${call.street} · évacuation immédiate demandée`, 'info');
   }
   call.twist = null;
   call.state = 'engage';
@@ -91,7 +91,7 @@ export function decide(w: World, call: Call, choice: ChoiceId): boolean {
 export function decisionTimeout(w: World, call: Call, dt: number) {
   call.decisionLeft -= dt;
   if (call.decisionLeft <= 0) {
-    say(w, `Sans réponse de la salle, l'équipe fait avec ses moyens — ${call.address}.`, 'bad');
+    say(w, `${call.street} · sans ordre de la salle, l'équipe poursuit avec ses moyens`, 'bad');
     decide(w, call, 'surplace');
   }
 }

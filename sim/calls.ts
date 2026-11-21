@@ -53,7 +53,7 @@ export function spawnCall(w: World) {
     node: w.rng() < 0.5 ? e.a : e.b,
     x: w.city.nx[e.a] + (w.city.nx[e.b] - w.city.nx[e.a]) * f,
     y: w.city.ny[e.a] + (w.city.ny[e.b] - w.city.ny[e.a]) * f,
-    address: '',
+    address: '', street: '',
     caller: pick(w.rng, kind.callers), at: w.t, deadline: w.t + kind.deadline * 60, priority: kind.priority,
     state: 'nouveau', qualified: false, guessedRight: false, needs: [...kind.needs], assigned: [],
     workLeft: kind.work * 60, escalated: false, outcome: '', firstOnScene: -1, closedAt: 0, earned: 0,
@@ -61,10 +61,16 @@ export function spawnCall(w: World) {
   };
   const street = `${1 + Math.floor(w.rng() * 140)} ${w.city.file.names[e.name] ?? 'rue sans nom'}`;
   const near = landmark(w.city, kind, call.x, call.y);
+  call.street = street;
   call.address = near ? `${near}, ${street}` : street;
+  if (kind.home) {
+    const floor = Math.floor(w.rng() * 7);
+    const code = `${1000 + Math.floor(w.rng() * 9000)}${'ABC'[Math.floor(w.rng() * 3)]}`;
+    call.address += floor === 0 ? `, rez-de-chaussée` : `, ${floor}${floor === 1 ? 'er' : 'e'} étage, code ${code}`;
+  }
   w.calls.push(call);
   w.stats.calls++;
-  say(w, `Appel ${call.priority === 1 ? 'URGENT ' : ''}— ${call.address}.`, call.priority === 1 ? 'alert' : 'info', true);
+  say(w, `Appel reçu${call.priority === 1 ? ', priorité 1' : ''} · ${call.street}`, call.priority === 1 ? 'alert' : 'info', true);
 }
 
 // ---------------------------------------------------------------- commands
@@ -81,11 +87,11 @@ export function qualify(w: World, callId: string, family: Family): boolean {
     w.stats.qualifyRight++;
     w.dayStats.qualifyRight++;
     gainXp(w, 5);
-    say(w, `Qualifié : ${call.kind.title.toLowerCase()}.`, 'info');
+    say(w, `${call.kind.title} · ${call.street}`, 'info');
   } else {
     w.stats.qualifyWrong++;
     adjustReputation(w, -2);
-    say(w, `Requalifié : c'était « ${call.kind.title} ». Réputation −2.`, 'bad', true);
+    say(w, `Mauvaise qualification, requalifié en ${call.kind.title.toLowerCase()}. Réputation −2`, 'bad', true);
   }
   w.seq++;
   return call.guessedRight;
@@ -96,6 +102,7 @@ export function dispatch(w: World, callId: string, unitIds: string[]): number {
   if (!call || call.state === 'clos') return 0;
   const tree = treeFromCall(w, call);
   let sent = 0;
+  const names: string[] = [];
   for (const id of unitIds) {
     const u = w.units.find((x) => x.id === id);
     if (!u || !isFree(u)) continue;
@@ -104,12 +111,13 @@ export function dispatch(w: World, callId: string, unitIds: string[]): number {
     u.callId = call.id;
     u.missions++;
     call.assigned.push(u.id);
+    names.push(u.name);
     sent++;
   }
   if (sent > 0) {
     if (!call.qualified) { call.qualified = true; call.guessedRight = true; }
     if (call.state === 'nouveau' || call.state === 'attente') call.state = 'engage';
-    say(w, `${sent} ${sent > 1 ? 'véhicules engagés' : 'véhicule engagé'} — ${call.address}.`, 'info');
+    say(w, `Départ ${names.join(', ')} · ${call.street}`, 'info');
     w.seq++;
   }
   return sent;
@@ -121,7 +129,7 @@ export function recall(w: World, unitId: string) {
   const call = findCall(w, u.callId);
   if (call) call.assigned = call.assigned.filter((x) => x !== u.id);
   goHome(w, u);
-  say(w, `${u.name} désengagé.`, 'info');
+  say(w, `${u.name} désengagé, retour`, 'info');
 }
 
 /** Needed types not yet covered by an assigned unit (multiset difference). */
@@ -201,7 +209,7 @@ export function updateCall(w: World, call: Call, dt: number) {
   }
   if (missing.length === 0) {
     call.state = 'traitement';
-    say(w, `${call.kind.title} : moyens au complet, intervention en cours.`, 'info');
+    say(w, `${call.street} · moyens au complet`, 'info');
     return;
   }
   if (w.t < call.deadline) return;
@@ -211,19 +219,19 @@ export function updateCall(w: World, call: Call, dt: number) {
     call.deadline = w.t + 10 * 60;
     call.priority = 1;
     adjustReputation(w, -3);
-    say(w, `Le feu se propage — ${call.address}. Renforts ${call.kind.escalate.map((t) => UNITS[t].label).join(', ')} nécessaires.`, 'alert', true);
+    say(w, `Propagation · ${call.street} · renfort ${call.kind.escalate.map((t) => UNITS[t].label).join(', ')} demandé`, 'alert', true);
     return;
   }
   if (call.kind.victims > 0) {
     call.outcome = 'perdu';
     w.stats.lost += call.kind.victims;
     adjustReputation(w, -4 * call.kind.victims);
-    say(w, `${call.kind.title}, ${call.address} : secours arrivés trop tard.`, 'bad', true);
+    say(w, `${call.street} · victime décédée avant l'arrivée des secours`, 'bad', true);
   } else {
     call.outcome = 'echec';
     w.stats.failed++;
     adjustReputation(w, -3);
-    say(w, `${call.kind.title}, ${call.address} : intervention manquée.`, 'bad', true);
+    say(w, `${call.street} · délai dépassé, intervention manquée`, 'bad', true);
   }
   close(w, call);
 }
@@ -235,12 +243,12 @@ function finish(w: World, call: Call) {
       call.outcome = 'perdu';
       w.stats.lost += call.kind.victims;
       adjustReputation(w, -4 * call.kind.victims);
-      say(w, `${call.kind.title}, ${call.address} : malgré les efforts, la victime n'a pas survécu.`, 'bad', true);
+      say(w, `${call.street} · décès malgré la prise en charge`, 'bad', true);
     } else {
       call.outcome = 'echec';
       w.stats.failed++;
       adjustReputation(w, -3);
-      say(w, `${call.kind.title}, ${call.address} : les moyens étaient insuffisants.`, 'bad', true);
+      say(w, `${call.street} · échec, moyens insuffisants`, 'bad', true);
     }
     close(w, call);
     return;
@@ -253,7 +261,7 @@ function finish(w: World, call: Call) {
   gainXp(w, call.kind.xp);
   adjustReputation(w, call.priority === 1 ? 2 : 1);
   if (call.kind.victims > 0) w.stats.saved += call.kind.victims;
-  say(w, `${call.kind.title} terminé — +${euros(money)}, +${call.kind.xp} XP.`, 'money', call.priority === 1);
+  say(w, `Fin d'intervention · ${call.street} · +${euros(money)}, +${call.kind.xp} XP`, 'money', call.priority === 1);
   close(w, call, call.kind.transport);
 }
 

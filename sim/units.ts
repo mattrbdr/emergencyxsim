@@ -113,7 +113,7 @@ export function arrive(w: World, u: Unit) {
       w.stats.responseSum += w.t - call.at;
       w.stats.responses++;
     }
-    say(w, `${u.name} sur les lieux, ${call.address}.`, 'info');
+    say(w, `${u.name} · statut 3 · ${call.street}`, 'info');
   } else if (u.status === 'transport') {
     u.status = 'hopital';
     u.wait = 240;
@@ -122,9 +122,9 @@ export function arrive(w: World, u: Unit) {
       own.patients++;
       w.money += 600;
       w.stats.earned += 600;
-      say(w, `${u.name} à ${own.name} : soins facturés (+600 €).`, 'money');
+      say(w, `${u.name} · statut 5 · ${own.name}, soins facturés +600 €`, 'money');
     } else {
-      say(w, `${u.name} a déposé la victime à l'hôpital.`, 'good');
+      say(w, `${u.name} · statut 5 · victime déposée aux urgences`, 'good');
     }
   } else if (u.status === 'retour') {
     u.status = 'dispo';
@@ -165,7 +165,7 @@ export function toHospital(w: World, u: Unit) {
   if (flies(u)) {
     const h = list.reduce((a, b) => (Math.hypot(a.x - u.x, a.y - u.y) <= Math.hypot(b.x - u.x, b.y - u.y) ? a : b));
     u.flight = { x: h.x, y: h.y };
-    say(w, `${u.name} évacue la victime vers ${h.name}.`, 'info');
+    say(w, `${u.name} · statut 4 · transport vers ${h.name}`, 'info');
     return;
   }
   const tree = freshTree(w, startNode(u));
@@ -177,5 +177,5 @@ export function toHospital(w: World, u: Unit) {
   u.path = midStreet ? [u.path[0], ...way] : way;
   if (!midStreet) u.along = 0;
   if (u.path.length <= 1) arrive(w, u);
-  else say(w, `${u.name} évacue la victime vers ${best.name}.`, 'info');
+  else say(w, `${u.name} · statut 4 · transport vers ${best.name}`, 'info');
 }
