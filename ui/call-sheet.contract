@@ -57,7 +57,7 @@ component CallSheet
         DecisionCard(d=c.decision, choose=choose)
 
       row gap=8 align-items="center" padding="8px 0" border-top="1px solid #252c36" border-bottom="1px solid #252c36"
-        Tag(text=c.stateLabel, color=callStateColor(c.state))
+        text c.stateLabel.toUpperCase() class=Mono font-size="0.7rem" font-weight=600 letter-spacing="0.04em" color=callStateColor(c.state)
         view flex=1
         Icon(name="clock", size=14, color="#9aa4b2")
         text c.timeText class=Mono font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#e6edf3")
@@ -76,7 +76,7 @@ component CallSheet
         text `« ${c.caller} »` font-size="0.95rem" line-height=1.5 testId="caller"
 
       if not c.qualified
-        column gap=8 padding=(hint == "call" ? 8 : 0) box-shadow=(hint == "call" ? "0 0 0 2px #56c2e6" : "none") border-radius=4 testId="qualify"
+        column gap=8 padding=(hint == "call" ? 8 : 0) box-shadow=(hint == "call" ? "0 0 0 2px #e6edf3" : "none") border-radius=4 testId="qualify"
           Heading(text="Qualifier l'appel", detail="")
           column gap=6
             for f in ["sap", "feu", "route", "police", "technique"] key=f
@@ -108,12 +108,12 @@ component CallSheet
         if open
           column gap=6 testId="dispatch"
             row align-items="center" gap=8
-              Heading(text="Engager", detail=`${plural(opts.length, "véhicule libre", "véhicules libres")}`)
+              Heading(text="Moyens disponibles", detail=`${plural(opts.length, "véhicule libre", "véhicules libres")}`)
             if shown.length == 0
               text (opts.length == 0 ? "Aucun véhicule libre. Achetez-en dans une caserne." : "Aucun véhicule du type demandé n'est libre.") font-size="0.85rem" color="#9aa4b2"
             for o in shown key=o.id
-              row press=toggle(o.id) role="checkbox" aria-checked=picks.includes(o.id) aria-label=`${o.name}, ${o.long}, arrivée ${o.eta}` gap=10 align-items="center" padding="7px 10px" border-radius=4 background-color=(picks.includes(o.id) ? "#1c2a36" : "#171c24") border-width=1 border-style="solid" border-color=(picks.includes(o.id) ? "#56c2e6" : "#1f2630") opacity=(o.needed ? 1 : 0.6) testId=`opt-${o.id}`
-                view width=16 height=16 border-radius=2 border-width=1 border-style="solid" border-color=(picks.includes(o.id) ? "#56c2e6" : "#4b5668") background-color=(picks.includes(o.id) ? "#56c2e6" : "transparent") display="flex" align-items="center" justify-content="center" flex-shrink=0
+              row press=toggle(o.id) role="checkbox" aria-checked=picks.includes(o.id) aria-label=`${o.name}, ${o.long}, arrivée ${o.eta}` gap=10 align-items="center" padding="7px 10px" border-radius=4 background-color=(picks.includes(o.id) ? "#1f2630" : "#171c24") border-width=1 border-style="solid" border-color=(picks.includes(o.id) ? "#e6edf3" : "#1f2630") opacity=(o.needed ? 1 : 0.6) testId=`opt-${o.id}`
+                view width=16 height=16 border-radius=2 border-width=1 border-style="solid" border-color=(picks.includes(o.id) ? "#e6edf3" : "#4b5668") background-color=(picks.includes(o.id) ? "#e6edf3" : "transparent") display="flex" align-items="center" justify-content="center" flex-shrink=0
                   if picks.includes(o.id)
                     Icon(name="check", size=12, color="#0b0e12")
                 CallSign(label=o.type, service=o.service, color=serviceColor(o.service))
@@ -121,7 +121,7 @@ component CallSheet
                   row gap=6 align-items="center"
                     text o.name class=Mono font-size="0.82rem" font-weight=600
                     if o.suggested
-                      text "SUGGÉRÉ" class=Caps font-size="0.58rem" color="#3fb950"
+                      text "RÉFLEXE" class=Caps font-size="0.58rem" color="#9aa4b2"
                   text (o.returning ? `${o.station} · en retour` : o.station) font-size="0.72rem" color="#6b7686" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
                 text o.eta class=Mono font-size="0.8rem" font-weight=600
             if opts.filter(o => not o.needed).length > 0
@@ -131,9 +131,9 @@ component CallSheet
               if picks.isEmpty() and suggested.length > 0
                 button press=useSuggestion class=Secondary flex=1 testId="use-suggestion"
                   text "Choisir"
-              button press=engage class=Primary flex=2 box-shadow=(hint == "engage" ? "0 0 0 2px #56c2e6" : "none") disabled=(picks.isEmpty() and suggested.isEmpty()) opacity=(picks.isEmpty() and suggested.isEmpty() ? 0.4 : 1) testId="engage"
+              button press=engage class=Primary flex=2 box-shadow=(hint == "engage" ? "0 0 0 2px #e6edf3" : "none") disabled=(picks.isEmpty() and suggested.isEmpty()) opacity=(picks.isEmpty() and suggested.isEmpty() ? 0.4 : 1) testId="engage"
                 Icon(name="flag", size=16, color="#0b0e12")
-                text (picks.isEmpty() ? "Engager la suggestion" : `Engager ${plural(picks.length, "véhicule", "véhicules")}`) font-weight=600
+                text (picks.isEmpty() ? "Départ réflexe" : `Engager ${plural(picks.length, "véhicule", "véhicules")}`) font-weight=600
 
 // The crew chief's report: the situation changed, the room decides.
 component DecisionCard
@@ -141,7 +141,7 @@ component DecisionCard
     d: Decision
     choose: action
   view
-    column gap=10 padding=14 background-color="#1a1610" border="1px solid #f0a531" border-radius=4 animation="pulse-border 1.6s ease-in-out infinite" testId="decision"
+    column gap=10 padding=14 background-color="#1a1610" border="1px solid #f0a531" border-radius=4 testId="decision"
       row gap=8 align-items="center"
         Icon(name="alert", size=16, color="#f0a531")
         text `BILAN · ${d.from.toUpperCase()}` class=Caps color="#f0a531" flex=1
@@ -153,6 +153,3 @@ component DecisionCard
             column align-items="flex-start" gap=2 flex=1
               text ch.label font-weight=600 color=(ch.id == "renfort" ? "#0b0e12" : "#e6edf3")
               text ch.detail class=Mono font-size="0.68rem" color=(ch.id == "renfort" ? "#30394a" : "#9aa4b2") text-align="left"
-
-keyframes pulse-border
-  50% border-color="#6b4f1c"

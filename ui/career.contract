@@ -10,12 +10,12 @@ component UnlockCard
     done: action
   view
     column position="absolute" inset=0 align-items="center" justify-content="center" padding=20 background-color="rgba(6,8,11,0.78)" testId="unlock"
-      column max-width="28rem" width="100%" box-sizing="border-box" gap=16 padding=22 background-color="#11151b" border="1px solid #b48ef0" border-radius=6 animation="rise 360ms cubic-bezier(0.2, 0.8, 0.2, 1)"
+      column max-width="28rem" width="100%" box-sizing="border-box" gap=16 padding=22 background-color="#11151b" border="1px solid #e6edf3" border-radius=6 animation="rise 360ms cubic-bezier(0.2, 0.8, 0.2, 1)"
         row gap=12 align-items="center"
-          view width="3.25rem" height="3.25rem" border="1px solid #b48ef0" border-radius=4 display="flex" align-items="center" justify-content="center"
-            text `${unlock.level}` class=Mono font-size="1.5rem" font-weight=600 color="#b48ef0"
+          view width="3.25rem" height="3.25rem" border="1px solid #e6edf3" border-radius=4 display="flex" align-items="center" justify-content="center"
+            text `${unlock.level}` class=Mono font-size="1.5rem" font-weight=600 color="#e6edf3"
           column gap=2
-            text "NIVEAU ATTEINT" class=Caps color="#b48ef0"
+            text "NIVEAU ATTEINT" class=Caps color="#e6edf3"
             text (unlock.level == 1 ? "Prise de poste" : "Nouveaux moyens disponibles") font-size="1.2rem" font-weight=600 role="heading" aria-level=2
         if unlock.buildings.length > 0
           column gap=6
@@ -62,14 +62,14 @@ component CareerPanel
         row align-items="baseline"
           text `Niveau ${level} / ${maxLevel}` font-weight=600 flex=1
           text xpText class=Mono font-size="0.75rem" color="#9aa4b2"
-        Meter(fraction=progress, color="#b48ef0")
+        Meter(fraction=progress, color="#e6edf3")
       row flex-wrap="wrap" gap=8
         Cell(label="Appels", value=`${stats.calls}`, color="#e6edf3")
         Cell(label="Victimes sauvées", value=`${stats.saved}`, color="#3fb950")
         Cell(label="Victimes perdues", value=`${stats.lost}`, color="#f2555a")
-        Cell(label="Échecs", value=`${stats.failed}`, color="#f0a531")
-        Cell(label="Délai moyen", value=stats.avgResponse, color="#56c2e6")
-        Cell(label="Qualification juste", value=`${stats.accuracy} %`, color="#b48ef0")
+        Cell(label="Échecs", value=`${stats.failed}`, color="#e6edf3")
+        Cell(label="Délai moyen", value=stats.avgResponse, color="#e6edf3")
+        Cell(label="Qualification juste", value=`${stats.accuracy} %`, color="#e6edf3")
         Cell(label="Réputation", value=`${reputation} %`, color="#e6edf3")
         Cell(label="Recettes", value=stats.earned, color=money())
         Cell(label="Dépenses", value=stats.spent, color="#9aa4b2")

@@ -1,18 +1,17 @@
-// First launch: the player names their town; it is downloaded from OpenStreetMap.
+// Opening a shift: the player names the commune whose calls they take; its map is
+// downloaded from OpenStreetMap. Laid out as a console login, not a landing page.
 use CityStatus, Ack from "./model.contract"
 use Icon from "./icons.contract"
-use Heading from "./parts.contract"
-use Mono, Caps, Primary, Secondary, Row from "./theme.contract"
+use Mono, Caps, Primary, Secondary from "./theme.contract"
 
 component CityPicker
   props
     seed: number
     ready: action
   state query = ""
-  state chosen = ""
   state polling = false
-  resource status = cityStatus(tick) as shape CityStatus else empty() transient
   state tick = 0
+  resource status = cityStatus(tick) as shape CityStatus else empty() transient
   mutation searched as shape Ack queue then afterSearch
   mutation loaded as shape Ack queue then afterLoad
   derive busy = status.busy or pending(searched) or pending(loaded)
@@ -33,7 +32,6 @@ component CityPicker
     polling = false
     tick = tick + 1
   action choose(insee: string, name: string)
-    chosen = name
     polling = true
     send loaded = chooseCity(insee, name, seed)
   action demo
@@ -46,42 +44,49 @@ component CityPicker
       ready()
 
   view
-    column position="absolute" inset=0 overflow="auto" background-color="#0b0e12" padding="calc(env(safe-area-inset-top) + 24px) 20px 24px" testId="city-picker"
-      column max-width="30rem" width="100%" margin="0 auto" gap=22
-        column gap=10
-          row gap=10 align-items="center"
-            view width=34 height=34 border-radius=4 background-color="#f2555a" display="flex" align-items="center" justify-content="center"
-              Icon(name="caserne", size=20, color="#0b0e12")
-            text "EMERGENCY SIM" class=Mono font-size="0.8rem" font-weight=600 letter-spacing="0.16em"
-          text "Votre ville, vos secours." font-size="1.9rem" font-weight=600 line-height=1.15 role="heading" aria-level=1
-          text "Vous dirigez les secours de votre commune : ses vraies rues, ses vraies casernes, ses hôpitaux. Commencez avec 30 000 €, une caserne et un VSAV ; chaque niveau débloque de nouveaux véhicules et de nouvelles interventions." color="#9aa4b2" line-height=1.5
-        column gap=8
-          text "COMMUNE" class=Caps
+    column position="absolute" inset=0 overflow="auto" background-color="#0b0e12" testId="city-picker"
+      row align-items="center" gap=10 padding="calc(env(safe-area-inset-top) + 10px) 16px 10px" background-color="#0e1217" border-bottom="1px solid #252c36"
+        view width=26 height=26 border-radius=3 background-color="#f2555a" display="flex" align-items="center" justify-content="center"
+          Icon(name="caserne", size=16, color="#0b0e12")
+        text "EMERGENCY SIM" class=Mono font-size="0.72rem" font-weight=600 letter-spacing="0.12em"
+        view flex=1
+        text "OUVERTURE DE GARDE" class=Caps
+      column max-width="34rem" width="100%" box-sizing="border-box" margin="0 auto" padding="28px 16px" gap=20
+        column gap=6
+          text "Commune de garde" font-size="1.25rem" font-weight=600 role="heading" aria-level=1
+          text "Les rues, les bâtiments et les bases de la commune sont chargés depuis OpenStreetMap. Comptez une minute pour une ville moyenne." font-size="0.88rem" color="#9aa4b2" line-height=1.5
+        column gap=6
+          text "NOM DE LA COMMUNE" class=Caps
           row gap=8
-            input value=query input=edit submit=search placeholder="ex. Annecy, Brest, Colmar…" aria-label="Nom de la commune" enterkeyhint="search" autocapitalize="words" flex=1 min-width=0 class=Mono padding="11px 12px" background-color="#11151b" color="#e6edf3" border="1px solid #30394a" border-radius=4 testId="city-query"
-            button press=search disabled=busy aria-label="Rechercher" class=Primary testId="city-search"
-              Icon(name="search", size=16, color="#0b0e12")
+            input value=query input=edit submit=search placeholder="Annecy" aria-label="Nom de la commune" enterkeyhint="search" autocapitalize="words" flex=1 min-width=0 class=Mono padding="10px 12px" background-color="#11151b" color="#e6edf3" border="1px solid #30394a" border-radius=3 testId="city-query"
+            button press=search disabled=busy aria-label="Rechercher" class=Primary padding="10px 14px" testId="city-search"
+              text "Rechercher" class=Mono font-size="0.78rem" font-weight=600 color="#0b0e12"
           if status.message != ""
-            row gap=8 align-items="center" padding="8px 10px" class=Row testId="city-status"
+            row gap=8 align-items="center" padding="8px 0" testId="city-status"
               if status.busy
-                view width=8 height=8 background-color="#56c2e6" animation="blink 0.9s steps(2) infinite"
+                view width=8 height=8 background-color="#e6edf3" animation="blink 0.9s steps(2) infinite"
               else
-                Icon(name=(status.phase == "error" ? "alert" : "check"), size=14, color=(status.phase == "error" ? "#f2555a" : "#3fb950"))
-              text status.message font-size="0.85rem" color=(status.phase == "error" ? "#f2555a" : "#e6edf3")
-          if status.matches.length > 0 and not status.busy
-            column gap=6
-              Heading(text="Communes trouvées", detail=`${status.matches.length}`)
-              for m in status.matches key=m.insee
-                button press=choose(m.insee, m.name) disabled=busy class=Secondary justify-content="flex-start" testId=`city-${m.insee}`
-                  Icon(name="city", size=16, color="#e6edf3")
-                  text m.name font-weight=500 flex=1 text-align="left"
-                  text (m.population > 0 ? `${m.department} · ${m.population} hab.` : m.department) class=Mono font-size="0.72rem" color="#9aa4b2"
-        column gap=8 padding-top=8 border-top="1px solid #252c36"
-          text "Pas de connexion, ou envie d'essayer d'abord ?" font-size="0.85rem" color="#9aa4b2"
-          button press=demo disabled=busy class=Secondary testId="city-demo"
-            Icon(name="play", size=14, color="#e6edf3")
-            text "Jouer dans la ville de démonstration"
-        text "Cartes © contributeurs OpenStreetMap (ODbL)." class=Caps font-size="0.6rem"
+                Icon(name=(status.phase == "error" ? "alert" : "check"), size=14, color=(status.phase == "error" ? "#f2555a" : "#9aa4b2"))
+              text status.message class=Mono font-size="0.78rem" color=(status.phase == "error" ? "#f2555a" : "#c9d1d9")
+        if status.matches.length > 0 and not status.busy
+          column
+            row padding="6px 10px" border-bottom="1px solid #252c36"
+              text "INSEE" class=Caps width="4.5rem"
+              text "COMMUNE" class=Caps flex=1
+              text "DÉP." class=Caps width="3rem"
+              text "HAB." class=Caps width="5rem" text-align="right"
+            for m in status.matches key=m.insee
+              button press=choose(m.insee, m.name) disabled=busy appearance="none" display="flex" align-items="center" padding="10px" border-bottom="1px solid #1a2029" text-align="left" testId=`city-${m.insee}`
+                text m.insee class=Mono font-size="0.78rem" color="#9aa4b2" width="4.5rem"
+                text m.name font-weight=500 flex=1
+                text m.department class=Mono font-size="0.78rem" width="3rem"
+                text (m.population > 0 ? `${m.population}` : "") class=Mono font-size="0.78rem" color="#9aa4b2" width="5rem" text-align="right"
+        column gap=8 padding-top=16 border-top="1px solid #252c36"
+          text "Hors ligne, ou pour s'entraîner :" font-size="0.85rem" color="#9aa4b2"
+          button press=demo disabled=busy class=Secondary justify-content="flex-start" testId="city-demo"
+            text "Ville d'entraînement" font-weight=500 flex=1 text-align="left"
+            text "5 × 4 km" class=Mono font-size="0.72rem" color="#6b7686"
+        text "Données cartographiques © contributeurs OpenStreetMap, licence ODbL." font-size="0.72rem" color="#6b7686"
 
 keyframes blink
   50% opacity=0.2

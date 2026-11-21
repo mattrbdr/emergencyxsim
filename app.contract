@@ -197,7 +197,7 @@ component EmergencySim
             Icon(name="target", size=16, color="#e6edf3")
           button press=toggleOverlay aria-label=(snap.overlay ? "Masquer la couverture" : "Afficher la couverture") aria-pressed=snap.overlay class=IconButton background-color=(snap.overlay ? "#1f3a26" : "#11151b") border-color=(snap.overlay ? "#3fb950" : "#252c36") testId="overlay"
             Icon(name="layers", size=16, color=(snap.overlay ? "#3fb950" : "#e6edf3"))
-          button press=openBuild aria-label="Construire" class=IconButton background-color="#e6edf3" box-shadow=(hint == "open-build" ? "0 0 0 2px #56c2e6" : "none") testId="open-build"
+          button press=openBuild aria-label="Construire" class=IconButton background-color="#e6edf3" box-shadow=(hint == "open-build" ? "0 0 0 2px #e6edf3" : "none") testId="open-build"
             Icon(name="build", size=18, color="#0b0e12")
 
         if snap.placing != ""
@@ -289,7 +289,7 @@ component Lists
             row gap=10 align-items="flex-start" padding="7px 2px" border-bottom="1px solid #1a2029"
               text l.at class=Mono font-size="0.68rem" color="#6b7686" padding-top=2
               view width=3 align-self="stretch" background-color=toneColor(l.tone)
-              text l.text font-size="0.82rem" color="#c9d1d9" flex=1 min-width=0
+              text l.text class=Mono font-size="0.74rem" line-height=1.45 color="#c9d1d9" flex=1 min-width=0
 
 // The one thing the side panel shows.
 component Detail

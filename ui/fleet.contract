@@ -4,6 +4,19 @@ use Icon from "./icons.contract"
 use Tag, CallSign, Heading, Empty from "./parts.contract"
 use Mono, Caps, Secondary, Quiet, serviceColor, kindColor, statusColor, plural from "./theme.contract"
 
+fn statusTone(code: number): string = code == 1 ? "#3fb950" : code == 3 ? "#f2555a" : code == 2 ? "#f0a531" : code == 6 ? "#9aa4b2" : "#b48ef0"
+
+// A radio status as the console shows it: the number on its colour.
+component StatusCode
+  props
+    code: number
+    label: string
+  view
+    row gap=6 align-items="center" flex-shrink=0
+      view width="1.25rem" height="1.25rem" background-color=statusTone(code) display="flex" align-items="center" justify-content="center"
+        text `${code}` class=Mono font-size="0.7rem" font-weight=600 color="#0b0e12"
+      text label class=Mono font-size="0.68rem" color="#9aa4b2" white-space="nowrap"
+
 component Fleet
   props
     buildings: BuildingRow[]
@@ -11,29 +24,22 @@ component Fleet
     pickBuilding: action
     pickUnit: action
   view
-    column role="tabpanel" id="panel-flotte" gap=12
+    column role="tabpanel" id="panel-flotte" gap=14
       if buildings.length == 0
-        Empty(icon="build", text="Pas encore de bâtiment. Construisez votre première caserne : elle est offerte avec son VSAV.")
+        Empty(icon="build", text="Aucun bâtiment. La première caserne est offerte, avec un VSAV.")
       for b in buildings key=b.id
-        column gap=4
-          button press=pickBuilding(b.id) appearance="none" display="flex" align-items="center" gap=10 padding="8px 4px" border-bottom="1px solid #252c36" testId=`building-${b.id}`
-            Icon(name=b.kind, size=18, color=kindColor(b.kind))
-            column flex=1 min-width=0 align-items="flex-start"
-              text b.name font-weight=600 font-size="0.9rem" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
-              text `${b.label} · ${b.used}/${plural(b.slots, "place", "places")}` class=Caps
-            text `${b.home} dispo` class=Mono font-size="0.72rem" color="#3fb950"
-            Icon(name="list", size=14, color="#6b7686")
+        column
+          button press=pickBuilding(b.id) appearance="none" display="flex" align-items="center" gap=8 padding="6px 4px" border-bottom="1px solid #30394a" testId=`building-${b.id}`
+            Icon(name=b.kind, size=15, color=kindColor(b.kind))
+            text b.name font-weight=600 font-size="0.84rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis" text-align="left"
+            text `${b.used}/${b.slots}` class=Mono font-size="0.7rem" color="#9aa4b2"
           for u in units.filter(x => x.building == b.id) key=u.id
-            row press=pickUnit(u.id) role="button" aria-label=`${u.name}, ${u.statusLabel}` gap=10 align-items="center" padding="6px 8px" border-radius=4 background-color="#171c24" testId=`unit-${u.id}`
-              CallSign(label=u.type, service=u.service, color=serviceColor(u.service))
-              column flex=1 min-width=0
-                text u.name class=Mono font-size="0.8rem" font-weight=600
-                if u.callTitle != ""
-                  text u.callTitle font-size="0.72rem" color="#9aa4b2" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
-              column align-items="flex-end" gap=2
-                Tag(text=u.statusLabel, color=statusColor(u.status))
-                if u.eta != ""
-                  text u.eta class=Mono font-size="0.66rem" color="#6b7686"
+            row press=pickUnit(u.id) role="button" aria-label=`${u.name}, statut ${u.statusCode}, ${u.statusLabel}` gap=8 align-items="center" padding="6px 4px" border-bottom="1px solid #1a2029" testId=`unit-${u.id}`
+              text u.name class=Mono font-size="0.78rem" font-weight=600 width="4.6rem" color=serviceColor(u.service)
+              StatusCode(code=u.statusCode, label=u.statusLabel)
+              text (u.callTitle != "" ? u.callTitle : "") font-size="0.72rem" color="#6b7686" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+              if u.eta != ""
+                text u.eta class=Mono font-size="0.68rem" color="#9aa4b2"
 
 component UnitCard
   props
@@ -56,7 +62,7 @@ component UnitCard
         button press=dismiss aria-label="Fermer" class=Quiet testId="unit-close"
           Icon(name="close", size=16, color="#9aa4b2")
       row gap=8 align-items="center" flex-wrap="wrap"
-        Tag(text=u.statusLabel, color=statusColor(u.status))
+        StatusCode(code=u.statusCode, label=u.statusLabel)
         if u.eta != ""
           text `arrivée ${u.eta}` class=Mono font-size="0.75rem" color="#9aa4b2"
       if u.callTitle != ""

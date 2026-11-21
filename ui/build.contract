@@ -96,7 +96,7 @@ component BuildingSheet
               text it.long font-size="0.8rem" font-weight=500
               text (it.owned > 0 ? `${it.upkeep} · ${it.owned} en service` : it.upkeep) class=Mono font-size="0.66rem" color="#6b7686"
             if it.why == ""
-              button press=buy(it.type) class=Primary padding="6px 10px" box-shadow=(hint == `buy-${it.type}` ? "0 0 0 2px #56c2e6" : "none") testId=`buy-${it.type}`
+              button press=buy(it.type) class=Primary padding="6px 10px" box-shadow=(hint == `buy-${it.type}` ? "0 0 0 2px #e6edf3" : "none") testId=`buy-${it.type}`
                 text it.price class=Mono font-size="0.75rem" font-weight=600 color="#0b0e12"
             else
               row gap=4 align-items="center"
@@ -123,7 +123,7 @@ component SiteSheet
         button press=dismiss aria-label="Fermer" class=Quiet testId="site-close"
           Icon(name="close", size=16, color="#9aa4b2")
       if s.open
-        text "Reprenez ce bâtiment existant : moins cher que construire, déjà bien placé." font-size="0.85rem" color="#9aa4b2" line-height=1.45
+        text "Bâtiment existant : moins cher que de construire." font-size="0.85rem" color="#9aa4b2" line-height=1.45
         button press=buy class=Primary testId="buy-site"
           Icon(name="money", size=16, color="#0b0e12")
           text `Reprendre pour ${s.price}` font-weight=600

@@ -1,8 +1,11 @@
-// The call queue: open calls by priority, then the last closed ones.
+// The call queue, as a dispatch console shows it: one dense line per call
+// (time, priority, reason, address, means, time left), open calls by priority.
 use CallRow from "./model.contract"
-use Icon from "./icons.contract"
-use Tag, Meter, Heading, Empty from "./parts.contract"
-use Mono, Caps, priorityColor, familyColor, familyIcon, needColor, callStateColor, outcomeColor, money from "./theme.contract"
+use Heading, Empty from "./parts.contract"
+use Mono, priorityColor, needColor, outcomeColor from "./theme.contract"
+
+fn stateCode(s: string): string = s == "nouveau" ? "À QUALIFIER" : s == "attente" ? "À ENGAGER" : s == "engage" ? "ENGAGÉ" : s == "bilan" ? "BILAN" : s == "traitement" ? "EN COURS" : ""
+fn stateColor(s: string): string = s == "nouveau" or s == "bilan" ? "#f2555a" : s == "attente" ? "#f0a531" : "#9aa4b2"
 
 component CallQueue
   props
@@ -13,26 +16,21 @@ component CallQueue
     firstBuilding: bool
     hint: string
   view
-    column role="tabpanel" id="panel-appels" gap=6
+    column role="tabpanel" id="panel-appels"
       if calls.length == 0
-        Empty(icon="phone", text=(firstBuilding ? "Aucun appel tant que vous n'avez pas de caserne. Touchez « Construire »." : "Ligne calme. Les appels arrivent ici."))
+        Empty(icon="phone", text=(firstBuilding ? "Pas d'appel tant qu'aucune caserne n'est en service." : "Aucun appel en cours."))
       for c, i in calls key=c.id
-        CallCard(c=c, active=(c.id == selected), pick=pick(c.id), hinted=(hint == "call" and i == 0), tid=(i == 0 ? "call-first" : `call-${c.id}`))
+        CallLine(c=c, active=(c.id == selected), pick=pick(c.id), hinted=(hint == "call" and i == 0), tid=(i == 0 ? "call-first" : `call-${c.id}`))
       if closed.length > 0
-        view height=8
-        Heading(text="Terminés", detail=`${closed.length}`)
+        view height=14
+        Heading(text="Clôturés", detail=`${closed.length}`)
         for c in closed key=c.id
-          row gap=10 align-items="center" padding="7px 10px" border-bottom="1px solid #1f2630"
-            view width=6 height=6 background-color=outcomeColor(c.outcome) flex-shrink=0
-            column flex=1 min-width=0
-              text c.title font-size="0.82rem" font-weight=500 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
-              text c.address class=Mono font-size="0.68rem" color="#6b7686" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
-            column align-items="flex-end" gap=0
-              text c.stateLabel class=Mono font-size="0.68rem" font-weight=600 color=outcomeColor(c.outcome)
-              if c.reward != ""
-                text c.reward class=Mono font-size="0.68rem" color=money()
+          row gap=8 align-items="baseline" padding="6px 4px" border-bottom="1px solid #1a2029"
+            text c.timeText class=Mono font-size="0.7rem" color="#6b7686" width="2.6rem"
+            text c.title font-size="0.8rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis" color="#c9d1d9"
+            text (c.reward != "" ? c.reward : c.stateLabel) class=Mono font-size="0.7rem" color=outcomeColor(c.outcome)
 
-component CallCard
+component CallLine
   props
     c: CallRow
     active: bool
@@ -40,22 +38,17 @@ component CallCard
     hinted: bool
     tid: string
   view
-    column press=pick box-shadow=(hinted ? "0 0 0 2px #56c2e6" : "none") role="button" aria-label=`Priorité ${c.priority}, ${c.title}, ${c.address}, ${c.stateLabel}, ${c.timeText}` gap=7 padding="10px 12px 10px 14px" position="relative" overflow="hidden" border-radius=4 background-color=(active ? "#1c2330" : "#171c24") border-width=1 border-style="solid" border-color=(active ? "#4b5668" : "#1f2630") testId=tid
-      view position="absolute" left=0 top=0 bottom=0 width=3 background-color=priorityColor(c.priority)
-      row align-items="center" gap=8
-        text `P${c.priority}` class=Mono font-size="0.7rem" font-weight=600 color=priorityColor(c.priority)
-        Icon(name=familyIcon(c.family), size=14, color=familyColor(c.family))
-        text c.title font-weight=600 font-size="0.92rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
-        text c.at class=Mono font-size="0.68rem" color="#6b7686"
-      text c.address class=Mono font-size="0.72rem" color="#9aa4b2" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
-      row gap=8 align-items="center"
-        Tag(text=c.stateLabel, color=callStateColor(c.state))
-        if c.escalated
-          Tag(text="Propagation", color="#f0a531")
-        view flex=1
-        text c.timeText class=Mono font-size="0.78rem" font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#e6edf3") testId=`time-${c.id}`
-      Meter(fraction=c.fraction, color=(c.state == "traitement" ? "#56c2e6" : priorityColor(c.priority)))
-      if c.needs.length > 0
-        row gap=4 flex-wrap="wrap"
-          for n, i in c.needs key=i
-            text n.type class=Mono font-size="0.64rem" font-weight=600 padding="1px 5px" border-radius=2 color=needColor(n.state) border-width=1 border-style="solid" border-color=needColor(n.state)
+    column press=pick role="button" aria-label=`Priorité ${c.priority}, ${c.title}, ${c.address}, ${c.stateLabel}, ${c.timeText}` gap=3 padding="8px 8px 8px 10px" border-left-width=3 border-left-style="solid" border-left-color=priorityColor(c.priority) border-bottom="1px solid #1a2029" background-color=(active ? "#1a212b" : "transparent") box-shadow=(hinted ? "0 0 0 2px #e6edf3" : "none") testId=tid
+      row gap=8 align-items="baseline"
+        text c.at class=Mono font-size="0.7rem" color="#6b7686" width="2.6rem"
+        text `P${c.priority}` class=Mono font-size="0.7rem" font-weight=600 color=priorityColor(c.priority) width="1.4rem"
+        text c.title font-weight=600 font-size="0.86rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+        text c.timeText class=Mono font-size="0.74rem" font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#c9d1d9") testId=`time-${c.id}`
+      row gap=8 align-items="baseline"
+        view width="4.4rem" flex-shrink=0
+          text stateCode(c.state) class=Mono font-size="0.6rem" font-weight=600 letter-spacing="0.04em" color=stateColor(c.state)
+        text c.address class=Mono font-size="0.7rem" color="#9aa4b2" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+        if c.needs.length > 0
+          row gap=4 flex-shrink=0
+            for n, i in c.needs key=i
+              text n.type class=Mono font-size="0.62rem" font-weight=600 color=needColor(n.state)

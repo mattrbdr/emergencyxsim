@@ -46,9 +46,9 @@ export const ICONS = {
   gare: 'M6 3h12v12H6zM6 10h12M9 15l-3 6M15 15l3 6M8 18.5h8M9 6.5h6',
   // ------------------------------------------------ interface
   layers: 'M12 3l9 5-9 5-9-5zM3 12.5l9 5 9-5M3 16.5l9 5 9-5',
-  money: `${circle(9, 9, 6)}M15.2 9.6a6 6 0 11-5.6 5.6M7 9h3.5M7.5 7l1-0.3c1.5-.4 2.5.4 2.5.4M7.5 11l1 .3c1.5.4 2.5-.4 2.5-.4`,
+  money: `M2.5 6.5h19v11h-19zM5.5 9.5v5M18.5 9.5v5${circle(12, 12, 2.6)}`,
   xp: 'M5 15l7-6 7 6M5 20l7-6 7 6M5 10l7-6 7 6',
-  reputation: 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.9z',
+  reputation: 'M3.5 17a8.5 8.5 0 0117 0M12 17l4-5.5M6 13.5l1.2.7M12 8.5V10M18 13.5l-1.2.7M3 17h18',
   clock: `${circle(12, 12, 8.5)}M12 7v5l3.5 2`,
   pause: 'M8 5v14M16 5v14',
   play: 'M7 4.5v15l12-7.5z',
@@ -74,7 +74,7 @@ export const ICONS = {
   search: `${circle(10.5, 10.5, 6)}M15 15l5.5 5.5`,
   fleet: `M2 16V9h9v7M11 11h4l3 3v2h-7M2 16h18${circle(5.5, 17, 1.6)}${circle(15, 17, 1.6)}M5 6h9`,
   speed: 'M4 6l7 6-7 6zM13 6l7 6-7 6z',
-  calls: 'M4 5h16v11H9l-5 4zM8 9.5h8M8 12.5h5',
+  calls: 'M4.5 14v-2a7.5 7.5 0 0115 0v2M4.5 14h3v5h-3zM16.5 14h3v5h-3zM19.5 19c0 1.5-1.5 2.5-4 2.5H13',
 } as const;
 
 export type IconName = keyof typeof ICONS;
