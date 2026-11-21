@@ -121,7 +121,7 @@ function drawMajorEffects(w: World, ctx: Ctx2D, now: number, alpha: number) {
       ctx.stroke();
       ctx.restore();
     }
-    label(ctx, f.stopped ? 'FUYARD INTERCEPTÉ' : 'FUYARD', x, y - 24, f.stopped ? MAP.muted : '#f0f6fc');
+    label(ctx, f.stopped ? 'FUYARD INTERCEPTÉ' : 'FUYARD', x, y + 30, f.stopped ? MAP.muted : '#f0f6fc');
   }
 }
 
