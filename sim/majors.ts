@@ -73,8 +73,10 @@ export const activeMajor = (w: World) => w.majors.find((m) => m.state === 'actif
 export const majorOf = (w: World, call: Call) => (call.majorId ? w.majors.find((m) => m.id === call.majorId) : undefined);
 
 function eligible(w: World): MajorKind[] {
-  const owned = new Set(w.units.map((u) => u.type));
-  return MAJORS.filter((k) => k.level <= w.level && k.phases[0].needs.every((t) => owned.has(t)));
+  // The fleet must hold enough vehicles of each type for the first phase.
+  const count = (t: UnitType) => w.units.filter((u) => u.type === t).length;
+  const covered = (needs: UnitType[]) => needs.every((t) => count(t) >= needs.filter((x) => x === t).length);
+  return MAJORS.filter((k) => k.level <= w.level && covered(k.phases[0].needs));
 }
 
 /** Called every step: starts an incident when one is due and none is running. */
@@ -83,7 +85,9 @@ export function updateMajors(w: World, dt: number) {
   if (m?.fugitive && !m.fugitive.stopped && m.phase === 0) chase(w, m, dt);
   if (w.t < w.nextMajorAt || m) return;
   w.nextMajorAt = w.t + nextDelay(w);
-  const kinds = eligible(w);
+  const last = w.majors.at(-1)?.kind.id;
+  const all = eligible(w);
+  const kinds = all.length > 1 ? all.filter((k) => k.id !== last) : all; // never the same one twice running
   if (kinds.length === 0) return;
   startMajor(w, kinds[Math.floor(w.rng() * kinds.length)]);
 }
@@ -293,7 +297,9 @@ function chase(w: World, m: Major, dt: number) {
     budget -= len - f.along;
     // At a crossing: carry on, preferring big roads, never straight back.
     const ways = city.adj[b].map((ei) => city.edges[ei]).filter((e) => (e.a === b ? e.b : e.a) !== a);
-    const pick = ways.length ? ways.sort((p, q) => p.cls - q.cls + (w.rng() - 0.5) * 2)[0] : null;
+    // Random keys drawn once, so the sort stays consistent (and the replay exact).
+    const keyed = ways.map((e) => ({ e, k: e.cls + (w.rng() - 0.5) * 2 }));
+    const pick = keyed.length ? keyed.reduce((best, x) => (x.k < best.k ? x : best)).e : null;
     f.path = [b, pick ? (pick.a === b ? pick.b : pick.a) : a];
     f.along = 0;
   }

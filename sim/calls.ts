@@ -13,7 +13,7 @@ import { decisionTimeout, rollTwist } from './scenes.ts';
 import { endPhase, majorDecisionTimeout } from './majors.ts';
 import { recordCall } from './contracts.ts';
 import { treeFromCall } from './traffic.ts';
-import type { Call, World } from './types.ts';
+import type { Call, Unit, World } from './types.ts';
 import { etaFrom, goHome, isFree, sendTo, toHospital } from './units.ts';
 
 
@@ -85,7 +85,8 @@ export function dispatch(w: World, callId: string, unitIds: string[]): number {
   const names: string[] = [];
   for (const id of unitIds) {
     const u = w.units.find((x) => x.id === id);
-    if (!u || !isFree(u)) continue;
+    if (!u || !available(w, u, call)) continue;
+    if (!isFree(u)) divert(w, u, call);
     sendTo(u, tree, call.x, call.y);
     u.status = 'route';
     u.callId = call.id;
@@ -101,6 +102,23 @@ export function dispatch(w: World, callId: string, unitIds: string[]): number {
     w.seq++;
   }
   return sent;
+}
+
+/** A crisis may take a crew driving to a lesser call (P2, P3): that call waits for another. */
+function divertedFrom(w: World, u: Unit, call: Call): Call | null {
+  if (!call.majorId || u.status !== 'route' || u.callId === call.id) return null;
+  const from = findCall(w, u.callId);
+  return from && !from.majorId && from.priority >= 2 ? from : null;
+}
+
+const available = (w: World, u: Unit, call: Call) => isFree(u) || divertedFrom(w, u, call) !== null;
+
+function divert(w: World, u: Unit, call: Call) {
+  const from = divertedFrom(w, u, call)!;
+  from.assigned = from.assigned.filter((x) => x !== u.id);
+  if (from.state === 'engage' && from.assigned.length === 0) from.state = 'attente';
+  u.missions--; // counted again by the new departure
+  say(w, `${u.name} réquisitionné · ${from.street} attend d'autres moyens`, 'alert');
 }
 
 export function recall(w: World, unitId: string) {
@@ -130,13 +148,14 @@ export function options(w: World, callId: string) {
   const tree = treeFromCall(w, call);
   const missing = missingTypes(w, call);
   const free = w.units
-    .filter(isFree)
-    .map((u) => ({ unit: u, eta: etaFrom(u, tree, call.x, call.y) }))
+    .filter((u) => available(w, u, call))
+    .map((u) => ({ unit: u, eta: etaFrom(u, tree, call.x, call.y), diverted: divertedFrom(w, u, call)?.street ?? '' }))
     .filter((o) => Number.isFinite(o.eta))
     .sort((a, b) => a.eta - b.eta);
   const want = [...missing];
   const suggested = new Set<string>();
-  for (const o of free) {
+  // Free crews first; a crew is taken off another call only when none is left.
+  for (const o of [...free].sort((a, b) => Number(a.diverted !== '') - Number(b.diverted !== ''))) {
     const k = want.indexOf(o.unit.type);
     if (k >= 0) { want.splice(k, 1); suggested.add(o.unit.id); }
   }

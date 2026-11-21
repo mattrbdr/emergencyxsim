@@ -3,13 +3,14 @@
 // a tick never waits on storage.
 import type { Storage } from '../app.contract.d.ts';
 import type { CityFile } from '../sim/city.ts';
-import type { Building, Unit, World } from '../sim/types.ts';
+import type { Fugitive, Major } from '../sim/majors.ts';
+import type { Building, Call, Unit, World } from '../sim/types.ts';
 
 export const CITY_FILE = 'app:/data/city.json';
 export const SAVE_FILE = 'app:/data/save.json';
 export const GRANTS = ['fs.read app:/data', 'fs.write app:/data'];
 
-const VERSION = 2;
+const VERSION = 3;
 
 export interface Save {
   version: number;
@@ -35,6 +36,10 @@ export interface Save {
   tutorial?: number;
   tipsSeen?: string[];
   nextMajorAt?: number;
+  // Since v3: the calls under way and the major incident in progress.
+  calls?: Omit<Call, 'assigned'>[];
+  major?: Omit<Major, 'kind'> & { kind: string; fugitive: Fugitive | null };
+  blocked?: number[];
 }
 
 const encode = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
@@ -52,7 +57,7 @@ export const loadCityFile = (storage: Storage) => readJson<CityFile>(storage, CI
 export const loadSave = async (storage: Storage) => {
   const save = await readJson<Save>(storage, SAVE_FILE);
   // v1 (before contracts and the tutorial) is read as is; restore fills the gaps.
-  return save && (save.version === VERSION || save.version === 1) ? save : null;
+  return save && (save.version >= 1 && save.version <= VERSION) ? save : null;
 };
 
 export function saveCity(storage: Storage, city: CityFile) {
@@ -67,7 +72,15 @@ export function snapshotSave(w: World): Save {
     units: w.units.map((u) => ({ id: u.id, type: u.type, name: u.name, building: u.building, missions: u.missions })),
     log: w.log.slice(0, 30),
     contracts: w.contracts, dayStats: w.dayStats, streak: w.streak, tutorial: w.tutorial, tipsSeen: w.tipsSeen, nextMajorAt: w.nextMajorAt,
+    calls: w.calls.filter((c) => c.state !== 'clos').map(({ assigned: _, ...c }) => c),
+    major: majorToSave(w),
+    blocked: [...w.blocked],
   };
+}
+
+function majorToSave(w: World): Save['major'] {
+  const m = w.majors.find((x) => x.state === 'actif');
+  return m ? { ...m, kind: m.kind.id } : undefined;
 }
 
 /** Starts a save; resolves when written (callers usually don't wait). */

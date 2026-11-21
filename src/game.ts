@@ -3,10 +3,12 @@
 import type { Storage } from '../app.contract.d.ts';
 import demoFile from '../data/city.json';
 import { BUILDINGS } from '../sim/catalog/buildings.ts';
+import { CALL_KINDS } from '../sim/catalog/calls.ts';
+import { MAJORS } from '../sim/catalog/majors.ts';
 import { UNITS } from '../sim/catalog/units.ts';
 import { loadCity, type City, type CityFile } from '../sim/city.ts';
 import { mulberry } from '../sim/rng.ts';
-import type { Unit, World } from '../sim/types.ts';
+import type { Call, Unit, World } from '../sim/types.ts';
 import { newWorld } from '../sim/world.ts';
 import { STEPS } from '../sim/tutorial.ts';
 import { deleteCareer, loadCityFile, loadSave, saveCity, writeSave, type Save } from './persistence.ts';
@@ -68,7 +70,7 @@ export function autosave(storage: Storage) {
   if (++game.ticksSinceSave >= 20 && game.world.dirty) save(storage);
 }
 
-function restore(city: City, s: Save): World {
+export function restore(city: City, s: Save): World {
   const w = newWorld(city, s.seed);
   Object.assign(w, {
     t: s.t, speed: s.speed, money: s.money, xp: s.xp, level: s.level, seenLevel: s.seenLevel,
@@ -94,5 +96,28 @@ function restore(city: City, s: Save): World {
       };
     })
     .filter((u): u is Unit => u !== null);
+  restoreOperations(w, s);
   return w;
+}
+
+/** Calls under way come back waiting for crews (every vehicle is at its base after a
+ * reload), with the work already done kept and a few minutes' grace; a major incident
+ * comes back in the phase it had reached. */
+function restoreOperations(w: World, s: Save) {
+  const nodes = w.city.nx.length;
+  const m = s.major;
+  const kind = m && MAJORS.find((k) => k.id === m.kind);
+  if (m && kind && m.spot.node < nodes) {
+    w.majors = [{ ...m, kind }];
+    for (const e of s.blocked ?? []) if (e < w.city.edges.length) w.blocked.add(e);
+  }
+  w.calls = (s.calls ?? [])
+    .filter((c) => c.node < nodes && (!c.majorId || w.majors.some((x) => x.id === c.majorId)))
+    .map((c): Call => ({
+      ...c,
+      kind: CALL_KINDS.find((k) => k.id === c.kind.id) ?? c.kind,
+      assigned: [],
+      state: c.state === 'bilan' ? 'bilan' : c.qualified ? 'attente' : 'nouveau',
+      deadline: Math.max(c.deadline, w.t + 8 * 60),
+    }));
 }

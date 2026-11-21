@@ -112,7 +112,7 @@ component CallSheet
         if open
           column gap=6 testId="dispatch"
             row align-items="center" gap=8
-              Heading(text="Moyens disponibles", detail=`${plural(opts.length, "véhicule libre", "véhicules libres")}`)
+              Heading(text="Moyens disponibles", detail=`${plural(opts.length, "véhicule", "véhicules")}`)
             if shown.length == 0
               text (opts.length == 0 ? "Aucun véhicule libre. Achetez-en dans une caserne." : "Aucun véhicule du type demandé n'est libre.") font-size="0.85rem" color="#9aa4b2"
             for o in shown key=o.id

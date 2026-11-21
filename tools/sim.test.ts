@@ -417,8 +417,13 @@ test('pursuit: the vehicle drives away, two crews box it in, the call follows it
   const start = { x: m.fugitive!.x, y: m.fugitive!.y };
   const call = w.calls.find((c) => c.id === m.callId)!;
   expect(call.hold).toBe(true);
-  for (let i = 0; i < 40; i++) tick(w, 250);
-  expect(Math.hypot(m.fugitive!.x - start.x, m.fugitive!.y - start.y)).toBeGreaterThan(20);
+  let travelled = 0;
+  for (let i = 0; i < 40; i++) {
+    tick(w, 250);
+    travelled += Math.hypot(m.fugitive!.x - m.fugitive!.px, m.fugitive!.y - m.fugitive!.py);
+  }
+  expect(travelled).toBeGreaterThan(100);
+  expect(Math.hypot(m.fugitive!.x - start.x, m.fugitive!.y - start.y)).toBeGreaterThan(0);
   expect(call.x).toBeCloseTo(m.fugitive!.x, 5);
   for (let i = 0; i < 4 * 60 * 60 && !m.fugitive!.stopped && m.state === 'actif'; i++) {
     tick(w, 250);
@@ -430,4 +435,102 @@ test('pursuit: the vehicle drives away, two crews box it in, the call follows it
   }
   expect(m.fugitive!.stopped).toBe(true);
   expect(call.hold).toBe(false);
+});
+
+test('a reload during a crisis keeps it: same phase, same streets cut, its call waits for crews', async () => {
+  const { MAJORS } = await import('../sim/catalog/majors.ts');
+  const { startMajor } = await import('../sim/majors.ts');
+  const { snapshotSave } = await import('../src/persistence.ts');
+  const { restore } = await import('../src/game.ts');
+  const w = fullFleet(8);
+  const m = startMajor(w, MAJORS.find((k) => k.id === 'inondation_eclair')!);
+  const call = w.calls.find((c) => c.id === m.callId)!;
+  const picks = options(w, call.id).filter((o) => o.suggested).map((o) => o.unit.id);
+  dispatch(w, call.id, picks);
+  for (let i = 0; i < 40; i++) tick(w, 250);
+  const back = restore(city, JSON.parse(JSON.stringify(snapshotSave(w))));
+  const m2 = back.majors[0];
+  expect(m2?.state).toBe('actif');
+  expect(m2.kind.id).toBe('inondation_eclair');
+  expect(m2.phase).toBe(m.phase);
+  expect(back.blocked.size).toBe(w.blocked.size);
+  const c2 = back.calls.find((c) => c.id === m2.callId)!;
+  expect(c2.assigned).toEqual([]);
+  expect(c2.state).toBe('attente');
+  expect(back.units.every((u) => u.status === 'dispo')).toBe(true);
+  // Sent again, the crews finish the job.
+  for (let i = 0; i < 4 * 60 * 180 && m2.state === 'actif'; i++) {
+    tick(back, 250);
+    for (const c of back.calls) {
+      if (c.state === 'clos' || c.assigned.length) continue;
+      const ids = options(back, c.id).filter((o) => o.suggested).map((o) => o.unit.id);
+      if (ids.length) dispatch(back, c.id, ids);
+    }
+  }
+  expect(m2.state).not.toBe('actif');
+  expect(back.blocked.size).toBe(0);
+});
+
+test('five days at level 12 with a medium fleet: crises come, end, and the service stays solvent', async () => {
+  const { decideMajor, majorChoices } = await import('../sim/majors.ts');
+  const w = newWorld(city, 12);
+  w.level = 12;
+  w.seenLevel = 12;
+  w.money = 2e6;
+  const fire = buildAt(w, 'caserne', centre.x, centre.y)!;
+  const post = buySite(w, city.pois.findIndex((p) => p.kind === 'police'))!;
+  const hosp = buySite(w, city.pois.findIndex((p) => p.kind === 'hospital'))!;
+  for (const b of [fire, post, hosp]) for (let i = 0; i < 2; i++) expand(w, b.id);
+  for (const t of ['FPT', 'FPT', 'EPA', 'VSAV', 'VSAV', 'VTU', 'VPC', 'CMIC'] as const) buyUnit(w, fire.id, t);
+  for (const t of ['PS', 'PS', 'BAC', 'BRI'] as const) buyUnit(w, post.id, t);
+  for (const t of ['SMUR', 'AMB'] as const) buyUnit(w, hosp.id, t);
+  expect(w.units.length).toBeGreaterThanOrEqual(12);
+  w.money = 60000;
+  w.speed = 4;
+  const start = w.t;
+  let lowest = w.money;
+  while (w.t < start + 5 * 86400) {
+    tick(w, 250);
+    for (const c of w.calls) {
+      if (c.state !== 'bilan' || !c.prompt) continue;
+      const open = majorChoices(w, c).filter((o) => o.enabled).map((o) => o.id);
+      const best = c.prompt.options.filter((o) => open.includes(o.id)).sort((a, b) => b.success - a.success)[0];
+      if (best) decideMajor(w, c, best.id);
+    }
+    regulate(w);
+    lowest = Math.min(lowest, w.money);
+  }
+  const done = w.majors.filter((m) => m.state !== 'actif');
+  const won = done.filter((m) => m.state === 'reussi').length;
+  for (const m of w.majors) console.log(m.kind.id, m.state, 'phase', m.phase, 'started', Math.round(m.startedAt / 3600), 'h, lasted', Math.round((m.endedAt - m.startedAt) / 60), 'min');
+  console.log(`level 12: ${w.majors.length} crises (${won} won), money ${Math.round(w.money)}, lowest ${Math.round(lowest)}, rep ${w.reputation}`);
+  expect(done.length).toBeGreaterThanOrEqual(2);
+  expect(w.majors.filter((m) => m.state === 'actif').length).toBeLessThanOrEqual(1);
+  expect(won / done.length).toBeGreaterThanOrEqual(0.3);
+  expect(lowest).toBeGreaterThan(0);
+});
+
+test('a crisis can requisition a crew driving to a lesser call; that call waits for another', async () => {
+  const { MAJORS } = await import('../sim/catalog/majors.ts');
+  const { startMajor } = await import('../sim/majors.ts');
+  const { createCall, spotOn } = await import('../sim/callfactory.ts');
+  const w = fullFleet(9);
+  const minor = createCall(w, CALL_KINDS.find((k) => k.family === 'police' && k.priority >= 2)!, spotOn(w, city.callEdges[3]), 'test');
+  minor.qualified = true;
+  w.calls.push(minor);
+  const patrols = w.units.filter((u) => u.type === 'PS');
+  dispatch(w, minor.id, patrols.map((u) => u.id));
+  expect(minor.assigned.length).toBe(patrols.length);
+  const m = startMajor(w, MAJORS.find((k) => k.id === 'otages')!);
+  const crisis = w.calls.find((c) => c.id === m.callId)!;
+  const picks = options(w, crisis.id).filter((o) => o.suggested);
+  expect(picks.filter((o) => o.unit.type === 'PS').length).toBe(2);
+  expect(picks.every((o) => o.diverted !== '')).toBe(true);
+  dispatch(w, crisis.id, picks.map((o) => o.unit.id));
+  expect(crisis.assigned.length).toBe(2);
+  expect(minor.assigned.length).toBe(patrols.length - 2);
+  // Everyday calls cannot take crews from one another.
+  const other = createCall(w, minor.kind, spotOn(w, city.callEdges[9]), 'test');
+  w.calls.push(other);
+  expect(options(w, other.id).some((o) => o.unit.callId === minor.id)).toBe(false);
 });

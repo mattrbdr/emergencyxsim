@@ -30,7 +30,7 @@ export const sources: Sources = {
   dispatchOptions: ([callId]) =>
     options(game.world, callId).map((o) => ({
       id: o.unit.id, name: o.unit.name, type: o.unit.type, long: UNITS[o.unit.type].long, service: o.unit.service,
-      station: game.world.buildings.find((b) => b.id === o.unit.building)?.name ?? '',
+      station: o.diverted ? `Réquisition · en route ${o.diverted}` : game.world.buildings.find((b) => b.id === o.unit.building)?.name ?? '',
       eta: minutesText(o.eta), suggested: o.suggested, needed: o.needed, returning: o.unit.status === 'retour',
     })),
   shop: ([buildingId]) => {
@@ -54,11 +54,13 @@ export const sources: Sources = {
 
   // ------------------------------------------------ time
   tick: ([ms], _store, storage) => {
-    if (game.ready) {
-      tick(game.world, ms);
-      autosave(storage);
-    }
-    return ack();
+    if (!game.ready) return ack();
+    const before = game.world.majors.length;
+    tick(game.world, ms);
+    autosave(storage);
+    // A crisis that just broke out: the view glides the map to it.
+    const fresh = game.world.majors.length > before ? game.world.majors.at(-1)! : null;
+    return ack(fresh ? `crisis:${fresh.callId}` : '');
   },
   setSpeed: ([speed]) => { game.world.speed = speed; game.world.paused = false; game.world.seq++; return ack(); },
   setPaused: ([paused]) => { game.world.paused = paused; game.world.seq++; return ack(); },

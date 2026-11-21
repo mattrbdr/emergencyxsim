@@ -27,7 +27,7 @@ component EmergencySim
   resource viewport = exactViewport() as shape Viewport
   resource boot = boot(bootSeq) as shape Boot else empty() transient
   resource snap = snapshot() as shape Snap else empty() transient
-  mutation ticked as shape Ack refreshes snap
+  mutation ticked as shape Ack refreshes snap then afterTick
   mutation commanded as shape Ack queue refreshes snap
   mutation moved as shape Ack queue then afterMove
   mutation cammed as shape Ack queue then afterCam
@@ -48,6 +48,7 @@ component EmergencySim
   derive wide = viewport.width >= 900
   derive mapSel = panel == "" ? "" : `${panel}:${picked}`
   derive moveReply = match moved { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
+  derive tickReply = match ticked { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
   derive camReply = match cammed { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
   derive placedReply = match placed { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
   derive sideOpen = panel != ""
@@ -173,6 +174,9 @@ component EmergencySim
       haptic("success")
     else if moveReply.picked.startsWith("site:")
       show("site", moveReply.picked.slice(5))
+  action afterTick
+    if tickReply.picked.startsWith("crisis:")
+      send cammed = camera("call", tickReply.picked.slice(7), insetLeft, insetRight, barHeight, insetBottom)
   action afterCam
     camSeq = camReply.cam
   action zoomIn
