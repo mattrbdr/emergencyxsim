@@ -19,7 +19,7 @@ import { focus, overview, zoomBy } from '../render/camera.ts';
 import { pointer, wheel } from '../render/gestures.ts';
 import { downloadCommune, searchCommune, status } from './city-loader.ts';
 import { autosave, boot, demoCity, game, resetCareer, save, startCareer } from './game.ts';
-import { shopItems, snapshot, upgradeItems } from './snapshot.ts';
+import { journalLines, roadmap, shopItems, snapshot, upgradeItems } from './snapshot.ts';
 
 const ack = (picked = ''): Result<'tick'> => ({ seq: game.world.seq, cam: game.world.cam.seq, picked });
 
@@ -36,6 +36,8 @@ export const sources: Sources = {
       station: o.diverted ? `Réquisition · en route ${o.diverted}` : game.world.buildings.find((b) => b.id === o.unit.building)?.name ?? '',
       eta: minutesText(o.eta), suggested: o.suggested, needed: o.needed, returning: o.unit.status === 'retour', tired: o.tired,
     })),
+  journal: ([filter]) => journalLines(game.world, filter),
+  roadmap: () => roadmap(),
   upgrades: ([buildingId]) => {
     const b = game.world.buildings.find((x) => x.id === buildingId);
     return b ? upgradeItems(game.world, b) : [];

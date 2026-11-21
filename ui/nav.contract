@@ -1,0 +1,49 @@
+// Moving between the console's four views: a rail on the left (desktop) or a
+// tab bar at the bottom (phone). Time runs on whatever the view.
+use Icon from "./icons.contract"
+use Mono from "./theme.contract"
+
+fn viewIcon(v: string): string = v == "regulation" ? "calls" : v == "flotte" ? "fleet" : v == "carriere" ? "level" : "log"
+fn viewLabel(v: string): string = v == "regulation" ? "Régulation" : v == "flotte" ? "Flotte" : v == "carriere" ? "Carrière" : "Main courante"
+
+component Nav
+  props
+    view: string
+    wide: bool
+    fresh: number
+    free: number
+    news: bool
+    hint: string
+    top: string
+    go: action
+  view
+    if wide
+      column role="tablist" aria-orientation="vertical" aria-label="Vues" position="absolute" left=0 top=top bottom=0 width="56px" padding-top=8 gap=4 background-color="#0b0e12" border-right="1px solid #252c36" testId="nav"
+        for v in ["regulation", "flotte", "carriere", "journal"] key=v
+          NavItem(v=v, on=(view == v), wide=true, fresh=fresh, free=free, news=news, glow=(hint == "buy-VSAV" and v == "flotte" and view != "flotte"), go=go)
+    else
+      row role="tablist" aria-label="Vues" position="absolute" left=0 right=0 bottom=0 padding-bottom="env(safe-area-inset-bottom)" background-color="#0b0e12" border-top="1px solid #252c36" testId="nav"
+        for v in ["regulation", "flotte", "carriere", "journal"] key=v
+          NavItem(v=v, on=(view == v), wide=false, fresh=fresh, free=free, news=news, glow=(hint == "buy-VSAV" and v == "flotte" and view != "flotte"), go=go)
+
+component NavItem
+  props
+    v: string
+    on: bool
+    wide: bool
+    fresh: number
+    free: number
+    news: bool
+    glow: bool
+    go: action
+  view
+    button role="tab" aria-selected=on aria-label=viewLabel(v) title=viewLabel(v) press=go(v) appearance="none" position="relative" flex=(wide ? "none" : 1) height=(wide ? "48px" : "52px") display="flex" flex-direction="column" align-items="center" justify-content="center" gap=3 border-left-width=(wide ? 2 : 0) border-left-style="solid" border-left-color=(on ? "#e6edf3" : "transparent") background-color=(on and wide ? "#151a21" : "transparent") box-shadow=(glow ? "inset 0 0 0 2px #e6edf3" : "none") testId=`nav-${v}`
+      Icon(name=viewIcon(v), size=19, color=(on ? "#e6edf3" : "#6b7686"))
+      if not wide
+        text viewLabel(v) font-size="0.62rem" font-weight=600 color=(on ? "#e6edf3" : "#6b7686")
+      if v == "regulation" and fresh > 0
+        text `${fresh}` class=Mono position="absolute" top=(wide ? 6 : 4) right=(wide ? 6 : "calc(50% - 22px)") font-size="0.6rem" font-weight=600 padding="1px 4px" border-radius=2 background-color="#f2555a" color="#0b0e12"
+      if v == "flotte" and wide
+        text `${free}` class=Mono position="absolute" bottom=4 right=6 font-size="0.58rem" color="#6b7686"
+      if v == "carriere" and news
+        view position="absolute" top=(wide ? 9 : 6) right=(wide ? 10 : "calc(50% - 16px)") width=7 height=7 border-radius=4 background-color="#f0a531"

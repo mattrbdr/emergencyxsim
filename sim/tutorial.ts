@@ -40,7 +40,7 @@ export const STEPS: Step[] = [
   },
   {
     id: 'buy', title: 'Agrandir la flotte',
-    text: 'Chaque intervention rapporte de l\'argent. Touchez votre caserne et achetez un second VSAV.',
+    text: 'Chaque intervention rapporte de l\'argent. Ouvrez la vue Flotte, touchez votre caserne et achetez un second VSAV.',
     hint: 'buy-VSAV', done: (w) => w.units.length >= 2,
   },
 ];

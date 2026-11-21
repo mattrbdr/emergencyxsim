@@ -96,6 +96,7 @@ shape UnitRow
 
 shape BuildingRow
   id: string
+  upgradesText: string
   name: string
   kind: string
   label: string
@@ -215,6 +216,15 @@ shape Weather
   bulletin: string
   event: string
   eventIcon: string
+
+shape RoadmapStep
+  level: number
+  rank: string
+  rankIcon: string
+  promoted: bool
+  items: string[]
+  calls: number
+  majors: string[]
 
 shape AchievementRow
   id: string

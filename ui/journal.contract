@@ -1,0 +1,38 @@
+// The log ("main courante") on its own page, with filters and the day's bulletin.
+use LogLine from "./model.contract"
+use Icon from "./icons.contract"
+use Heading, Empty from "./parts.contract"
+use Mono, Caps, Row, toneColor from "./theme.contract"
+
+fn filterLabel(f: string): string = f == "tout" ? "Tout" : f == "alertes" ? "Alertes" : f == "argent" ? "Argent" : "Succès"
+
+component JournalView
+  props
+    seq: number
+    date: string
+    bulletin: string
+    weatherIcon: string
+  state filter = "tout"
+  resource lines = journal(filter, seq) as shape LogLine[] else empty() transient
+  action pick(f: string)
+    filter = f
+  view
+    column gap=14 max-width="48rem" width="100%" margin="0 auto" testId="journal"
+      column gap=2
+        text `MAIN COURANTE · ${date.toUpperCase()}` class=Caps
+        text "Journal de la garde" font-size="1.15rem" font-weight=600 role="heading" aria-level=2
+      row gap=10 align-items="flex-start" padding="10px 12px" class=Row testId="journal-bulletin"
+        Icon(name=weatherIcon, size=18, color="#c9d1d9")
+        text bulletin font-size="0.84rem" color="#c9d1d9" line-height=1.45 flex=1
+      row role="radiogroup" aria-label="Filtrer" border="1px solid #252c36" border-radius=4 overflow="hidden" align-self="flex-start"
+        for f in ["tout", "alertes", "argent", "succes"] key=f
+          button role="radio" aria-checked=(filter == f) press=pick(f) appearance="none" padding="6px 12px" border-left=(f == "tout" ? "none" : "1px solid #252c36") background-color=(filter == f ? "#e6edf3" : "transparent") testId=`journal-${f}`
+            text filterLabel(f) font-size="0.78rem" font-weight=600 color=(filter == f ? "#0b0e12" : "#9aa4b2")
+      if lines.length == 0
+        Empty(icon="log", text="Rien à afficher pour ce filtre.")
+      column gap=0
+        for l in lines key=l.id
+          row gap=10 align-items="flex-start" padding="8px 2px" border-bottom="1px solid #1a2029"
+            text l.at class=Mono font-size="0.7rem" color="#6b7686" padding-top=2
+            view width=3 align-self="stretch" background-color=toneColor(l.tone)
+            text l.text class=Mono font-size="0.76rem" line-height=1.45 color="#c9d1d9" flex=1 min-width=0

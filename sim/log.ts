@@ -4,7 +4,7 @@ import type { LogEntry, World } from './types.ts';
 export function say(w: World, text: string, tone: LogEntry['tone'], toast = false) {
   const entry = { id: ++w.logId, t: w.t, text, tone };
   w.log.unshift(entry);
-  if (w.log.length > 80) w.log.pop();
+  if (w.log.length > 150) w.log.pop();
   if (toast) w.toast = entry;
 }
 

@@ -1,5 +1,5 @@
 // Progress: the card a new level shows, and the career panel (stats, settings).
-use Unlock, Stats, ShopItem, AchievementRow from "./model.contract"
+use Unlock, Stats, ShopItem, AchievementRow, RoadmapStep from "./model.contract"
 use Icon from "./icons.contract"
 use CallSign, Heading, Meter from "./parts.contract"
 use Mono, Caps, Primary, Secondary, Quiet, money from "./theme.contract"
@@ -63,59 +63,96 @@ component UnlockCard
         button press=done class=Primary testId="unlock-ok"
           text "Continuer" font-weight=600
 
-component CareerPanel
+// The career view: grade and level, then the record, the achievements and the
+// road ahead (what each level brings).
+component CareerView
   props
     level: number
     maxLevel: number
     xpText: string
     progress: number
     reputation: number
+    coverage: number
     stats: Stats
     city: string
     rank: string
     rankIcon: string
     achievements: AchievementRow[]
     achievementsDone: number
-    close: action
+    wide: bool
     reset: action
   state section = "bilan"
+  state onlyTodo = false
+  resource steps = roadmap() as shape RoadmapStep[] else empty() transient
   action pick(s: string)
     section = s
+  action toggleTodo
+    onlyTodo = not onlyTodo
   view
-    column gap=14 testId="career"
-      row align-items="center"
-        text "Carrière" font-size="1.15rem" font-weight=600 flex=1 role="heading" aria-level=2
-        button press=close aria-label="Fermer" class=Quiet testId="career-close"
-          Icon(name="close", size=16, color="#9aa4b2")
-      row gap=12 align-items="center"
-        view width="3rem" height="3rem" border="1px solid #f0a531" border-radius=4 display="flex" align-items="center" justify-content="center" flex-shrink=0
-          Icon(name=rankIcon, size=26, color="#f0a531")
-        column gap=6 flex=1 min-width=0
+    column gap=16 max-width="56rem" width="100%" margin="0 auto" testId="career"
+      row gap=14 align-items="center" flex-wrap="wrap"
+        view width="3.5rem" height="3.5rem" border="1px solid #f0a531" border-radius=4 display="flex" align-items="center" justify-content="center" flex-shrink=0
+          Icon(name=rankIcon, size=30, color="#f0a531")
+        column gap=6 flex="1 1 14rem" min-width=0
           row align-items="baseline" gap=8
-            text rank font-weight=600 flex=1 testId="rank"
-            text `Niveau ${level} / ${maxLevel}` class=Mono font-size="0.75rem" color="#9aa4b2"
+            text rank font-size="1.25rem" font-weight=600 flex=1 role="heading" aria-level=2 testId="rank"
+            text `Niveau ${level} / ${maxLevel}` class=Mono font-size="0.78rem" color="#9aa4b2"
           Meter(fraction=progress, color="#e6edf3")
-          text xpText class=Mono font-size="0.68rem" color="#6b7686"
+          text xpText class=Mono font-size="0.7rem" color="#6b7686"
+        row gap=8 flex="1 1 14rem"
+          Cell(label="Réputation", value=`${reputation} %`, color="#e6edf3")
+          Cell(label="Couverture 3 min", value=`${coverage} %`, color=(coverage >= 70 ? "#3fb950" : coverage >= 40 ? "#f0a531" : "#f2555a"))
       row role="tablist" border-bottom="1px solid #252c36"
-        for t in ["bilan", "succes"] key=t
-          button role="tab" aria-selected=(section == t) press=pick(t) appearance="none" flex=1 padding="8px 4px" border-bottom-width=2 border-bottom-style="solid" border-bottom-color=(section == t ? "#e6edf3" : "transparent") testId=`career-${t}`
-            text (t == "bilan" ? "Bilan" : `Succès ${achievementsDone} / ${achievements.length}`) font-size="0.82rem" font-weight=600 color=(section == t ? "#e6edf3" : "#9aa4b2")
-      if section == "succes"
-        column gap=6 testId="achievements"
-          for a in achievements key=a.id
-            row gap=10 align-items="center" padding="8px 10px" background-color="#171c24" border-radius=4 opacity=(a.done ? 1 : 0.7) testId=`achievement-${a.id}`
-              view width="1.6rem" height="1.6rem" border-radius=4 border-width=1 border-style="solid" border-color=(a.done ? "#f0a531" : "#30394a") display="flex" align-items="center" justify-content="center" flex-shrink=0
-                Icon(name=(a.done ? "check" : "lock"), size=13, color=(a.done ? "#f0a531" : "#6b7686"))
-              column flex=1 min-width=0 gap=3
-                text a.title font-size="0.84rem" font-weight=600 color=(a.done ? "#e6edf3" : "#c9d1d9")
-                text a.detail font-size="0.72rem" color="#9aa4b2" line-height=1.35
-                if not a.done and a.fraction > 0
-                  Meter(fraction=a.fraction, color="#9aa4b2")
-              column align-items="flex-end" gap=2 flex-shrink=0
-                text a.progressText class=Mono font-size="0.66rem" color=(a.done ? "#f0a531" : "#9aa4b2")
-                text a.reward class=Mono font-size="0.62rem" color="#6b7686"
+        for t in ["bilan", "succes", "progression"] key=t
+          button role="tab" aria-selected=(section == t) press=pick(t) appearance="none" flex=1 padding="9px 4px" border-bottom-width=2 border-bottom-style="solid" border-bottom-color=(section == t ? "#e6edf3" : "transparent") testId=`career-${t}`
+            text (t == "bilan" ? "Bilan" : t == "succes" ? `Succès ${achievementsDone} / ${achievements.length}` : "Progression") font-size="0.84rem" font-weight=600 color=(section == t ? "#e6edf3" : "#9aa4b2")
       if section == "bilan"
         CareerStats(stats=stats, reputation=reputation, city=city, reset=reset)
+      if section == "succes"
+        column gap=8
+          button press=toggleTodo role="switch" aria-checked=onlyTodo appearance="none" align-self="flex-start" display="flex" align-items="center" gap=8 padding="4px 0" testId="achievements-todo"
+            view width=14 height=14 border="1px solid #4b5668" border-radius=2 background-color=(onlyTodo ? "#e6edf3" : "transparent")
+            text "Seulement ceux à obtenir" font-size="0.8rem" color="#9aa4b2"
+          column display="grid" grid-template-columns=(wide ? "1fr 1fr" : "1fr") gap=6 testId="achievements"
+            for a in achievements.filter(x => not onlyTodo or not x.done) key=a.id
+              AchievementLine(a=a)
+      if section == "progression"
+        column gap=0 testId="roadmap"
+          for s in steps key=s.level
+            row gap=12 align-items="stretch" testId=`step-${s.level}`
+              column width="2.5rem" align-items="center" flex-shrink=0
+                view width="2rem" height="2rem" border-radius=4 border-width=1 border-style="solid" border-color=(s.level == level ? "#e6edf3" : s.level < level ? "#4b5668" : "#252c36") background-color=(s.level == level ? "#e6edf3" : "transparent") display="flex" align-items="center" justify-content="center"
+                  text `${s.level}` class=Mono font-size="0.8rem" font-weight=600 color=(s.level == level ? "#0b0e12" : s.level < level ? "#9aa4b2" : "#6b7686")
+                view flex=1 width=1 background-color="#252c36"
+              column flex=1 min-width=0 gap=4 padding-bottom=14 opacity=(s.level > level ? 0.75 : 1)
+                if s.promoted
+                  row gap=6 align-items="center"
+                    Icon(name=s.rankIcon, size=14, color="#f0a531")
+                    text s.rank.toUpperCase() class=Caps color="#f0a531"
+                for it in s.items key=it
+                  text it font-size="0.82rem" color=(s.level <= level ? "#e6edf3" : "#c9d1d9")
+                for m in s.majors key=m
+                  row gap=6 align-items="center"
+                    view width=7 height=7 background-color="#f2555a"
+                    text `Crise · ${m}` font-size="0.8rem" color="#f2555a"
+                if s.calls > 0
+                  text `${s.calls} nouveau${s.calls > 1 ? "x" : ""} type${s.calls > 1 ? "s" : ""} d'appel` class=Mono font-size="0.68rem" color="#6b7686"
+
+component AchievementLine
+  props
+    a: AchievementRow
+  view
+    row gap=10 align-items="center" padding="8px 10px" background-color="#171c24" border-radius=4 opacity=(a.done ? 1 : 0.75) testId=`achievement-${a.id}`
+      view width="1.6rem" height="1.6rem" border-radius=4 border-width=1 border-style="solid" border-color=(a.done ? "#f0a531" : "#30394a") display="flex" align-items="center" justify-content="center" flex-shrink=0
+        Icon(name=(a.done ? "check" : "lock"), size=13, color=(a.done ? "#f0a531" : "#6b7686"))
+      column flex=1 min-width=0 gap=3
+        text a.title font-size="0.84rem" font-weight=600 color=(a.done ? "#e6edf3" : "#c9d1d9")
+        text a.detail font-size="0.72rem" color="#9aa4b2" line-height=1.35
+        if not a.done and a.fraction > 0
+          Meter(fraction=a.fraction, color="#9aa4b2")
+      column align-items="flex-end" gap=2 flex-shrink=0
+        text a.progressText class=Mono font-size="0.66rem" color=(a.done ? "#f0a531" : "#9aa4b2")
+        text a.reward class=Mono font-size="0.62rem" color="#6b7686"
 
 component CareerStats
   props
@@ -132,7 +169,6 @@ component CareerStats
         Cell(label="Échecs", value=`${stats.failed}`, color="#e6edf3")
         Cell(label="Délai moyen", value=stats.avgResponse, color="#e6edf3")
         Cell(label="Qualification juste", value=`${stats.accuracy} %`, color="#e6edf3")
-        Cell(label="Réputation", value=`${reputation} %`, color="#e6edf3")
         Cell(label="Recettes", value=stats.earned, color=money())
         Cell(label="Dépenses", value=stats.spent, color="#9aa4b2")
       text `Ville : ${city}` class=Caps

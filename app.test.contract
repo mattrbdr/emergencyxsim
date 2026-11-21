@@ -25,6 +25,11 @@ test "the first caserne is free and comes with a VSAV"
   expect state snap.buildings.length == 1
   expect state snap.money == 30000
   expect state snap.units.0 .type == "VSAV"
+  expect tree has "building-brief"
+  tap "building-manage"
+  clock data
+  clock +300
+  expect tree has "fleet-view"
   expect tree has "building-sheet"
   expect tree has "buy-VSAV"
   expect tree missing "buy-FPT"
@@ -70,14 +75,12 @@ test "a call is qualified, dispatched and paid"
   clock +30000
   clock data
   expect state snap.units.0 .status == "dispo"
-  tap "gone-close"
+  tap "nav-flotte"
   clock data
-  tap "drawer-handle"
+  clock +300
+  tap "fleet-unit-u2"
   clock data
-  tap "tab-flotte"
-  clock data
-  tap "unit-u2"
-  clock data
+  clock +300
   expect tree has "unit-condition"
   tap "unit-service"
   clock data
@@ -97,6 +100,9 @@ test "the career survives a reload"
   tap "placing-confirm"
   clock data
   clock +300
+  tap "building-manage"
+  clock data
+  clock +300
   tap "buy-VSAV"
   clock data
   clock +300
@@ -109,7 +115,7 @@ test "the career survives a reload"
   expect state snap.units.length == 2
   expect state snap.money == 12000
   // The career panel: rank and the achievements list.
-  tap "level"
+  tap "nav-carriere"
   clock data
   clock +300
   expect text "rank" == "Sapeur"
@@ -117,3 +123,38 @@ test "the career survives a reload"
   clock data
   clock +300
   expect tree has "achievements"
+
+test "the views: fleet, career progression and the log, with time still running"
+  tap "city-demo"
+  clock data
+  clock +500
+  tap "build-caserne"
+  clock data
+  clock +300
+  tap "map"
+  clock data
+  clock +300
+  tap "placing-confirm"
+  clock data
+  clock +300
+  tap "nav-journal"
+  clock data
+  clock +300
+  expect tree has "journal"
+  tap "journal-alertes"
+  clock data
+  clock +300
+  tap "nav-carriere"
+  clock data
+  clock +300
+  tap "career-progression"
+  clock data
+  clock +300
+  expect tree has "step-25"
+  clock +4000
+  clock data
+  expect state snap.calls.length >= 1
+  tap "nav-regulation"
+  clock data
+  clock +300
+  expect tree has "map"

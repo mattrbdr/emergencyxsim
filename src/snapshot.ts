@@ -113,7 +113,7 @@ function buildingRow(w: World, b: Building): Snap['buildings'][number] {
   const def = BUILDINGS[b.kind];
   const units = unitsOf(w, b);
   return {
-    id: b.id, name: b.name, kind: b.kind, label: def.label, service: def.service,
+    id: b.id, name: b.name, kind: b.kind, label: def.label, service: def.service, upgradesText: `${b.upgrades.length} / ${upgradesFor(b).length}`,
     slots: b.slots, used: units.length, maxSlots: def.maxSlots, home: units.filter((u) => u.status === 'dispo').length,
     canExpand: b.slots < maxSlots(b), expandPrice: euros(def.expand),
     upkeep: `${euros(def.upkeep + upgradesUpkeep(b) + units.reduce((s, u) => s + UNITS[u.type].upkeep, 0))}/h`,
@@ -206,12 +206,44 @@ function achievementRows(w: World): Snap['achievements'] {
     const fraction = done ? 1 : Math.max(0, Math.min(1, value / target));
     return {
       id: a.id, title: a.title, detail: a.detail, done, fraction,
-      progressText: done ? 'Obtenu' : target > 1 ? `${Math.min(value, target).toLocaleString('fr-FR')} / ${target.toLocaleString('fr-FR')}` : '',
+      progressText: done ? 'Obtenu' : target > 1 ? `${grouped(Math.min(value, target))} / ${grouped(target)}` : '',
       reward: [a.money ? euros(a.money) : '', a.xp ? `${a.xp} XP` : ''].filter(Boolean).join(' · '),
       order: done ? -1 - w.achievements.indexOf(a.id) * 0.001 : 1 - fraction,
     };
   }).sort((a, b) => a.order - b.order).map(({ order: _, ...row }) => row);
 }
+
+export const logLine = (l: World['log'][number]) => ({ id: l.id, at: clockText(l.t), text: l.text, tone: l.tone });
+
+/** The log for the main courante view, filtered. */
+export function journalLines(w: World, filter: string) {
+  const keep = (l: World['log'][number]) =>
+    filter === 'alertes' ? l.tone === 'alert' || l.tone === 'bad'
+      : filter === 'argent' ? l.tone === 'money' || /€/.test(l.text)
+        : filter === 'succes' ? l.text.startsWith('Succès') || l.text.startsWith('Niveau')
+          : true;
+  return w.log.filter(keep).map(logLine);
+}
+
+/** What each of the 25 levels brings, for the progression timeline. */
+export function roadmap() {
+  return Array.from({ length: MAX_LEVEL }, (_, i) => {
+    const level = i + 1;
+    const u = unlocksAt(level);
+    return {
+      level, rank: rankOf(level).title, rankIcon: rankOf(level).icon, promoted: promotedAt(level) || level === 1,
+      items: [
+        ...u.buildings.map((k) => BUILDINGS[k].label),
+        ...u.units.map((t) => `${UNITS[t].label} · ${UNITS[t].long}`),
+        ...[...new Set(u.upgrades.map((x) => x.label))].map((l) => `Amélioration · ${l}`),
+      ],
+      calls: u.calls.length,
+      majors: u.majors.map((k) => k.title),
+    };
+  });
+}
+
+const grouped = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
 function weatherRow(w: World): Snap['weather'] {
   const t = today(w);
@@ -270,7 +302,7 @@ export function snapshot(w: World): Snap {
     buildings: w.buildings.map((b) => buildingRow(w, b)),
     sites: siteRows(w),
     build: buildOptions(w),
-    log: w.log.slice(0, 40).map((l) => ({ id: l.id, at: clockText(l.t), text: l.text, tone: l.tone })),
+    log: w.log.slice(0, 5).map(logLine),
     toast: { id: w.toast.id, at: clockText(w.toast.t), text: w.toast.text, tone: w.toast.tone },
     guide: guide(w),
     crisis: crisis(w),

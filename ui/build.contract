@@ -154,3 +154,30 @@ component SiteSheet
           text `Reprendre pour ${s.price}` font-weight=600
       else
         text `Disponible au niveau ${s.level}.` font-size="0.85rem" color="#9aa4b2"
+
+// On the map: a station at a glance, and the way to manage it.
+component BuildingBrief
+  props
+    b: BuildingRow
+    close: action
+    manage: action
+  view
+    column gap=12 testId="building-brief"
+      row align-items="center" gap=10
+        Icon(name=b.kind, size=22, color=kindColor(b.kind))
+        column flex=1 min-width=0 gap=2
+          text b.label.toUpperCase() class=Caps color=kindColor(b.kind)
+          text b.name font-size="1.05rem" font-weight=600 role="heading" aria-level=2
+        button press=close aria-label="Fermer" class=Quiet testId="building-close"
+          Icon(name="close", size=16, color="#9aa4b2")
+      row gap=8
+        column flex=1 gap=4
+          text "Garage" class=Caps
+          Meter(fraction=(b.slots > 0 ? b.used / b.slots : 0), color=kindColor(b.kind))
+          text `${b.used} / ${b.slots} · ${b.home} à la base` class=Mono font-size="0.72rem" color="#9aa4b2"
+        column flex=1 gap=4
+          text "Améliorations" class=Caps
+          text b.upgradesText class=Mono font-size="0.9rem" font-weight=600
+      button press=manage class=Primary testId="building-manage"
+        Icon(name="fleet", size=15, color="#0b0e12")
+        text "Gérer dans Flotte" font-weight=600
