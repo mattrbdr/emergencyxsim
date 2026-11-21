@@ -22,6 +22,7 @@ component FleetView
     pushed: bool
     upkeep: string
     sel: string
+    toMap: action
     pick: action
     showOnMap: action
   state filter = "tous"
@@ -46,10 +47,10 @@ component FleetView
             Count(label="Repos", n=units.filter(u => u.status == "repos").length, color="#58a6ff")
             Count(label="Atelier", n=units.filter(u => u.status == "atelier").length, color="#808b9c")
           text `Entretien total ${upkeep}` class=Mono font-size="0.72rem" color="#9aa4b2"
-          row role="radiogroup" aria-label="Filtrer les véhicules" border="1px solid #252c36" border-radius=4 overflow="hidden" align-self="flex-start" flex-wrap="wrap"
+          row role="radiogroup" aria-label="Filtrer les véhicules" align-self="stretch"
             for f in ["tous", "dispo", "fatigues", "repos"] key=f
-              button role="radio" aria-checked=(filter == f) press=setFilter(f) appearance="none" padding="6px 10px" border-left=(f == "tous" ? "none" : "1px solid #252c36") background-color=(filter == f ? "#e6edf3" : "transparent") testId=`fleet-${f}`
-                text filterLabel(f) font-size="0.76rem" font-weight=600 color=(filter == f ? "#0b0e12" : "#9aa4b2")
+              button role="radio" aria-checked=(filter == f) press=setFilter(f) testId=`fleet-${f}`
+                text filterLabel(f)
           if buildings.length == 0
             Empty(icon="build", text="Aucune base. Construisez la première caserne depuis la régulation.")
           for b in buildings key=b.id
@@ -87,7 +88,7 @@ component FleetView
           if selKind == "unit"
             match first(units.filter(u => u.id == selId))
               case some(u)
-                UnitCard(u=u, dismiss=back, see=seeOnMap)
+                UnitCard(u=u, dismiss=back, see=seeOnMap, posted=toMap)
               case none
                 text "Ce véhicule n'est plus en service." color="#9aa4b2"
       else if wide

@@ -8,6 +8,8 @@ shape Ack
 shape Boot
   ready: bool
   city: string
+  // No station yet: a career just started.
+  fresh: bool
 
 shape Match
   insee: string

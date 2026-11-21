@@ -75,6 +75,9 @@ test "a call is qualified, dispatched and paid"
   clock +30000
   clock data
   expect state snap.units.0 .status == "dispo"
+  tap "gone-close"
+  clock data
+  clock +300
   tap "nav-flotte"
   clock data
   clock +300
@@ -137,6 +140,9 @@ test "the views: fleet, career progression and the log, with time still running"
   tap "placing-confirm"
   clock data
   clock +300
+  tap "building-close"
+  clock data
+  clock +300
   tap "nav-journal"
   clock data
   clock +300
@@ -180,6 +186,9 @@ test "a vehicle is stationed at a crossing from its card"
   tap "placing-confirm"
   clock data
   clock +300
+  tap "building-close"
+  clock data
+  clock +300
   tap "nav-flotte"
   clock data
   clock +300
@@ -195,3 +204,37 @@ test "a vehicle is stationed at a crossing from its card"
   clock +300
   expect state snap.units.0 .status == "poste"
   expect tree missing "posting"
+
+test "fifteen taps on the balance double it; the map pans"
+  tap "city-demo"
+  clock data
+  clock +500
+  tap "build-close"
+  clock data
+  clock +300
+  expect state snap.money == 30000
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  tap "money"
+  clock data
+  clock +300
+  expect state snap.money == 60000
+  tap "map" drag 80 40
+  clock data
+  tap "map" pinch 2
+  clock data
+  tap "map" pinch 0.5
+  clock data
+  expect tree has "map"

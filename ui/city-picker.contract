@@ -61,10 +61,10 @@ component CityPicker
           text "Les rues, les bâtiments et les bases de la commune sont chargés depuis OpenStreetMap. Comptez une minute pour une ville moyenne." font-size="0.88rem" color="#9aa4b2" line-height=1.5
         column gap=6
           text "RYTHME DE GARDE" class=Caps
-          row role="radiogroup" aria-label="Rythme de garde" border="1px solid #252c36" border-radius=4 overflow="hidden"
+          row role="radiogroup" aria-label="Rythme de garde"
             for p in ["calme", "normal", "chargee"] key=p
-              button role="radio" aria-checked=(pace == p) press=setPace(p) appearance="none" flex=1 padding="8px 6px" border-left=(p == "calme" ? "none" : "1px solid #252c36") background-color=(pace == p ? "#e6edf3" : "transparent") testId=`pace-${p}`
-                text (p == "calme" ? "Calme" : p == "normal" ? "Normale" : "Chargée") font-size="0.82rem" font-weight=600 color=(pace == p ? "#0b0e12" : "#9aa4b2")
+              button role="radio" aria-checked=(pace == p) press=setPace(p) testId=`pace-${p}`
+                text (p == "calme" ? "Calme" : p == "normal" ? "Normale" : "Chargée")
           text (pace == "calme" ? "Moins d'appels, des délais plus longs." : pace == "normal" ? "Le rythme prévu." : "Plus d'appels, moins de marge, mieux payé.") font-size="0.78rem" color="#808b9c"
         column gap=6
           text "NOM DE LA COMMUNE" class=Caps

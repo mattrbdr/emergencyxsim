@@ -106,10 +106,11 @@ component CareerView
         row gap=8 flex="1 1 14rem"
           Cell(label=`Réputation · ${repEffect}`, value=`${reputation} %`, color="#e6edf3")
           Cell(label="Couverture 3 min", value=`${coverage} %`, color=(coverage >= 70 ? "#3fb950" : coverage >= 40 ? "#f0a531" : "#f2555a"))
-      row role="tablist" border-bottom="1px solid #252c36"
+      // A segmented control: UIKit's on iOS.
+      row role="tablist" aria-label="Carrière"
         for t in ["bilan", "succes", "progression", "reglages"] key=t
-          button role="tab" aria-selected=(section == t) press=pick(t) appearance="none" flex=1 padding="9px 4px" border-bottom-width=2 border-bottom-style="solid" border-bottom-color=(section == t ? "#e6edf3" : "transparent") testId=`career-${t}`
-            text (t == "bilan" ? "Bilan" : t == "succes" ? `Succès ${achievementsDone} / ${achievements.length}` : t == "progression" ? "Progression" : "Réglages") font-size="0.84rem" font-weight=600 color=(section == t ? "#e6edf3" : "#9aa4b2")
+          button role="tab" aria-selected=(section == t) press=pick(t) testId=`career-${t}`
+            text (t == "bilan" ? "Bilan" : t == "succes" ? `Succès ${achievementsDone}` : t == "progression" ? "Progression" : "Réglages")
       if section == "reglages"
         column gap=8 testId="settings"
           Toggle(label="Son", detail="Sonneries, radio, alarmes et gains.", on=settings.sound, flip=setSetting("sound", not settings.sound), tid="setting-sound")
@@ -205,10 +206,12 @@ component Toggle
     on: bool
     flip: action
     tid: string
+  action changed(checked: bool)
+    flip()
   view
-    button press=flip role="switch" aria-checked=on appearance="none" display="flex" align-items="center" gap=12 padding="10px 12px" background-color="#171c24" border-radius=4 text-align="left" testId=tid
+    row gap=12 align-items="center" padding="10px 12px" background-color="#171c24" border-radius=4
       column flex=1 min-width=0 gap=2
         text label font-weight=600 font-size="0.88rem"
         text detail font-size="0.74rem" color="#9aa4b2" line-height=1.35
-      view width=40 height=22 border-radius=11 background-color=(on ? "#3fb950" : "#30394a") position="relative" flex-shrink=0
-        view position="absolute" top=3 left=(on ? 21 : 3) width=16 height=16 border-radius=8 background-color="#e6edf3"
+      // UIKit's UISwitch on iOS, the platform's switch elsewhere.
+      input type="checkbox" switch checked=on change=changed aria-label=label accent-color="#3fb950" margin=0 flex-shrink=0 testId=tid

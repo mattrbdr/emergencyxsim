@@ -52,6 +52,7 @@ component UnitCard
     u: UnitRow
     dismiss: action
     see: action
+    posted: action
   mutation done as shape Ack queue
   action recall
     send done = recallUnit(u.id)
@@ -62,7 +63,7 @@ component UnitCard
     send done = restUnit(u.id)
   action post
     send done = postUnit(u.id)
-    see()
+    posted()
   action standDown
     send done = standDown(u.id)
   action service

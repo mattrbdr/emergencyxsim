@@ -1,5 +1,5 @@
 // The strip across the top: town, day and clock, speed, money, level, reputation.
-use Snap from "./model.contract"
+use Snap, Ack from "./model.contract"
 use Icon from "./icons.contract"
 use Figure, Meter from "./parts.contract"
 use Mono, Caps, money from "./theme.contract"
@@ -11,6 +11,22 @@ component TopBar
     setSpeed: action
     togglePause: action
     openContracts: action
+  // A hidden cheat: fifteen taps on the balance within five seconds double it.
+  state taps = 0
+  state firstTap = 0
+  mutation cheated as shape Ack
+  action tapMoney
+    let now = performanceNow()
+    if now - firstTap > 5000
+      taps = 1
+      firstTap = now
+    else if taps + 1 >= 15
+      send cheated = doubleMoney()
+      taps = 0
+      firstTap = 0
+      haptic("success")
+    else
+      taps = taps + 1
   view
     row position="absolute" top=0 left=0 right=0 padding-top="env(safe-area-inset-top)" background-color="#0e1217" border-bottom="1px solid #252c36" testId="bar"
       row flex=1 align-items="center" gap=(wide ? 16 : 8) padding=(wide ? "7px 16px" : "7px 8px") min-width=0
@@ -38,10 +54,11 @@ component TopBar
           if snap.weather.event != ""
             Icon(name=snap.weather.eventIcon, size=15, color="#f0a531")
         view flex=1
-        if wide
-          Figure(icon="money", label=snap.upkeepText, value=snap.moneyText, color=(snap.money < 0 ? "#f2555a" : money()))
-        else
-          text snap.moneyText class=Mono font-size="0.85rem" font-weight=600 white-space="nowrap" color=(snap.money < 0 ? "#f2555a" : "#e6edf3") testId="money"
+        button press=tapMoney appearance="none" aria-label=`Solde ${snap.moneyText}` padding="4px 2px" min-height="2.75rem" display="flex" align-items="center" testId="money"
+          if wide
+            Figure(icon="money", label=snap.upkeepText, value=snap.moneyText, color=(snap.money < 0 ? "#f2555a" : money()))
+          else
+            text snap.moneyText class=Mono font-size="0.85rem" font-weight=600 white-space="nowrap" color=(snap.money < 0 ? "#f2555a" : "#e6edf3")
         button press=openContracts appearance="none" aria-label=`Contrats du jour : ${snap.contractsDone} sur ${snap.contracts.length}` display="flex" align-items="center" gap=4 padding=(wide ? "5px 8px" : "5px 6px") border="1px solid #252c36" border-radius=4 flex-shrink=0 testId="open-contracts"
           Icon(name="flag", size=15, color=(snap.contractsDone == snap.contracts.length and snap.contracts.length > 0 ? "#3fb950" : "#e6edf3"))
           text `${snap.contractsDone}/${snap.contracts.length}` class=Mono font-size="0.8rem" font-weight=600

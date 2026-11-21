@@ -821,3 +821,31 @@ test('difficulty: a calm shift has fewer calls and longer deadlines than a busy 
   const dl = (w: World) => createCall(w, CALL_KINDS[0], spotOn(w, city.callEdges[1]), 'x').deadline - w.t;
   expect(dl(calm)).toBeGreaterThan(dl(busy));
 });
+
+test('one-finger zoom: a double tap zooms in, tap-then-slide zooms out and in', async () => {
+  const { pointer } = await import('../render/gestures.ts');
+  const { frameCity, glide } = await import('../render/camera.ts');
+  const w = newWorld(city, 3);
+  w.view = { w: 390, h: 844 };
+  frameCity(w);
+  const z0 = w.cam.zoom;
+  // Double tap on empty map (no station yet).
+  pointer(w, "down", 1, 300, 650, 0); pointer(w, "up", 1, 300, 650, 60);
+  pointer(w, "down", 2, 300, 650, 200); pointer(w, "up", 2, 300, 650, 260);
+  for (let i = 0; i < 80; i++) glide(w);
+  expect(w.cam.zoom).toBeGreaterThan(z0 * 1.8);
+  // Tap, then touch again and slide up: zooms out.
+  const z1 = w.cam.zoom;
+  pointer(w, "down", 3, 300, 650, 2000); pointer(w, "up", 3, 300, 650, 2050);
+  pointer(w, "down", 4, 300, 650, 2200);
+  for (let i = 1; i <= 10; i++) pointer(w, "move", 4, 300, 650 - i * 12, 2200 + i * 16);
+  pointer(w, "up", 4, 300, 530, 2400);
+  expect(w.cam.zoom).toBeLessThan(z1 * 0.5);
+  // A plain drag pans without zooming.
+  const z2 = w.cam.zoom, cx = w.cam.cx;
+  pointer(w, 'down', 5, 200, 400, 9000);
+  for (let i = 1; i <= 10; i++) pointer(w, 'move', 5, 200 - i * 10, 400, 9000 + i * 16);
+  pointer(w, 'up', 5, 100, 400, 9200);
+  expect(w.cam.zoom).toBeCloseTo(z2, 6);
+  expect(w.cam.cx).not.toBe(cx);
+});

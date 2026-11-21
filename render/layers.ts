@@ -33,7 +33,9 @@ function visibleCells(w: World, frame: Frame) {
 
 export function drawCity(w: World, ctx: Ctx2D, frame: Frame, night = 0): boolean {
   syncView(w, frame);
-  const moving = glide(w);
+  // While a finger is on the map or the view glides, redraw every frame from the
+  // camera as it is now, with the finer details left out to keep it fluid.
+  const moving = glide(w) || w.pointers.size > 0;
   const { city } = w;
   const z = w.cam.zoom;
   const g = city.grid;
@@ -76,7 +78,7 @@ export function drawCity(w: World, ctx: Ctx2D, frame: Frame, night = 0): boolean
       }
     }
     ctx.fill();
-    if (z > 0.4) ctx.stroke();
+    if (z > 0.4 && !moving) ctx.stroke();
   }
 
   const seen = new Set<number>();
@@ -129,9 +131,9 @@ export function drawCity(w: World, ctx: Ctx2D, frame: Frame, night = 0): boolean
   if (night > 0) {
     ctx.fillStyle = `rgba(3,6,14,${(0.34 * night).toFixed(3)})`;
     ctx.fillRect(0, 0, frame.width, frame.height);
-    if (z > 0.14) drawWindows(w, ctx, cells, night);
+    if (z > 0.14 && !moving) drawWindows(w, ctx, cells, night);
   }
-  if (z > 0.5) drawStreetNames(w, ctx, visible);
+  if (z > 0.5 && !moving) drawStreetNames(w, ctx, visible);
   drawPlaces(w, ctx);
   return moving;
 }

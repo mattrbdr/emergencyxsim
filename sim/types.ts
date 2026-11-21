@@ -135,7 +135,7 @@ export interface Stats {
   breakdowns: number;
 }
 
-export interface Pointer { x: number; y: number; sx: number; sy: number; moved: boolean }
+export interface Pointer { x: number; y: number; sx: number; sy: number; moved: boolean; t: number; vx: number; vy: number }
 
 export interface Camera {
   cx: number; cy: number; zoom: number;

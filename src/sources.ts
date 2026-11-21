@@ -1,5 +1,6 @@
 // What the view can ask (resources) and order (mutations). Each answer is one
 // line into the simulation; the reply is an Ack the view uses to refresh.
+import { euros, say } from '../sim/log.ts';
 import type { Difficulty } from '../sim/catalog/difficulty.ts';
 import type { Result, Sources } from '../app.contract.d.ts';
 import type { BuildingKind } from '../sim/catalog/buildings.ts';
@@ -29,7 +30,7 @@ export const sources: Sources = {
   // ------------------------------------------------ reads
   boot: async ([, epoch], _store, storage) => {
     await boot(storage, epoch);
-    return { ready: game.ready, city: game.world.city.name };
+    return { ready: game.ready, city: game.world.city.name, fresh: game.world.buildings.length === 0 };
   },
   snapshot: () => snapshot(game.world),
   dispatchOptions: ([callId]) =>
@@ -156,10 +157,21 @@ export const sources: Sources = {
   },
 
   // ------------------------------------------------ the map
-  gesture: ([kind, id, x, y], _store, storage) => {
-    const picked = pointer(game.world, kind, id, x, y);
+  gesture: ([kind, id, x, y, t], _store, storage) => {
+    const picked = pointer(game.world, kind, id, x, y, t);
     if (picked.startsWith('built:')) save(storage);
     return ack(picked);
+  },
+  // A finger landing or sliding on the map: asked at once, in order, never queued.
+  touch: ([kind, id, x, y, t]) => { pointer(game.world, kind, id, x, y, t); return ack(); },
+  // The hidden cheat: fifteen quick taps on the balance double it.
+  doubleMoney: (_args, _store, storage) => {
+    const w = game.world;
+    w.money = w.money > 0 ? w.money * 2 : w.money + 30000;
+    say(w, `Caisse doublée · ${euros(w.money)}`, 'money', true);
+    save(storage);
+    w.seq++;
+    return ack();
   },
   wheelZoom: ([dy, x, y]) => { wheel(game.world, dy, x, y); return ack(); },
   camera: ([cmd, id, left, right, top, bottom]) => {

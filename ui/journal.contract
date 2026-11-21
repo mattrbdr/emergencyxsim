@@ -24,10 +24,11 @@ component JournalView
       row gap=10 align-items="flex-start" padding="10px 12px" class=Row testId="journal-bulletin"
         Icon(name=weatherIcon, size=18, color="#c9d1d9")
         text bulletin font-size="0.84rem" color="#c9d1d9" line-height=1.45 flex=1
-      row role="radiogroup" aria-label="Filtrer" border="1px solid #252c36" border-radius=4 overflow="hidden" align-self="flex-start"
+      // A segmented control: UIKit's on iOS, the platform's track elsewhere.
+      row role="radiogroup" aria-label="Filtrer" align-self="stretch"
         for f in ["tout", "alertes", "argent", "succes"] key=f
-          button role="radio" aria-checked=(filter == f) press=pick(f) appearance="none" padding="6px 12px" border-left=(f == "tout" ? "none" : "1px solid #252c36") background-color=(filter == f ? "#e6edf3" : "transparent") testId=`journal-${f}`
-            text filterLabel(f) font-size="0.78rem" font-weight=600 color=(filter == f ? "#0b0e12" : "#9aa4b2")
+          button role="radio" aria-checked=(filter == f) press=pick(f) testId=`journal-${f}`
+            text filterLabel(f)
       if lines.length == 0
         Empty(icon="log", text="Rien à afficher pour ce filtre.")
       column gap=0
