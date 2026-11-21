@@ -1,13 +1,12 @@
 // Downloading the player's town from OpenStreetMap, in the data module.
 // Progress is kept here and read by the view through the `cityStatus` source.
 import { convert } from '../sim/osm/convert.ts';
-import { areasQuery, OVERPASS, parseSearch, roadsQuery, searchQuery, type CommuneMatch } from '../sim/osm/query.ts';
+import { areasQuery, OVERPASS_ENDPOINTS, parseSearch, roadsQuery, searchQuery, type CommuneMatch } from '../sim/osm/query.ts';
 import type { CityFile } from '../sim/city.ts';
 import type { OsmResponse } from '../sim/osm/types.ts';
 
 const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-export const NET_GRANT = `net.fetch ${new URL(OVERPASS).origin}`;
 
 export type Phase = 'idle' | 'search' | 'roads' | 'areas' | 'build' | 'done' | 'error';
 
@@ -27,22 +26,28 @@ function set(phase: Phase, message = PHASE_TEXT[phase]) {
 declare const scheduler: { yield(): Promise<void> };
 const pause = () => (typeof scheduler !== 'undefined' ? scheduler.yield() : Promise.resolve());
 
-async function overpass(query: string, maxBytes: number) {
-  const init: RequestInit & Record<string, unknown> = {
-    method: 'POST',
-    body: new URLSearchParams({ data: query }),
-    exactTimeout: 200000,
-    exactIndependentHttp: { maxResponseBytes: maxBytes },
-  };
-  let res: Response;
-  try {
-    res = await fetch(OVERPASS, init);
-  } catch {
-    throw new Error('Pas de connexion au serveur OpenStreetMap. Vérifiez votre réseau.');
+/** Asks the main server, then each mirror, until one answers. */
+async function overpass(query: string, maxBytes: number): Promise<OsmResponse> {
+  let last = 'Pas de connexion au serveur OpenStreetMap. Vérifiez votre réseau.';
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    const init: RequestInit & Record<string, unknown> = {
+      method: 'POST',
+      body: new URLSearchParams({ data: query }),
+      exactTimeout: 200000,
+      exactIndependentHttp: { maxResponseBytes: maxBytes },
+    };
+    let res: Response;
+    try {
+      res = await fetch(endpoint, init);
+    } catch {
+      continue;
+    }
+    if (res.ok) return (await res.json()) as OsmResponse;
+    last = res.status === 429 || res.status === 504
+      ? 'Les serveurs OpenStreetMap sont saturés. Réessayez dans une minute.'
+      : `OpenStreetMap a répondu ${res.status}.`;
   }
-  if (res.status === 429 || res.status === 504) throw new Error('Le serveur OpenStreetMap est saturé. Réessayez dans une minute.');
-  if (!res.ok) throw new Error(`OpenStreetMap a répondu ${res.status}.`);
-  return (await res.json()) as OsmResponse;
+  throw new Error(last);
 }
 
 export async function searchCommune(name: string): Promise<CommuneMatch[]> {

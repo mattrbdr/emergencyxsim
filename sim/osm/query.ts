@@ -3,6 +3,12 @@
 import type { OsmResponse } from './types.ts';
 
 export const OVERPASS = 'https://overpass-api.de/api/interpreter';
+/** The main server, then public mirrors: the main one is often saturated or refuses some networks. */
+export const OVERPASS_ENDPOINTS = [
+  OVERPASS,
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
+];
 
 export const ROAD_CLASSES =
   'motorway|trunk|primary|secondary|tertiary|unclassified|residential|living_street|motorway_link|trunk_link|primary_link|secondary_link|tertiary_link';

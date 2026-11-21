@@ -6,22 +6,32 @@
 //
 // Data © OpenStreetMap contributors, ODbL. Needs network access to overpass-api.de.
 import { convert } from '../sim/osm/convert.ts';
-import { areasQuery, OVERPASS, parseSearch, roadsQuery, searchQuery } from '../sim/osm/query.ts';
+import type { OsmResponse } from '../sim/osm/types.ts';
+import { areasQuery, OVERPASS_ENDPOINTS, parseSearch, roadsQuery, searchQuery } from '../sim/osm/query.ts';
 
 const args = process.argv.slice(2);
 const opt = (k: string) => { const i = args.indexOf(`--${k}`); return i >= 0 ? args[i + 1] : undefined; };
 const name = args.find((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--'));
-const endpoint = opt('endpoint') ?? OVERPASS;
+const endpoints = opt('endpoint') ? [opt('endpoint')!] : OVERPASS_ENDPOINTS;
 const maxBuildings = Number(opt('max-buildings') ?? 30000);
 
 async function overpass(query: string) {
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': 'emergencyxsim-bake/2.0' },
-    body: new URLSearchParams({ data: query }),
-  });
-  if (!res.ok) throw new Error(`Overpass ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  return res.json() as Promise<{ elements: any[] }>;
+  let last = '';
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': 'emergencyxsim-bake/2.0' },
+        body: new URLSearchParams({ data: query }),
+      });
+      if (res.ok) return res.json() as Promise<OsmResponse>;
+      last = `${endpoint} : ${res.status}`;
+    } catch (e) {
+      last = `${endpoint} : ${e instanceof Error ? e.message : e}`;
+    }
+    console.log(`  échec, essai suivant (${last})`);
+  }
+  throw new Error(`Aucun serveur Overpass n'a répondu (${last})`);
 }
 
 let insee = opt('insee');

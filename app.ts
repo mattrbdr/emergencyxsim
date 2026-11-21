@@ -5,7 +5,8 @@ import { drawLive } from './render/live.ts';
 import { game } from './src/game.ts';
 import { sources } from './src/sources.ts';
 
-export const grants = 'net.fetch https://overpass-api.de\nfs.read app:/data\nfs.write app:/data';
+export const grants =
+  'net.fetch https://overpass-api.de\nnet.fetch https://overpass.kumi.systems\nnet.fetch https://overpass.private.coffee\nfs.read app:/data\nfs.write app:/data';
 
 export const answer: Answer = (source, args, store, storage, native) => sources[source](args, store, storage, native);
 
