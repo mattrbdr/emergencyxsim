@@ -1,6 +1,6 @@
 // The call sheet: what the caller says, the qualification, what the scene needs,
 // who is engaged, and the vehicles to send.
-use CallRow, Option, Ack, Decision from "./model.contract"
+use CallRow, Option, Preset, Ack, Decision from "./model.contract"
 use Icon from "./icons.contract"
 use Tag, CallSign, Heading from "./parts.contract"
 use Mono, Caps, Primary, Secondary, Quiet, familyColor, familyIcon, needColor, callStateColor, plural, money from "./theme.contract"
@@ -16,6 +16,7 @@ component CallSheet
   state picks: string[] = []
   state showAll = false
   resource opts = dispatchOptions(c.id, seq) as shape Option[] else empty() transient
+  resource pre = dispatchPresets(c.id, seq) as shape Preset[] else empty() transient
   mutation ordered as shape Ack queue
   derive suggested = opts.filter(o => o.suggested).map(o => o.id)
   derive shown = opts.filter(o => showAll or o.needed or picks.includes(o.id)).slice(0, 14)
@@ -26,8 +27,10 @@ component CallSheet
     haptic("selection")
   action toggle(id: string)
     picks = picks.includes(id) ? picks.filter(x => x != id) : picks.concat([id])
-  action useSuggestion
-    picks = suggested
+  action sendPreset(ids: string[])
+    send ordered = send(c.id, ids)
+    picks = []
+    haptic("success")
   action engage
     send ordered = send(c.id, picks.isEmpty() ? suggested : picks)
     picks = []
@@ -133,13 +136,22 @@ component CallSheet
             if opts.filter(o => not o.needed).length > 0
               button press=toggleAll class=Quiet testId="toggle-all"
                 text (showAll ? "Masquer les autres véhicules" : `Voir tous les véhicules (${opts.length})`) font-size="0.8rem"
-            row gap=8
-              if picks.isEmpty() and suggested.length > 0
-                button press=useSuggestion class=Secondary flex=1 testId="use-suggestion"
-                  text "Choisir"
-              button press=engage class=Primary flex=2 box-shadow=(hint == "engage" ? "0 0 0 2px #e6edf3" : "none") disabled=(picks.isEmpty() and suggested.isEmpty()) opacity=(picks.isEmpty() and suggested.isEmpty() ? 0.4 : 1) testId="engage"
+            // Ready-made departures, or the vehicles picked by hand.
+            if picks.isEmpty()
+              column gap=6 testId="presets"
+                for p in pre key=p.id
+                  button press=sendPreset(p.units) class=(p.id == "rapide" ? Primary : Secondary) justify-content="flex-start" padding="9px 12px" box-shadow=(hint == "engage" and p.id == "rapide" ? "0 0 0 2px #e6edf3" : "none") testId=(p.id == "rapide" ? "engage" : `preset-${p.id}`)
+                    column align-items="flex-start" gap=3 flex=1 min-width=0
+                      row gap=8 align-items="center" width="100%"
+                        Icon(name=(p.id == "rapide" ? "flag" : p.id == "couverture" ? "layers" : "reputation"), size=15, color=(p.id == "rapide" ? "#0b0e12" : "#e6edf3"))
+                        text p.label font-weight=600 flex=1 text-align="left" color=(p.id == "rapide" ? "#0b0e12" : "#e6edf3")
+                        text p.eta class=Mono font-size="0.78rem" font-weight=600 color=(p.id == "rapide" ? "#0b0e12" : "#e6edf3")
+                      text p.names class=Mono font-size="0.7rem" color=(p.id == "rapide" ? "#30394a" : "#9aa4b2") text-align="left"
+                      text p.cost font-size="0.72rem" text-align="left" color=(p.costly ? (p.id == "rapide" ? "#b3261e" : "#f2555a") : (p.id == "rapide" ? "#30394a" : "#6b7686"))
+            else
+              button press=engage class=Primary box-shadow=(hint == "engage" ? "0 0 0 2px #e6edf3" : "none") testId="engage"
                 Icon(name="flag", size=16, color="#0b0e12")
-                text (picks.isEmpty() ? "Départ réflexe" : `Engager ${plural(picks.length, "véhicule", "véhicules")}`) font-weight=600
+                text `Engager ${plural(picks.length, "véhicule", "véhicules")}` font-weight=600
 
 // The crew chief's report: the situation changed, the room decides.
 component DecisionCard

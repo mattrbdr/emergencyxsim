@@ -2,7 +2,7 @@
 // national holidays. Hours run on the shift clock: 7 to 31 (31 = 07:00 next morning).
 import type { Place } from './places.ts';
 
-export type EventId = 'match' | 'marche' | 'travaux' | 'quatorze' | 'musique' | 'nouvel_an';
+export type EventId = 'ecoles' | 'match' | 'marche' | 'travaux' | 'quatorze' | 'musique' | 'nouvel_an';
 
 export interface EventDef {
   id: EventId;
@@ -25,6 +25,11 @@ export interface EventDef {
 const on = (month: number, day: number) => (d: Date) => d.getUTCMonth() === month && d.getUTCDate() === day;
 
 export const EVENTS: EventDef[] = [
+  {
+    id: 'ecoles', label: 'Sortie des écoles', icon: 'e_marche', from: 16.3, to: 17.5,
+    when: (d) => d.getUTCDay() >= 1 && d.getUTCDay() <= 5 && d.getUTCDay() !== 3,
+    slows: 'ecole', slow: 1.5, rate: 1.25, kinds: { blesse_leger: 2.5, avp_2roues: 2, avp: 1.4 }, draws: { ecole: 5 },
+  },
   {
     id: 'match', label: 'Match au stade', icon: 'e_match', from: 18, to: 23,
     when: (d, roll) => (d.getUTCDay() === 0 || d.getUTCDay() === 6) && roll < 0.6,

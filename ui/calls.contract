@@ -47,9 +47,13 @@ component CallLine
         text c.timeText class=Mono font-size="0.74rem" font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#c9d1d9") testId=`time-${c.id}`
       row gap=8 align-items="baseline"
         view width="4.4rem" flex-shrink=0
-          text (c.major != "" ? "CRISE" : stateCode(c.state)) class=Mono font-size="0.6rem" font-weight=600 letter-spacing="0.04em" color=(c.major != "" ? "#f2555a" : stateColor(c.state))
+          text (c.major != "" ? "CRISE" : c.soon ? "DÉBORDE" : stateCode(c.state)) class=Mono font-size="0.6rem" font-weight=600 letter-spacing="0.04em" color=(c.major != "" or c.soon ? "#f2555a" : stateColor(c.state)) animation=(c.soon ? "soon-blink 900ms steps(2) infinite" : "none")
         text c.address class=Mono font-size="0.7rem" color="#9aa4b2" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
         if c.needs.length > 0
           row gap=4 flex-shrink=0
             for n, i in c.needs key=i
               text n.type class=Mono font-size="0.62rem" font-weight=600 color=needColor(n.state)
+
+keyframes soon-blink
+  from opacity=1
+  to opacity=0.35

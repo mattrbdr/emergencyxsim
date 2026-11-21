@@ -87,7 +87,7 @@ component FleetView
           if selKind == "unit"
             match first(units.filter(u => u.id == selId))
               case some(u)
-                UnitCard(u=u, dismiss=back, focus=seeOnMap)
+                UnitCard(u=u, dismiss=back, see=seeOnMap)
               case none
                 text "Ce véhicule n'est plus en service." color="#9aa4b2"
       else if wide

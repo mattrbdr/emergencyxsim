@@ -63,7 +63,7 @@ export function updateCrews(w: World, dt: number) {
         u.status = 'dispo';
         say(w, `${u.name} · sorti de l'atelier`, 'info');
       }
-    } else if (u.status !== 'retour') {
+    } else if (u.status !== 'retour' && u.status !== 'poste') {
       const working = u.status === 'surplace' && w.calls.some((c) => c.id === u.callId && c.state === 'traitement');
       u.fatigue += (working ? CREW.workPerHour : CREW.outPerHour) * night * hours;
     }

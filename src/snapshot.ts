@@ -66,6 +66,8 @@ function callRow(w: World, c: Call): Snap['calls'][number] {
     at: clockText(c.at),
     timeText: c.state === 'clos' ? clockText(c.closedAt) : working ? minutesText(left) : left > 0 ? minutesText(left) : 'dépassé',
     fraction: Math.max(0, Math.min(1, left / Math.max(1, total))),
+    // Nobody on the way and less than two minutes left: it is about to get worse.
+    soon: !working && c.state !== 'clos' && c.assigned.length === 0 && left > 0 && left < 120,
     reward: c.majorId ? '' : c.state === 'clos' ? (c.earned > 0 ? `+${euros(c.earned)}` : '') : euros(c.kind.reward * c.bonus),
     risk: c.risk < 1 && c.state !== 'clos' ? `${Math.round(c.risk * 100)} % de réussite` : '',
     major: majorLabel(w, c),
@@ -135,6 +137,7 @@ function unitRow(w: World, u: World['units'][number]): Row<'units'> {
     fatigue: Math.round(u.fatigue), wear: Math.round(u.wear), tired: isTired(u),
     canRest: u.status === 'dispo' && u.fatigue > CREW.backAt, canService: u.status === 'dispo' && u.wear > 0,
     servicePrice: euros(servicePrice(w, u)),
+    canPost: (u.status === 'dispo' || u.status === 'poste') && !u.flight, canStandDown: u.status === 'poste',
     waitText: u.status === 'atelier' ? `encore ${minutesText(u.wait)}` : u.status === 'repos' ? `reprise à ${CREW.backAt} % de fatigue` : '',
   };
 }
@@ -269,6 +272,7 @@ export function snapshot(w: World): Snap {
     day: shiftDay(w),
     date: dateText(today(w).date),
     weather: weatherRow(w),
+    posting: w.units.find((u) => u.id === w.posting)?.name ?? '',
     rank: rankOf(w.level).title,
     rankIcon: rankOf(w.level).icon,
     achievements: achievementRows(w),

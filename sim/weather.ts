@@ -81,6 +81,15 @@ export const activeEvents = (w: World) => {
 /** Every step: when the day or the running events change, routes are worked out again. */
 export function updateConditions(w: World) {
   const t = today(w);
+  // Ten minutes ahead, the room hears what is coming.
+  const h = shiftHour(w.t);
+  for (const e of t.events) {
+    const key = `${t.day}|${e.def.id}`;
+    if (h >= e.def.from - 1 / 6 && h < e.def.from && !w.announced.includes(key)) {
+      w.announced = [...w.announced.filter((k) => k.startsWith(`${t.day}|`)), key];
+      say(w, `Dans 10 min · ${e.def.label} : plus d'appels et rues ralenties`, 'alert', true);
+    }
+  }
   const active = activeEvents(w);
   const key = `${t.day}|${active.map((e) => e.def.id).join(',')}`;
   if (key === w.conditionsKey) return;
@@ -94,7 +103,8 @@ export function updateConditions(w: World) {
   if (newDay) say(w, `Météo du ${dateText(t.date)} · ${bulletin(t)}`, 'info', true);
 }
 
-export const eventHours = (e: EventDef) => `${e.from % 24} h – ${e.to % 24} h`;
+const hm = (h: number) => { const m = Math.round((h % 1) * 60); return `${Math.floor(h) % 24} h${m ? String(m).padStart(2, '0') : ''}`; };
+export const eventHours = (e: EventDef) => `${hm(e.from)} – ${hm(e.to)}`;
 
 export function bulletin(t: Today): string {
   return [t.weather.bulletin, ...t.events.map((e) => `${e.def.label} (${eventHours(e.def)})`)].join(' · ');

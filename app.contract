@@ -179,6 +179,8 @@ component EmergencySim
     send commanded = skipTutorial()
   action tipSeen
     send commanded = dismissTip()
+  action cancelPosting
+    send commanded = cancelPosting()
   action toggleOverlay
     send placed = toggleOverlay()
   action levelSeen
@@ -211,6 +213,9 @@ component EmergencySim
       haptic("success")
     else if moveReply.picked.startsWith("site:")
       show("site", moveReply.picked.slice(5))
+    else if moveReply.picked.startsWith("posted:")
+      show("unit", moveReply.picked.slice(7))
+      haptic("success")
   action afterTick
     if tickReply.picked.startsWith("crisis:")
       send cammed = camera("call", tickReply.picked.slice(7), insetLeft, insetRight, barHeight, insetBottom)
@@ -231,7 +236,7 @@ component EmergencySim
             for e in t.stack key=e.id
               column navigationKey=`${e.id}` position="absolute" inset=0 overflow="hidden" background-color="#0b0e12"
                 if e.name == "regulation"
-                  Regulation(snap=snap, wide=wide, barHeight=barHeight, panel=panel, picked=picked, sideOpen=sideOpen, drawerOpen=drawerOpen, guiding=guiding, hint=hint, showToast=showToast, placingLabel=placingLabel, camSeq=camSeq, mapSel=mapSel, down=down, drag=drag, up=up, zoomWheel=zoomWheel, zoomIn=zoomIn, zoomOut=zoomOut, fit=fit, toggleOverlay=toggleOverlay, openBuild=openBuild, confirmPlacing=confirmPlacing, cancelPlacing=cancelPlacing, skipGuide=skipGuide, tipSeen=tipSeen, hideToast=hideToast, pickCall=pickCall, toggleDrawer=toggleDrawer, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding)
+                  Regulation(snap=snap, wide=wide, barHeight=barHeight, panel=panel, picked=picked, sideOpen=sideOpen, drawerOpen=drawerOpen, guiding=guiding, hint=hint, showToast=showToast, placingLabel=placingLabel, camSeq=camSeq, mapSel=mapSel, down=down, drag=drag, up=up, zoomWheel=zoomWheel, zoomIn=zoomIn, zoomOut=zoomOut, fit=fit, toggleOverlay=toggleOverlay, cancelPosting=cancelPosting, openBuild=openBuild, confirmPlacing=confirmPlacing, cancelPlacing=cancelPlacing, skipGuide=skipGuide, tipSeen=tipSeen, hideToast=hideToast, pickCall=pickCall, toggleDrawer=toggleDrawer, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding)
                 if e.name == "flotte"
                   scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-flotte"
                     FleetView(buildings=snap.buildings, units=snap.units, seq=snap.seq, hint=snap.guide.hint, wide=wide, pushed=false, upkeep=snap.upkeepText, sel=(wide ? fleetSel : ""), pick=pickFleet, showOnMap=showOnMap)
@@ -315,6 +320,7 @@ component Regulation
     zoomOut: action
     fit: action
     toggleOverlay: action
+    cancelPosting: action
     openBuild: action
     confirmPlacing: action
     cancelPlacing: action
@@ -344,6 +350,12 @@ component Regulation
           Icon(name="layers", size=16, color=(snap.overlay ? "#3fb950" : "#e6edf3"))
         button press=openBuild aria-label="Construire" class=IconButton background-color="#e6edf3" box-shadow=(hint == "open-build" ? "0 0 0 2px #e6edf3" : "none") testId="open-build"
           Icon(name="build", size=18, color="#0b0e12")
+      if snap.posting != ""
+        row position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 396 : 10) right=(wide ? 64 : 60) gap=10 align-items="center" padding="10px 12px" background-color="#e6edf3" border-radius=4 testId="posting"
+          Icon(name="target", size=16, color="#0b0e12")
+          text `Touchez une rue où poster ${snap.posting}` font-size="0.85rem" font-weight=600 color="#0b0e12" flex=1
+          button press=cancelPosting appearance="none" padding="4px 8px" border="1px solid #0b0e12" border-radius=3 testId="posting-cancel"
+            text "Annuler" font-size="0.78rem" color="#0b0e12"
       if snap.placing != ""
         view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 396 : 10) right=(wide ? 64 : 60)
           PlacingBanner(label=placingLabel, aimed=snap.aimed, aimText=snap.aimText, price=snap.placingPrice, confirm=confirmPlacing, cancel=cancelPlacing)
@@ -414,7 +426,7 @@ component Detail
       if panel == "unit"
         match first(snap.units.filter(u => u.id == picked))
           case some(u)
-            UnitCard(u=u, dismiss=closePanel, focus=focusUnit)
+            UnitCard(u=u, dismiss=closePanel, see=focusUnit)
           case none
             CallGone(close=closePanel)
       if panel == "building"

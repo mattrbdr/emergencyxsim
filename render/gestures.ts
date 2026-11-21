@@ -1,5 +1,6 @@
 // Touch, mouse and trackpad on the map: one finger pans, two pinch, a wheel
 // zooms, a tap picks what is under it (or places a building in build mode).
+import { postAt } from '../sim/posting.ts';
 import { nearestNode } from '../sim/city.ts';
 import { withStationAt } from '../sim/coverage.ts';
 import type { World } from '../sim/types.ts';
@@ -63,6 +64,12 @@ const near = (w: World, x: number, y: number, sx: number, sy: number) => {
 };
 
 function pick(w: World, sx: number, sy: number): string {
+  // Prepositioning: the tap says where the vehicle waits.
+  if (w.posting) {
+    const id = w.posting;
+    const [x, y] = toWorld(w, sx, sy);
+    return postAt(w, nearestNode(w.city, x, y)) ? `posted:${id}` : '';
+  }
   // Build mode: a free site of the right kind, else the road under the finger.
   if (w.placing) {
     const kind = w.placing.kind;

@@ -10,4 +10,5 @@ export const STATUS: Record<UnitStatus, { code: number; label: string }> = {
   retour: { code: 6, label: 'Retour' },
   repos: { code: 7, label: 'Repos' },
   atelier: { code: 8, label: 'Atelier' },
+  poste: { code: 1, label: 'En poste' },
 };

@@ -765,3 +765,66 @@ test('ranks follow the level, with a promotion every few levels', async () => {
   expect(promotedAt(4)).toBe(false);
   expect(RANKS.length).toBe(10);
 });
+
+test('departures have a cost: sending the only nearby crew leaves part of town uncovered', async () => {
+  const { departureCost } = await import('../sim/coverage.ts');
+  const { presets } = await import('../sim/calls.ts');
+  const { createCall, spotOn } = await import('../sim/callfactory.ts');
+  const w = newWorld(city, 71);
+  w.level = 25;
+  w.money = 1e6;
+  const west = buildAt(w, 'caserne', city.width * 0.2, city.height * 0.5)!;
+  const east = buildAt(w, 'caserne', city.width * 0.8, city.height * 0.5)!;
+  expand(w, west.id);
+  buyUnit(w, east.id, 'VSAV');
+  const lone = w.units.find((u) => u.building === east.id)!;
+  const cost = departureCost(w, [lone.id]);
+  expect(cost.loss).toBeGreaterThan(0.05);
+  expect(cost.where.length).toBeGreaterThan(0);
+  // A second VSAV in the west: a call in the middle offers the fast one and the one that keeps coverage.
+  buyUnit(w, west.id, 'VSAV');
+  const mid = city.callEdges.find((e) => Math.abs(city.nx[city.edges[e].a] - city.width * 0.55) < 200 && Math.abs(city.ny[city.edges[e].a] - city.height * 0.5) < 400)!;
+  const call = createCall(w, CALL_KINDS.find((k) => k.id === 'malaise_vp')!, spotOn(w, mid), 'x');
+  call.qualified = true;
+  w.calls.push(call);
+  const list = presets(w, call.id);
+  expect(list[0].id).toBe('rapide');
+  for (const p of list.slice(1)) expect(p.loss).toBeLessThanOrEqual(list[0].loss + 1e-9);
+  expect(new Set(list.map((p) => p.units.join())).size).toBe(list.length);
+});
+
+test('prepositioning: a vehicle waits at a crossing and leaves from there without turnout', async () => {
+  const { startPosting, postAt, standDown } = await import('../sim/posting.ts');
+  const { createCall, spotOn } = await import('../sim/callfactory.ts');
+  const w = newWorld(city, 72);
+  const fire = buildAt(w, 'caserne', city.width * 0.2, city.height * 0.5)!;
+  const u = w.units[0];
+  const far = nearestNode(city, city.width * 0.8, city.height * 0.5);
+  const call = createCall(w, CALL_KINDS[0], spotOn(w, city.adj[far][0]), 'x');
+  w.calls.push(call);
+  const fromBase = options(w, call.id).find((o) => o.unit.id === u.id)!.eta;
+  expect(startPosting(w, u.id)).toBe(true);
+  expect(postAt(w, far)).toBe(true);
+  expect(u.status).toBe('poste');
+  for (let i = 0; i < 4 * 60 * 20 && u.path.length > 1; i++) tick(w, 250);
+  expect(u.path.length).toBe(1);
+  const fromPost = options(w, call.id).find((o) => o.unit.id === u.id)!.eta;
+  expect(fromPost).toBeLessThan(fromBase / 2);
+  expect(standDown(w, u.id)).toBe(true);
+  expect(['retour', 'dispo']).toContain(u.status);
+  expect(fire.id).toBeTruthy();
+});
+
+test('waves are announced ten minutes ahead', async () => {
+  const { today, updateConditions } = await import('../sim/weather.ts');
+  const w = newWorld(city, 73);
+  w.startDate = Date.UTC(2026, 10, 23); // a Monday
+  buildAt(w, 'caserne', centre.x, centre.y);
+  w.t = (16.3 - 7 - 0.1) * 3600; // 16:12
+  expect(today(w).events.map((e) => e.def.id)).toContain('ecoles');
+  updateConditions(w);
+  expect(w.log.some((l) => l.text.startsWith('Dans 10 min · Sortie des écoles'))).toBe(true);
+  const n = w.log.length;
+  updateConditions(w);
+  expect(w.log.length).toBe(n);
+});

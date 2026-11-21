@@ -63,6 +63,7 @@ shape CallRow
   at: string
   timeText: string
   fraction: number
+  soon: bool
   reward: string
   risk: string
   major: string
@@ -93,6 +94,8 @@ shape UnitRow
   canService: bool
   servicePrice: string
   waitText: string
+  canPost: bool
+  canStandDown: bool
 
 shape BuildingRow
   id: string
@@ -226,6 +229,15 @@ shape RoadmapStep
   calls: number
   majors: string[]
 
+shape Preset
+  id: string
+  label: string
+  units: string[]
+  names: string
+  eta: string
+  cost: string
+  costly: bool
+
 shape AchievementRow
   id: string
   title: string
@@ -242,6 +254,7 @@ shape Snap
   day: number
   date: string
   weather: Weather
+  posting: string
   rank: string
   rankIcon: string
   achievements: AchievementRow[]

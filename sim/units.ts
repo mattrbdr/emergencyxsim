@@ -10,7 +10,7 @@ import { edgeBetween, edgeSpeed, pathTo, type Tree } from './routing.ts';
 import { freshTree, trafficAt, treeFromStation } from './traffic.ts';
 import type { Unit, World } from './types.ts';
 
-export const isFree = (u: Unit) => u.status === 'dispo' || u.status === 'retour';
+export const isFree = (u: Unit) => u.status === 'dispo' || u.status === 'retour' || u.status === 'poste';
 /** Traffic slowdown for this vehicle: a motorbike weaves through half of it. */
 const jam = (w: World, def: UnitDef, edge: number) => (def.weaves ? 1 + (trafficAt(w, edge) - 1) / 2 : trafficAt(w, edge));
 export const flies = (u: Unit) => UNITS[u.type].flySpeed !== undefined;

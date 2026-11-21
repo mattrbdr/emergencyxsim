@@ -26,11 +26,11 @@ export function newWorld(city: City, seed: number): World {
     log: [], toast: { id: 0, t: 0, text: '', tone: 'info' }, logId: 0, dirty: true,
     stationTrees: new Map(), callTrees: new Map(),
     cam: { cx: city.width / 2, cy: city.height / 2, zoom: 0.2, tx: city.width / 2, ty: city.height / 2, tz: 0.2, seq: 1, touched: false },
-    view: { w: 0, h: 0 }, pointers: new Map(), pinch: null, placing: null, overlay: false,
+    view: { w: 0, h: 0 }, pointers: new Map(), pinch: null, posting: '', placing: null, overlay: false,
     contracts: [], dayStats: emptyDay(1), streak: 0, tutorial: 0, tip: '', tipsSeen: [],
     majors: [], nextMajorAt: firstMajorAt, majorReport: null, blocked: new Set(),
     achievements: [], records: emptyRecords(),
-    startDate: DEFAULT_START, today: null, conditionsKey: '', trafficMul: 1, slowEdges: new Map(),
+    startDate: DEFAULT_START, today: null, conditionsKey: '', announced: [], trafficMul: 1, slowEdges: new Map(),
   };
   say(w, `Prise de garde à ${city.name}. Aucune caserne pour l'instant, la première est offerte.`, 'info', true);
   return w;

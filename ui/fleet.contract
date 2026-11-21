@@ -51,7 +51,7 @@ component UnitCard
   props
     u: UnitRow
     dismiss: action
-    focus: action
+    see: action
   mutation done as shape Ack queue
   action recall
     send done = recallUnit(u.id)
@@ -60,6 +60,11 @@ component UnitCard
     dismiss()
   action rest
     send done = restUnit(u.id)
+  action post
+    send done = postUnit(u.id)
+    see()
+  action standDown
+    send done = standDown(u.id)
   action service
     send done = serviceUnit(u.id)
   view
@@ -95,12 +100,19 @@ component UnitCard
           text (u.fatigue > 90 ? "Équipage épuisé : il roule et travaille moins vite. Mettez-le au repos." : "Équipage fatigué : il roule et travaille moins vite.") font-size="0.78rem" color="#f0a531" line-height=1.4
       text `${u.buildingName} · ${plural(u.missions, "mission", "missions")}` class=Caps
       row gap=8 flex-wrap="wrap"
-        button press=focus class=Secondary flex="1 1 40%" testId="unit-focus"
+        button press=see class=Secondary flex="1 1 40%" testId="unit-focus"
           Icon(name="target", size=14, color="#e6edf3")
           text "Voir"
         if u.status == "route"
           button press=recall class=Secondary flex="1 1 40%" white-space="nowrap" testId="unit-recall"
             text "Désengager"
+        if u.canPost
+          button press=post class=Secondary flex="1 1 40%" white-space="nowrap" testId="unit-post"
+            Icon(name="target", size=14, color="#e6edf3")
+            text (u.canStandDown ? "Déplacer" : "Prépositionner")
+        if u.canStandDown
+          button press=standDown class=Secondary flex="1 1 40%" white-space="nowrap" testId="unit-home"
+            text "Rentrer à la base"
         if u.canRest
           button press=rest class=Secondary flex="1 1 40%" white-space="nowrap" testId="unit-rest"
             text "Au repos"

@@ -158,3 +158,32 @@ test "the views: fleet, career progression and the log, with time still running"
   clock data
   clock +300
   expect tree has "map"
+
+test "a vehicle is stationed at a crossing from its card"
+  tap "city-demo"
+  clock data
+  clock +500
+  tap "build-caserne"
+  clock data
+  clock +300
+  tap "map"
+  clock data
+  clock +300
+  tap "placing-confirm"
+  clock data
+  clock +300
+  tap "nav-flotte"
+  clock data
+  clock +300
+  tap "fleet-unit-u2"
+  clock data
+  clock +300
+  tap "unit-post"
+  clock data
+  clock +300
+  expect tree has "posting"
+  tap "map"
+  clock data
+  clock +300
+  expect state snap.units.0 .status == "poste"
+  expect tree missing "posting"

@@ -5,7 +5,8 @@ import type { BuildingKind } from '../sim/catalog/buildings.ts';
 import type { Family } from '../sim/catalog/calls.ts';
 import { UNITS, type UnitType } from '../sim/catalog/units.ts';
 import { buildAt, buySite, buyUnit, expand, sellUnit } from '../sim/buildings.ts';
-import { dispatch, findCall, options, qualify, recall } from '../sim/calls.ts';
+import { dispatch, findCall, options, presets, qualify, recall } from '../sim/calls.ts';
+import { standDown, startPosting } from '../sim/posting.ts';
 import { rest, service } from '../sim/crews.ts';
 import { buyUpgrade } from '../sim/upgrades.ts';
 import type { UpgradeId } from '../sim/catalog/upgrades.ts';
@@ -78,6 +79,17 @@ export const sources: Sources = {
   // ------------------------------------------------ dispatch
   qualifyCall: ([id, family]) => { qualify(game.world, id, family as Family); return ack(); },
   send: ([id, ids]) => { dispatch(game.world, id, ids); return ack(); },
+  dispatchPresets: ([callId]) =>
+    presets(game.world, callId).map((p) => ({
+      id: p.id, label: p.label, units: p.units,
+      names: p.units.map((id) => game.world.units.find((u) => u.id === id)?.name ?? '').join(', '),
+      eta: minutesText(p.eta),
+      cost: p.loss >= 0.01 ? `−${Math.round(p.loss * 100)} % de couverture · ${p.where}` : 'Couverture préservée',
+      costly: p.loss >= 0.05,
+    })),
+  postUnit: ([id]) => { startPosting(game.world, id); game.world.seq++; return ack(); },
+  cancelPosting: () => { game.world.posting = ''; game.world.seq++; return ack(); },
+  standDown: ([id], _store, storage) => { if (standDown(game.world, id)) save(storage); game.world.seq++; return ack(); },
   recallUnit: ([id]) => { recall(game.world, id); game.world.seq++; return ack(); },
   restUnit: ([id], _store, storage) => { if (rest(game.world, id)) save(storage); game.world.seq++; return ack(); },
   serviceUnit: ([id], _store, storage) => { if (service(game.world, id)) save(storage); game.world.seq++; return ack(); },

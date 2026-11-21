@@ -314,7 +314,7 @@ function position(u: Unit, alpha: number) {
 }
 
 function drawRoute(w: World, ctx: Ctx2D, u: Unit, alpha: number, now: number, selected: boolean) {
-  const moving = u.status === 'route' || u.status === 'transport' || (u.status === 'retour' && selected);
+  const moving = u.status === 'route' || u.status === 'transport' || (u.status === 'poste' && u.path.length > 1) || (u.status === 'retour' && selected);
   if (!moving) return;
   const [wx, wy] = position(u, alpha);
   const [sx, sy] = toScreen(w, wx, wy);

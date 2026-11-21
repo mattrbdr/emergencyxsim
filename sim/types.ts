@@ -10,7 +10,7 @@ import type { Contract, DayStats } from './contracts.ts';
 import type { Major, MajorReport } from './majors.ts';
 import type { Today } from './weather.ts';
 
-export type UnitStatus = 'dispo' | 'route' | 'surplace' | 'transport' | 'hopital' | 'retour' | 'repos' | 'atelier';
+export type UnitStatus = 'dispo' | 'route' | 'surplace' | 'transport' | 'hopital' | 'retour' | 'repos' | 'atelier' | 'poste';
 
 export interface Building {
   id: string;
@@ -173,6 +173,8 @@ export interface World {
   pointers: Map<number, Pointer>;
   pinch: { d: number; zoom: number } | null;
   /** Build mode: the kind being placed and where the ghost stands (node, or -1). */
+  /** A vehicle waiting for the player to tap where to station it (sim/posting.ts). */
+  posting: string;
   placing: { kind: BuildingKind; node: number; gain: number; after: number } | null;
   /** The coverage overlay is shown on the map. */
   overlay: boolean;
@@ -198,6 +200,8 @@ export interface World {
   /** The day's weather and events (worked out from the seed, not saved). */
   today: Today | null;
   conditionsKey: string;
+  /** Events already announced ten minutes ahead (day|id). */
+  announced: string[];
   /** Today's weather slowdown on every street, and the streets an event slows. */
   trafficMul: number;
   slowEdges: Map<number, number>;

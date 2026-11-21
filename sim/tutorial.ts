@@ -30,7 +30,7 @@ export const STEPS: Step[] = [
   },
   {
     id: 'engage', title: 'Engager',
-    text: 'Le véhicule le plus proche est suggéré : touchez « Engager la suggestion ».',
+    text: 'Touchez « Plus rapide » pour envoyer le véhicule le plus proche. D\'autres choix apparaissent quand vous aurez plusieurs véhicules.',
     hint: 'engage', done: (w) => w.calls.some((c) => c.assigned.length > 0),
   },
   {

@@ -9,6 +9,7 @@ import { adjustReputation, earn, reward } from './economy.ts';
 import { euros, say } from './log.ts';
 import { gainXp } from './progression.ts';
 import { createCall, spotOn } from './callfactory.ts';
+import { departureCost } from './coverage.ts';
 import { isTired, turnout } from './crews.ts';
 import { homeHas } from './upgrades.ts';
 import { pickStreet } from './places.ts';
@@ -169,6 +170,61 @@ export function options(w: World, callId: string) {
     if (k >= 0) { want.splice(k, 1); suggested.add(o.unit.id); }
   }
   return free.map((o) => ({ ...o, suggested: suggested.has(o.unit.id), needed: missing.includes(o.unit.type) }));
+}
+
+/** Seconds a slower crew may lose against the fastest for a better choice. */
+const LEEWAY = 300;
+
+export interface Preset {
+  id: 'rapide' | 'couverture' | 'repos';
+  label: string;
+  units: string[];
+  /** Seconds until the last of them arrives. */
+  eta: number;
+  loss: number;
+  where: string;
+}
+
+/**
+ * Ready-made departures: the fastest crews; the ones whose leaving keeps the
+ * most of town covered; the most rested. Each only when it differs from those
+ * before it.
+ */
+export function presets(w: World, callId: string): Preset[] {
+  const call = findCall(w, callId);
+  if (!call || call.state === 'clos') return [];
+  const opts = options(w, callId);
+  const missing = missingTypes(w, call);
+  if (missing.length === 0 || opts.length === 0) return [];
+  const pickBy = (score: (o: (typeof opts)[number], fastest: number) => number) => {
+    const taken = new Set<string>();
+    const out: string[] = [];
+    for (const type of missing) {
+      const cands = opts.filter((o) => o.unit.type === type && !taken.has(o.unit.id));
+      if (cands.length === 0) continue;
+      const fastest = Math.min(...cands.map((o) => o.eta));
+      const best = cands.filter((o) => o.eta <= fastest + LEEWAY).sort((a, b) => score(a, fastest) - score(b, fastest) || a.eta - b.eta)[0];
+      taken.add(best.unit.id);
+      out.push(best.unit.id);
+    }
+    return out;
+  };
+  const sets: [Preset['id'], string, string[]][] = [
+    ['rapide', 'Plus rapide', opts.filter((o) => o.suggested).map((o) => o.unit.id)],
+    ['couverture', 'Garder la couverture', pickBy((o) => departureCost(w, [o.unit.id]).loss + (o.diverted ? 1 : 0))],
+    ['repos', 'Équipage reposé', pickBy((o) => o.unit.fatigue + (o.diverted ? 1000 : 0))],
+  ];
+  const seen = new Set<string>();
+  const out: Preset[] = [];
+  for (const [id, label, units] of sets) {
+    const key = [...units].sort().join(',');
+    if (units.length === 0 || seen.has(key)) continue;
+    seen.add(key);
+    const cost = departureCost(w, units);
+    const eta = Math.max(...units.map((u) => opts.find((o) => o.unit.id === u)!.eta));
+    out.push({ id, label, units, eta, loss: cost.loss, where: cost.where });
+  }
+  return out;
 }
 
 function onSceneTypes(w: World, call: Call): UnitType[] {
