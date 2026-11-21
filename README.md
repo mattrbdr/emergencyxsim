@@ -9,13 +9,13 @@ Le jeu se déroule en mode carrière, sauvegardé en continu :
 
 Construit avec [Exact](https://github.com/expo/exact) : une seule source pour le web, iOS, macOS, Android et Linux.
 
-| Votre ville | Construire | Caserne et garage | Fiche d'appel | En route |
+| Ouverture de garde | Prise en main | Couverture | File d'appels | Bilan sur place |
 |---|---|---|---|---|
-| ![](screenshots/iphone-1-ville.png) | ![](screenshots/iphone-2-construire.png) | ![](screenshots/iphone-3-caserne.png) | ![](screenshots/iphone-5-fiche.png) | ![](screenshots/iphone-6-en-route.png) |
+| ![](screenshots/iphone-1-ouverture.png) | ![](screenshots/iphone-2-tutoriel.png) | ![](screenshots/iphone-3-couverture.png) | ![](screenshots/iphone-4-file.png) | ![](screenshots/iphone-5-bilan.png) |
 
-![Bilan sur place et décision](screenshots/bureau-10-bilan.png)
+![Bilan sur place et décision](screenshots/bureau-4-bilan.png)
 
-![Couverture : viser avant de construire](screenshots/bureau-9-couverture.png)
+![Couverture : viser avant de construire](screenshots/bureau-2-couverture.png)
 
 ## Le jeu
 
@@ -99,7 +99,7 @@ bun exact.mjs web --lan                      # ouvrez l'URL affichée dans Safar
 |---|---|
 | `bun exact.mjs web` | serveur de dev, rechargement à chaque sauvegarde |
 | `bun exact.mjs test web` | tests de bout en bout (`app.test.contract`) |
-| `bun test tools/` | tests du moteur, dont une carrière simulée de 3 jours |
+| `bun run check` | fichiers générés à jour, TypeScript strict, tests du moteur (dont une carrière simulée de 3 jours) |
 | `bun tools/gen-icons.ts` | régénère `ui/icons.contract` depuis `sim/catalog/icons.ts` |
 | `bun tools/bake-osm.ts "Annecy"` | remplace la ville livrée par une vraie commune |
 | `tools/build-pages.sh` | reconstruit `docs/` pour GitHub Pages |
