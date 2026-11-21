@@ -79,6 +79,7 @@ function restore(city: City, s: Save): World {
     // A career started before the tutorial existed has no need of it.
     tutorial: s.tutorial ?? STEPS.length,
   });
+  if (s.nextMajorAt !== undefined) w.nextMajorAt = s.nextMajorAt;
   if (s.dayStats) w.dayStats = s.dayStats;
   // A fresh stream of random numbers, moved on by the time already played.
   w.rng = mulberry((s.seed + Math.floor(s.t)) % 2147483646 || 1);

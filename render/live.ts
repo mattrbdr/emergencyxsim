@@ -20,6 +20,7 @@ export function drawLive(w: World, ctx: Ctx2D, frame: Frame, selected: string): 
   const now = frame.time;
   ctx.clearRect(0, 0, frame.width, frame.height);
 
+  drawPerimeters(w, ctx, now);
   drawSites(w, ctx, now);
   for (const u of w.units) drawRoute(w, ctx, u, alpha, now, selected === `unit:${u.id}`);
   for (const b of w.buildings) drawBuilding(w, ctx, b, selected === `building:${b.id}`);
@@ -27,6 +28,27 @@ export function drawLive(w: World, ctx: Ctx2D, frame: Frame, selected: string): 
   drawUnits(w, ctx, alpha, now, selected);
   drawGhost(w, ctx, now);
   return true;
+}
+
+/** Major incidents: the cordon around the site, with its name. */
+function drawPerimeters(w: World, ctx: Ctx2D, now: number) {
+  for (const m of w.majors) {
+    if (m.state !== 'actif') continue;
+    const [x, y] = toScreen(w, m.spot.x, m.spot.y);
+    const r = Math.max(28, m.kind.perimeter * w.cam.zoom);
+    ctx.save();
+    ctx.fillStyle = 'rgba(242,85,90,0.07)';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = SERVICE.pompiers;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([8, 6]);
+    ctx.lineDashOffset = -now / 60;
+    ctx.stroke();
+    ctx.restore();
+    label(ctx, `PÉRIMÈTRE · ${m.kind.title.toUpperCase()}`, x, y - r - 10, SERVICE.pompiers);
+  }
 }
 
 /** Build mode: the building being aimed at, and what it adds. */

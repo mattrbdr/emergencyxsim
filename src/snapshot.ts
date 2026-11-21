@@ -7,6 +7,7 @@ import { UNIT_ORDER, UNITS, type UnitType } from '../sim/catalog/units.ts';
 import { buildPrice, cannotBuy, isFirstBuilding, sitePrice, unitsOf } from '../sim/buildings.ts';
 import { needState } from '../sim/calls.ts';
 import { choices } from '../sim/scenes.ts';
+import { activeMajor, majorChoices, majorOf } from '../sim/majors.ts';
 import { clockText, minutesText } from '../sim/clock.ts';
 import { upkeepPerHour } from '../sim/economy.ts';
 import { coverageShare } from '../sim/coverage.ts';
@@ -24,6 +25,20 @@ const CALL_STATE: Record<Call['state'], string> = {
   nouveau: 'À qualifier', attente: 'À engager', engage: 'Moyens en route', bilan: 'Décision requise', traitement: 'Intervention', clos: 'Terminé',
 };
 const OUTCOME: Record<string, string> = { sauve: 'Réussi', perdu: 'Victime perdue', echec: 'Échec', '': '' };
+
+function majorLabel(w: World, c: Call): string {
+  const m = majorOf(w, c);
+  return m ? `${m.kind.title.toUpperCase()} · PHASE ${m.kind.phases.findIndex((p) => c.kind.id.endsWith(`:${p.id}`)) + 1}/${m.kind.phases.length}` : '';
+}
+
+function crisis(w: World): Snap['crisis'] {
+  const m = activeMajor(w);
+  if (!m) return { active: false, title: '', phaseTitle: '', index: 0, total: 0, callId: '', injured: 0 };
+  return {
+    active: true, title: m.kind.title, phaseTitle: m.kind.phases[m.phase].title, index: m.phase + 1,
+    total: m.kind.phases.length, callId: m.callId, injured: m.injured,
+  };
+}
 
 function callRow(w: World, c: Call): Snap['calls'][number] {
   const working = c.state === 'traitement';
@@ -46,14 +61,15 @@ function callRow(w: World, c: Call): Snap['calls'][number] {
     at: clockText(c.at),
     timeText: c.state === 'clos' ? clockText(c.closedAt) : working ? minutesText(left) : left > 0 ? minutesText(left) : 'dépassé',
     fraction: Math.max(0, Math.min(1, left / Math.max(1, total))),
-    reward: c.state === 'clos' ? (c.earned > 0 ? `+${euros(c.earned)}` : '') : euros(c.kind.reward * c.bonus),
+    reward: c.majorId ? '' : c.state === 'clos' ? (c.earned > 0 ? `+${euros(c.earned)}` : '') : euros(c.kind.reward * c.bonus),
     risk: c.risk < 1 && c.state !== 'clos' ? `${Math.round(c.risk * 100)} % de réussite` : '',
+    major: majorLabel(w, c),
     decision: {
-      pending: c.state === 'bilan' && c.twist !== null,
-      from: c.twist?.from ?? '',
-      report: c.twist?.report ?? '',
+      pending: c.state === 'bilan' && (c.twist !== null || c.prompt !== null),
+      from: c.prompt?.from ?? c.twist?.from ?? '',
+      report: c.prompt?.report ?? c.twist?.report ?? '',
       left: c.state === 'bilan' ? minutesText(c.decisionLeft) : '',
-      choices: c.state === 'bilan' ? choices(w, c) : [],
+      choices: c.state !== 'bilan' ? [] : c.prompt ? majorChoices(w, c) : choices(w, c),
     },
     needs: known
       ? needState(w, c).map((n) => ({ type: n.type, label: UNITS[n.type].long, service: UNITS[n.type].service, state: n.state }))
@@ -206,6 +222,10 @@ export function snapshot(w: World): Snap {
     log: w.log.slice(0, 40).map((l) => ({ id: l.id, at: clockText(l.t), text: l.text, tone: l.tone })),
     toast: { id: w.toast.id, at: clockText(w.toast.t), text: w.toast.text, tone: w.toast.tone },
     guide: guide(w),
+    crisis: crisis(w),
+    report: w.majorReport
+      ? { show: true, title: w.majorReport.title, success: w.majorReport.success, injured: w.majorReport.injured, earned: euros(w.majorReport.earned), minutes: w.majorReport.minutes }
+      : { show: false, title: '', success: false, injured: 0, earned: '', minutes: 0 },
     contracts: w.contracts.map((c) => contractRow(w, c)),
     contractsDone: w.contracts.filter((c) => c.state === 'done').length,
     streak: w.streak,

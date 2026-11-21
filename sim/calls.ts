@@ -7,9 +7,10 @@ import { hourOf } from './clock.ts';
 import { adjustReputation, earn, reward } from './economy.ts';
 import { euros, say } from './log.ts';
 import { gainXp } from './progression.ts';
-import { pick } from './rng.ts';
-import { landmark, pickStreet } from './places.ts';
+import { createCall, spotOn } from './callfactory.ts';
+import { pickStreet } from './places.ts';
 import { decisionTimeout, rollTwist } from './scenes.ts';
+import { endPhase, majorDecisionTimeout } from './majors.ts';
 import { recordCall } from './contracts.ts';
 import { treeFromCall } from './traffic.ts';
 import type { Call, World } from './types.ts';
@@ -46,28 +47,7 @@ export function spawnCall(w: World) {
     const e = w.city.edges[edge];
     return active.some((c) => Math.hypot(c.x - w.city.nx[e.a], c.y - w.city.ny[e.a]) < 250);
   });
-  const e = w.city.edges[edgeIndex];
-  const f = 0.2 + w.rng() * 0.6;
-  const call: Call = {
-    id: `c${w.nextId++}`, kind,
-    node: w.rng() < 0.5 ? e.a : e.b,
-    x: w.city.nx[e.a] + (w.city.nx[e.b] - w.city.nx[e.a]) * f,
-    y: w.city.ny[e.a] + (w.city.ny[e.b] - w.city.ny[e.a]) * f,
-    address: '', street: '',
-    caller: pick(w.rng, kind.callers), at: w.t, deadline: w.t + kind.deadline * 60, priority: kind.priority,
-    state: 'nouveau', qualified: false, guessedRight: false, needs: [...kind.needs], assigned: [],
-    workLeft: kind.work * 60, escalated: false, outcome: '', firstOnScene: -1, closedAt: 0, earned: 0,
-    twistRolled: false, twist: null, decisionLeft: 0, risk: 1, bonus: 1,
-  };
-  const street = `${1 + Math.floor(w.rng() * 140)} ${w.city.file.names[e.name] ?? 'rue sans nom'}`;
-  const near = landmark(w.city, kind, call.x, call.y);
-  call.street = street;
-  call.address = near ? `${near}, ${street}` : street;
-  if (kind.home) {
-    const floor = Math.floor(w.rng() * 7);
-    const code = `${1000 + Math.floor(w.rng() * 9000)}${'ABC'[Math.floor(w.rng() * 3)]}`;
-    call.address += floor === 0 ? `, rez-de-chaussée` : `, ${floor}${floor === 1 ? 'er' : 'e'} étage, code ${code}`;
-  }
+  const call = createCall(w, kind, spotOn(w, edgeIndex));
   w.calls.push(call);
   w.stats.calls++;
   say(w, `Appel reçu${call.priority === 1 ? ', priorité 1' : ''} · ${call.street}`, call.priority === 1 ? 'alert' : 'info', true);
@@ -195,7 +175,8 @@ export function updateCall(w: World, call: Call, dt: number) {
     return;
   }
   if (call.state === 'bilan') {
-    decisionTimeout(w, call, dt);
+    if (call.prompt) majorDecisionTimeout(w, call, dt);
+    else decisionTimeout(w, call, dt);
     return;
   }
   if (!call.twistRolled && call.firstOnScene >= 0) {
@@ -254,6 +235,12 @@ function finish(w: World, call: Call) {
     return;
   }
   call.outcome = 'sauve';
+  if (call.majorId) {
+    // A major incident's phase: the incident pays when it ends (sim/majors.ts).
+    if (call.kind.victims > 0) w.stats.saved += call.kind.victims;
+    close(w, call, call.kind.transport);
+    return;
+  }
   const early = call.firstOnScene >= 0 ? Math.max(0, call.deadline - call.firstOnScene) : 0;
   const money = Math.round(reward(w, call.kind, early) * call.bonus);
   call.earned = money;
@@ -276,6 +263,8 @@ function close(w: World, call: Call, transport = false) {
       .filter((u) => u && u.status === 'surplace' && u.callId === call.id);
     carrier = (scene.find((u) => u!.type === 'HELI') ?? scene.find((u) => UNITS[u!.type].carries))?.id;
   }
+  // A major incident's phase hands its crews over to the next phase.
+  if (call.majorId) endPhase(w, call, carrier);
   for (const id of call.assigned) {
     const u = w.units.find((x) => x.id === id);
     if (!u || u.callId !== call.id) continue;

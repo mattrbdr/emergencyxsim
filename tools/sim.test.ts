@@ -273,3 +273,62 @@ test('reinforcements need a spare vehicle: the only VSAV on scene cannot reinfor
   w.units[0].callId = c.id;
   expect(choices(w, c).find((o) => o.id === 'renfort')!.enabled).toBe(false);
 });
+
+async function policeCity(seed: number) {
+  const w = newWorld(city, seed);
+  w.level = 10;
+  w.money = 1e7;
+  const b = buildAt(w, 'caserne', centre.x, centre.y)!;
+  expand(w, b.id);
+  buyUnit(w, b.id, 'VSAV');
+  const site = city.pois.findIndex((p) => p.kind === 'police');
+  const post = buySite(w, site)!;
+  expand(w, post.id);
+  expand(w, post.id);
+  for (const t of ['PS', 'PS', 'BAC', 'BAC', 'BRI'] as const) buyUnit(w, post.id, t);
+  w.nextCallAt = Infinity; // only the incident
+  return w;
+}
+
+test('hostage robbery: perimeter, the BRI assault, hostages to hospital, then a big reward', async () => {
+  const { MAJORS } = await import('../sim/catalog/majors.ts');
+  const { startMajor, decideMajor } = await import('../sim/majors.ts');
+  const w = await policeCity(8);
+  const money = w.money;
+  const m = startMajor(w, MAJORS.find((k) => k.id === 'otages')!);
+  const phases: number[] = [];
+  for (let i = 0; i < 4 * 60 * 60 && m.state === 'actif'; i++) {
+    tick(w, 250);
+    if (phases.at(-1) !== m.phase) phases.push(m.phase);
+    for (const c of w.calls) {
+      if (c.state === 'bilan' && c.prompt) decideMajor(w, c, 'bri');
+      else if (c.state !== 'clos') {
+        const picks = options(w, c.id).filter((o) => o.suggested).map((o) => o.unit.id);
+        if (picks.length) dispatch(w, c.id, picks);
+      }
+    }
+  }
+  expect(phases).toEqual([0, 1, 2]);
+  expect(['reussi', 'echec']).toContain(m.state);
+  expect(w.majorReport?.title).toBe('Braquage avec prise d\'otages');
+  if (m.state === 'reussi') expect(w.money).toBeGreaterThan(money + 5000);
+});
+
+test('hostage robbery: no perimeter in time and the operation fails', async () => {
+  const { MAJORS } = await import('../sim/catalog/majors.ts');
+  const { startMajor } = await import('../sim/majors.ts');
+  const w = await policeCity(9);
+  const rep = w.reputation;
+  const m = startMajor(w, MAJORS[0]);
+  for (let i = 0; i < 4 * 60 * 10 && m.state === 'actif'; i++) tick(w, 250);
+  expect(m.state).toBe('echec');
+  expect(w.reputation).toBeLessThan(rep);
+});
+
+test('a major incident arrives on its own once unlocked', async () => {
+  const w = await policeCity(10);
+  w.nextCallAt = 0;
+  w.speed = 4;
+  while (w.majors.length === 0 && w.t < 4 * 86400) tick(w, 1000);
+  expect(w.majors.length).toBe(1);
+});

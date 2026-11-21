@@ -8,6 +8,7 @@ import { TIME_SCALE } from './clock.ts';
 import { chargeUpkeep } from './economy.ts';
 import { emptyDay, updateContracts } from './contracts.ts';
 import { updateTutorial } from './tutorial.ts';
+import { firstMajorAt, updateMajors } from './majors.ts';
 import { say } from './log.ts';
 import { mulberry } from './rng.ts';
 import type { World } from './types.ts';
@@ -24,6 +25,7 @@ export function newWorld(city: City, seed: number): World {
     cam: { cx: city.width / 2, cy: city.height / 2, zoom: 0.2, tx: city.width / 2, ty: city.height / 2, tz: 0.2, seq: 1, touched: false },
     view: { w: 0, h: 0 }, pointers: new Map(), pinch: null, placing: null, overlay: false,
     contracts: [], dayStats: emptyDay(1), streak: 0, tutorial: 0, tip: '', tipsSeen: [],
+    majors: [], nextMajorAt: firstMajorAt, majorReport: null,
   };
   say(w, `Prise de garde à ${city.name}. Aucune caserne pour l'instant, la première est offerte.`, 'info', true);
   return w;
@@ -47,6 +49,7 @@ function advance(w: World, dt: number) {
   const before = w.t;
   w.t += dt;
   if (w.t >= w.nextCallAt) spawnCall(w);
+  updateMajors(w);
   for (const u of w.units) moveUnit(w, u, dt);
   for (const call of w.calls) if (call.state !== 'clos') updateCall(w, call, dt);
   chargeUpkeep(w, before);

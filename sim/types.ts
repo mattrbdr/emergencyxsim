@@ -6,6 +6,7 @@ import type { City } from './city.ts';
 import type { Rng } from './rng.ts';
 import type { Tree } from './routing.ts';
 import type { Contract, DayStats } from './contracts.ts';
+import type { Major, MajorReport } from './majors.ts';
 
 export type UnitStatus = 'dispo' | 'route' | 'surplace' | 'transport' | 'hopital' | 'retour';
 
@@ -82,6 +83,21 @@ export interface Call {
   risk: number;
   /** Reward multiplier earned by the decision. */
   bonus: number;
+  /** The major incident this call is a phase of ('' for an everyday call). */
+  majorId: string;
+  /** A command decision asked by a major incident's phase. */
+  prompt: { from: string; report: string; options: MajorChoice[] } | null;
+}
+
+export interface MajorChoice {
+  id: string;
+  label: string;
+  detail: string;
+  needs: UnitType[];
+  work: number;
+  success: number;
+  bonus: number;
+  injuredOnFail: number;
 }
 
 export interface LogEntry {
@@ -157,4 +173,8 @@ export interface World {
   tutorial: number;
   tip: string;
   tipsSeen: string[];
+  majors: Major[];
+  nextMajorAt: number;
+  /** The last incident's summary, until the player closes it. */
+  majorReport: MajorReport | null;
 }

@@ -65,6 +65,7 @@ shape CallRow
   fraction: number
   reward: string
   risk: string
+  major: string
   decision: Decision
   needs: Need[]
   units: Engaged[]
@@ -170,6 +171,23 @@ shape Guide
   index: number
   total: number
 
+shape Crisis
+  active: bool
+  title: string
+  phaseTitle: string
+  index: number
+  total: number
+  callId: string
+  injured: number
+
+shape CrisisReport
+  show: bool
+  title: string
+  success: bool
+  injured: number
+  earned: string
+  minutes: number
+
 shape Snap
   seq: number
   city: string
@@ -208,6 +226,8 @@ shape Snap
   toast: LogLine
   stats: Stats
   guide: Guide
+  crisis: Crisis
+  report: CrisisReport
   contracts: ContractRow[]
   contractsDone: number
   streak: number

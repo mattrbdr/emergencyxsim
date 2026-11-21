@@ -4,7 +4,7 @@
   "scripts": {
     "build": "bun exact.mjs web-build --out dist",
     "start": "bun exact.mjs serve dist",
-    "check": "bun tools/gen-theme.ts && bun tools/gen-icons.ts && git diff --exit-code -- ui/palette.contract ui/icons.contract && ./.exact/checkout/node_modules/.bin/tsc -p . && bun test tools/"
+    "check": "bun tools/gen-theme.ts --check && bun tools/gen-icons.ts --check && ./.exact/checkout/node_modules/.bin/tsc -p . && bun test tools/"
   },
   "dependencies": {}
 }

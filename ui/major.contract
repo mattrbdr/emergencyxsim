@@ -1,0 +1,46 @@
+// Major incidents: the crisis strip under the top bar, and the report when it ends.
+use Crisis, CrisisReport from "./model.contract"
+use Icon from "./icons.contract"
+use Mono, Caps, Primary from "./theme.contract"
+
+component CrisisBar
+  props
+    c: Crisis
+    open: action
+  view
+    button press=open appearance="none" display="flex" width="100%" box-sizing="border-box" align-items="center" gap=10 padding="7px 12px" background-color="#2a1214" border-bottom="1px solid #f2555a" aria-label=`Crise en cours : ${c.title}, phase ${c.index} sur ${c.total}` testId="crisis"
+      view width=8 height=8 background-color="#f2555a" animation="crisis-blink 1s steps(2) infinite"
+      text "CRISE" class=Mono font-size="0.7rem" font-weight=600 letter-spacing="0.1em" color="#f2555a"
+      text c.title font-weight=600 font-size="0.85rem" white-space="nowrap" overflow="hidden" text-overflow="ellipsis" min-width=0
+      view flex=1
+      text `PHASE ${c.index}/${c.total} · ${c.phaseTitle.toUpperCase()}` class=Mono font-size="0.68rem" color="#f2a4a7" white-space="nowrap"
+
+component CrisisReportCard
+  props
+    r: CrisisReport
+    done: action
+  view
+    column position="absolute" inset=0 align-items="center" justify-content="center" padding=20 background-color="rgba(6,8,11,0.78)" testId="crisis-report"
+      column max-width="26rem" width="100%" box-sizing="border-box" gap=14 padding=20 background-color="#11151b" border="1px solid #30394a" border-left-width=3 border-left-style="solid" border-left-color=(r.success ? "#3fb950" : "#f2555a") border-radius=4
+        text "FIN D'OPÉRATION" class=Caps
+        text r.title font-size="1.15rem" font-weight=600 role="heading" aria-level=2
+        column gap=0
+          row padding="7px 0" border-bottom="1px solid #252c36"
+            text "Résultat" flex=1 color="#9aa4b2"
+            text (r.success ? "Réussite" : "Échec") class=Mono font-weight=600 color=(r.success ? "#3fb950" : "#f2555a")
+          row padding="7px 0" border-bottom="1px solid #252c36"
+            text "Blessés" flex=1 color="#9aa4b2"
+            text `${r.injured}` class=Mono font-weight=600
+          row padding="7px 0" border-bottom="1px solid #252c36"
+            text "Durée" flex=1 color="#9aa4b2"
+            text `${r.minutes} min` class=Mono font-weight=600
+          if r.success
+            row padding="7px 0"
+              text "Prime" flex=1 color="#9aa4b2"
+              text r.earned class=Mono font-weight=600
+        button press=done class=Primary testId="crisis-report-ok"
+          Icon(name="check", size=15, color="#0b0e12")
+          text "Clore le rapport" font-weight=600 color="#0b0e12"
+
+keyframes crisis-blink
+  50% opacity=0.2

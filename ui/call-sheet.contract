@@ -49,6 +49,8 @@ component CallSheet
             text `P${c.priority}` class=Mono font-size="0.72rem" font-weight=600 padding="2px 7px" border-radius=3 background-color=priorityColor(c.priority) color="#0b0e12"
             Icon(name=familyIcon(c.family), size=15, color=familyColor(c.family))
             text c.familyLabel.toUpperCase() class=Caps color=familyColor(c.family)
+          if c.major != ""
+            text c.major class=Mono font-size="0.66rem" font-weight=600 letter-spacing="0.06em" color="#f2555a" testId="sheet-major"
           text c.title font-size="1.3rem" font-weight=600 line-height=1.2 role="heading" aria-level=2 testId="sheet-title"
           text c.address class=Mono font-size="0.78rem" color="#9aa4b2"
         button press=close aria-label="Fermer la fiche" class=Quiet testId="sheet-close"
@@ -62,8 +64,9 @@ component CallSheet
         view flex=1
         Icon(name="clock", size=14, color="#9aa4b2")
         text c.timeText class=Mono font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#e6edf3")
-        Icon(name="money", size=14, color=money())
-        text c.reward class=Mono font-size="0.82rem" color=money()
+        if c.reward != ""
+          Icon(name="money", size=14, color=money())
+          text c.reward class=Mono font-size="0.82rem" color=money()
       if c.risk != ""
         row gap=6 align-items="center"
           Icon(name="alert", size=13, color="#f0a531")

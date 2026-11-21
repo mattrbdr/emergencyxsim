@@ -34,6 +34,7 @@ export interface Save {
   streak?: number;
   tutorial?: number;
   tipsSeen?: string[];
+  nextMajorAt?: number;
 }
 
 const encode = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
@@ -65,7 +66,7 @@ export function snapshotSave(w: World): Save {
     nextId: w.nextId, nextCallAt: w.nextCallAt, stats: w.stats, buildings: w.buildings,
     units: w.units.map((u) => ({ id: u.id, type: u.type, name: u.name, building: u.building, missions: u.missions })),
     log: w.log.slice(0, 30),
-    contracts: w.contracts, dayStats: w.dayStats, streak: w.streak, tutorial: w.tutorial, tipsSeen: w.tipsSeen,
+    contracts: w.contracts, dayStats: w.dayStats, streak: w.streak, tutorial: w.tutorial, tipsSeen: w.tipsSeen, nextMajorAt: w.nextMajorAt,
   };
 }
 

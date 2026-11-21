@@ -19,5 +19,13 @@ component Icon
     svg width=size height=size viewBox="0 0 24 24" fill="none" stroke=color stroke-width=1.75 stroke-linecap="round" stroke-linejoin="round" flex-shrink=0 aria-hidden=true
       path d=iconPath(name)
 `;
-await Bun.write(new URL('../ui/icons.contract', import.meta.url), out);
+const file = new URL('../ui/icons.contract', import.meta.url);
+if (process.argv.includes('--check')) {
+  if ((await Bun.file(file).text()) !== out) {
+    console.error(`${file.pathname} is out of date: run bun ${import.meta.path.split('/').slice(-2).join('/')}`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+await Bun.write(file, out);
 console.log(`ui/icons.contract: ${names.length} icons`);

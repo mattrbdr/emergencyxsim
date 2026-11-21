@@ -7,6 +7,7 @@ import { UNITS, type UnitType } from '../sim/catalog/units.ts';
 import { buildAt, buySite, buyUnit, expand, sellUnit } from '../sim/buildings.ts';
 import { dispatch, findCall, options, qualify, recall } from '../sim/calls.ts';
 import { decide, type ChoiceId } from '../sim/scenes.ts';
+import { decideMajor } from '../sim/majors.ts';
 import { dismissTip, skipTutorial } from '../sim/tutorial.ts';
 import { minutesText } from '../sim/clock.ts';
 import { buildingUnlocked } from '../sim/progression.ts';
@@ -68,7 +69,8 @@ export const sources: Sources = {
   recallUnit: ([id]) => { recall(game.world, id); game.world.seq++; return ack(); },
   decide: ([callId, choice]) => {
     const call = findCall(game.world, callId);
-    if (call) decide(game.world, call, choice as ChoiceId);
+    if (call?.prompt) decideMajor(game.world, call, choice);
+    else if (call) decide(game.world, call, choice as ChoiceId);
     return ack();
   },
 
@@ -92,6 +94,7 @@ export const sources: Sources = {
     w.seq++;
     return ack(b ? `built:${b.id}` : '');
   },
+  closeReport: () => { game.world.majorReport = null; game.world.seq++; return ack(); },
   dismissTip: () => { dismissTip(game.world); game.world.seq++; return ack(); },
   skipTutorial: () => { skipTutorial(game.world); game.world.seq++; return ack(); },
   toggleOverlay: () => { game.world.overlay = !game.world.overlay; game.world.cam.seq++; game.world.seq++; return ack(); },

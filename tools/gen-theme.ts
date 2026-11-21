@@ -15,5 +15,13 @@ fn serviceColor(s: string): string = s == "pompiers" ? "${P.service.pompiers}" :
 fn kindColor(k: string): string = k == "caserne" ? "${P.service.pompiers}" : k == "hopital" ? "${P.service.samu}" : k == "police" ? "${P.service.police}" : "${P.ink2}"
 fn priorityColor(p: number): string = p == 1 ? "${P.priority[1]}" : p == 2 ? "${P.priority[2]}" : "${P.priority[3]}"
 `;
-await Bun.write(new URL('../ui/palette.contract', import.meta.url), out);
+const file = new URL('../ui/palette.contract', import.meta.url);
+if (process.argv.includes('--check')) {
+  if ((await Bun.file(file).text()) !== out) {
+    console.error(`${file.pathname} is out of date: run bun ${import.meta.path.split('/').slice(-2).join('/')}`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+await Bun.write(file, out);
 console.log('ui/palette.contract written');
