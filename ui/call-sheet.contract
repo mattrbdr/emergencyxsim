@@ -78,7 +78,7 @@ component CallSheet
       // The caller, as a transcript line.
       column gap=6 padding="12px 14px" background-color="#0b0e12" border-left-width=2 border-left-style="solid" border-left-color=priorityColor(c.priority)
         row gap=6 align-items="center"
-          Icon(name="phone", size=12, color="#6b7686")
+          Icon(name="phone", size=12, color="#808b9c")
           text `APPELANT · ${c.at}` class=Caps
         text `« ${c.caller} »` font-size="0.95rem" line-height=1.5 testId="caller"
 
@@ -110,7 +110,7 @@ component CallSheet
                 text (u.eta != "" ? `${u.status} · ${u.eta}` : u.status) class=Mono font-size="0.72rem" color="#9aa4b2"
                 if u.eta != ""
                   button press=recall(u.id) aria-label=`Désengager ${u.name}` class=Quiet padding=4 testId=`recall-${u.id}`
-                    Icon(name="close", size=12, color="#6b7686")
+                    Icon(name="close", size=12, color="#808b9c")
 
         if open
           column gap=6 testId="dispatch"
@@ -131,7 +131,7 @@ component CallSheet
                       text "RÉFLEXE" class=Caps font-size="0.58rem" color="#9aa4b2"
                     if o.tired
                       text "FATIGUÉ" class=Caps font-size="0.58rem" color="#f0a531"
-                  text (o.returning ? `${o.station} · en retour` : o.station) font-size="0.72rem" color="#6b7686" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+                  text (o.returning ? `${o.station} · en retour` : o.station) font-size="0.72rem" color="#808b9c" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
                 text o.eta class=Mono font-size="0.8rem" font-weight=600
             if opts.filter(o => not o.needed).length > 0
               button press=toggleAll class=Quiet testId="toggle-all"
@@ -147,7 +147,7 @@ component CallSheet
                         text p.label font-weight=600 flex=1 text-align="left" color=(p.id == "rapide" ? "#0b0e12" : "#e6edf3")
                         text p.eta class=Mono font-size="0.78rem" font-weight=600 color=(p.id == "rapide" ? "#0b0e12" : "#e6edf3")
                       text p.names class=Mono font-size="0.7rem" color=(p.id == "rapide" ? "#30394a" : "#9aa4b2") text-align="left"
-                      text p.cost font-size="0.72rem" text-align="left" color=(p.costly ? (p.id == "rapide" ? "#b3261e" : "#f2555a") : (p.id == "rapide" ? "#30394a" : "#6b7686"))
+                      text p.cost font-size="0.72rem" text-align="left" color=(p.costly ? (p.id == "rapide" ? "#b3261e" : "#f2555a") : (p.id == "rapide" ? "#30394a" : "#808b9c"))
             else
               button press=engage class=Primary box-shadow=(hint == "engage" ? "0 0 0 2px #e6edf3" : "none") testId="engage"
                 Icon(name="flag", size=16, color="#0b0e12")

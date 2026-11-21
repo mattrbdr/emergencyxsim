@@ -1,5 +1,6 @@
 // What the view can ask (resources) and order (mutations). Each answer is one
 // line into the simulation; the reply is an Ack the view uses to refresh.
+import type { Difficulty } from '../sim/catalog/difficulty.ts';
 import type { Result, Sources } from '../app.contract.d.ts';
 import type { BuildingKind } from '../sim/catalog/buildings.ts';
 import type { Family } from '../sim/catalog/calls.ts';
@@ -55,12 +56,12 @@ export const sources: Sources = {
 
   // ------------------------------------------------ the town
   searchCity: async ([name]) => { await searchCommune(name); return ack(); },
-  chooseCity: async ([insee, name, seed, date], _store, storage) => {
+  chooseCity: async ([insee, name, seed, date, difficulty], _store, storage) => {
     const file = await downloadCommune(insee, name);
-    if (file) startCareer(storage, file, seed, true, date);
+    if (file) startCareer(storage, file, seed, true, date, difficulty as Difficulty);
     return ack(file ? 'ready' : '');
   },
-  useDemo: ([seed, date], _store, storage) => { startCareer(storage, demoCity(), seed, false, date); return ack('ready'); },
+  useDemo: ([seed, date, difficulty], _store, storage) => { startCareer(storage, demoCity(), seed, false, date, difficulty as Difficulty); return ack('ready'); },
   newCareer: async (_args, _store, storage) => { await resetCareer(storage); return ack(); },
 
   // ------------------------------------------------ time

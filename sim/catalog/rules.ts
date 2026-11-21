@@ -13,6 +13,8 @@ export const RULES = {
   escalationTime: 10 * 60,
 
   // Hospitals.
+  /** Seconds a crew on scene keeps a victim alive past the deadline while the rest comes. */
+  stabilizeTime: 10 * 60,
   hospitalStay: 4 * 60,
   ownHospitalFee: 600,
   dischargeEvery: 40 * 60,

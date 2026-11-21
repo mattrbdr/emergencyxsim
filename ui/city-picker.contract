@@ -10,6 +10,7 @@ component CityPicker
     epoch: number
     ready: action
   state query = ""
+  state pace = "normal"
   state polling = false
   state tick = 0
   resource status = cityStatus(tick) as shape CityStatus else empty() transient
@@ -23,6 +24,8 @@ component CityPicker
 
   action step
     tick = tick + 1
+  action setPace(p: string)
+    pace = p
   action edit(v: string)
     query = v
   action search
@@ -34,10 +37,10 @@ component CityPicker
     tick = tick + 1
   action choose(insee: string, name: string)
     polling = true
-    send loaded = chooseCity(insee, name, seed, epoch + performanceNow())
+    send loaded = chooseCity(insee, name, seed, epoch + performanceNow(), pace)
   action demo
     polling = true
-    send loaded = useDemo(seed, epoch + performanceNow())
+    send loaded = useDemo(seed, epoch + performanceNow(), pace)
   action afterLoad
     polling = false
     tick = tick + 1
@@ -56,6 +59,13 @@ component CityPicker
         column gap=6
           text "Commune de garde" font-size="1.25rem" font-weight=600 role="heading" aria-level=1
           text "Les rues, les bâtiments et les bases de la commune sont chargés depuis OpenStreetMap. Comptez une minute pour une ville moyenne." font-size="0.88rem" color="#9aa4b2" line-height=1.5
+        column gap=6
+          text "RYTHME DE GARDE" class=Caps
+          row role="radiogroup" aria-label="Rythme de garde" border="1px solid #252c36" border-radius=4 overflow="hidden"
+            for p in ["calme", "normal", "chargee"] key=p
+              button role="radio" aria-checked=(pace == p) press=setPace(p) appearance="none" flex=1 padding="8px 6px" border-left=(p == "calme" ? "none" : "1px solid #252c36") background-color=(pace == p ? "#e6edf3" : "transparent") testId=`pace-${p}`
+                text (p == "calme" ? "Calme" : p == "normal" ? "Normale" : "Chargée") font-size="0.82rem" font-weight=600 color=(pace == p ? "#0b0e12" : "#9aa4b2")
+          text (pace == "calme" ? "Moins d'appels, des délais plus longs." : pace == "normal" ? "Le rythme prévu." : "Plus d'appels, moins de marge, mieux payé.") font-size="0.78rem" color="#808b9c"
         column gap=6
           text "NOM DE LA COMMUNE" class=Caps
           row gap=8
@@ -86,8 +96,8 @@ component CityPicker
           text "Hors ligne, ou pour s'entraîner :" font-size="0.85rem" color="#9aa4b2"
           button press=demo disabled=busy class=Secondary justify-content="flex-start" testId="city-demo"
             text "Ville d'entraînement" font-weight=500 flex=1 text-align="left"
-            text "5 × 4 km" class=Mono font-size="0.72rem" color="#6b7686"
-        text "Données cartographiques © contributeurs OpenStreetMap, licence ODbL." font-size="0.72rem" color="#6b7686"
+            text "5 × 4 km" class=Mono font-size="0.72rem" color="#808b9c"
+        text "Données cartographiques © contributeurs OpenStreetMap, licence ODbL." font-size="0.72rem" color="#808b9c"
 
 keyframes blink
   50% opacity=0.2

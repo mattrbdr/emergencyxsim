@@ -1,5 +1,6 @@
 // The one running career, held by the data module. Starting, resuming from
 // disk, switching town and saving all go through here.
+import { DIFFICULTY } from '../sim/catalog/difficulty.ts';
 import type { Storage } from '../app.contract.d.ts';
 import demoFile from '../data/city.json';
 import { BUILDINGS } from '../sim/catalog/buildings.ts';
@@ -40,10 +41,11 @@ export async function boot(storage: Storage, epoch = 0) {
 }
 
 /** Starts a career in `file`, keeping the canvas size the old world learnt. */
-export function startCareer(storage: Storage, file: CityFile, seed: number, persistCity: boolean, date = 0) {
+export function startCareer(storage: Storage, file: CityFile, seed: number, persistCity: boolean, date = 0, difficulty: World['difficulty'] = 'normal') {
   const view = game.world.view;
   game.world = newWorld(loadCity(file), Math.floor(Math.abs(seed)) % 2147483646 || 1);
   if (date > 0) game.world.startDate = midnight(date);
+  game.world.difficulty = DIFFICULTY[difficulty] ? difficulty : 'normal';
   game.world.view = view;
   game.ready = true;
   if (persistCity) saveCity(storage, file).catch(() => {});
@@ -89,6 +91,7 @@ export function restore(city: City, s: Save, epoch = 0): World {
   if (s.dayStats) w.dayStats = { ...w.dayStats, ...s.dayStats };
   if (s.achievements) w.achievements = s.achievements;
   if (s.settings) w.settings = { ...w.settings, ...s.settings };
+  if (s.difficulty) w.difficulty = s.difficulty;
   if (s.records) w.records = { ...w.records, ...s.records };
   // A career saved before the calendar starts on the day it is resumed.
   if (s.startDate) w.startDate = s.startDate;

@@ -1,4 +1,5 @@
 // The game state. Every module of sim/ reads and writes this one shape.
+import type { Difficulty } from './catalog/difficulty.ts';
 import type { Fx } from './fx.ts';
 import type { Records } from './achievements.ts';
 import type { BuildingKind } from './catalog/buildings.ts';
@@ -92,6 +93,8 @@ export interface Call {
   risk: number;
   /** Reward multiplier earned by the decision. */
   bonus: number;
+  /** A crew on scene kept the victim alive past the deadline (once). */
+  stabilized: boolean;
   /** Work may not start yet (a vehicle on the run is not stopped). */
   hold: boolean;
   /** The major incident this call is a phase of ('' for an everyday call). */
@@ -178,6 +181,7 @@ export interface World {
   cue: { id: number; name: string; seq: number };
   fx: Fx[];
   fxId: number;
+  difficulty: Difficulty;
   /** Player settings, saved with the career. */
   settings: { sound: boolean; sirens: boolean; motion: boolean };
   /** A vehicle waiting for the player to tap where to station it (sim/posting.ts). */

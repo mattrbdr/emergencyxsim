@@ -21,7 +21,7 @@ component BuildMenu
       text (first ? "Votre première caserne est offerte et arrive avec un VSAV. Posez-la sur une route, ou touchez un site réel (carré pointillé) pour le reprendre." : "Touchez ensuite une route de la carte pour construire, ou un site réel (carré pointillé) pour le racheter moins cher.") font-size="0.85rem" color="#9aa4b2" line-height=1.45
       for o in options key=o.kind
         button press=place(o.kind) disabled=(not o.open) class=Secondary justify-content="flex-start" padding="12px" opacity=(o.open ? 1 : 0.5) border-left-width=3 border-left-style="solid" border-left-color=(o.open ? kindColor(o.kind) : "#30394a") testId=`build-${o.kind}`
-          Icon(name=(o.open ? o.kind : "lock"), size=22, color=(o.open ? kindColor(o.kind) : "#6b7686"))
+          Icon(name=(o.open ? o.kind : "lock"), size=22, color=(o.open ? kindColor(o.kind) : "#808b9c"))
           column flex=1 align-items="flex-start" gap=2
             text o.label font-weight=600
             text (o.open ? `Construire ${o.price} · reprendre un site ${o.buyPrice}` : `Débloqué au niveau ${o.level}`) class=Mono font-size="0.7rem" color="#9aa4b2"
@@ -90,7 +90,7 @@ component BuildingSheet
             Icon(name="expand", size=14, color="#e6edf3")
             text `Agrandir : +2 places · ${b.expandPrice}`
         else
-          text "Taille maximale atteinte." font-size="0.78rem" color="#6b7686"
+          text "Taille maximale atteinte." font-size="0.78rem" color="#808b9c"
       if b.kind == "hopital"
         text `${b.patients} patient${b.patients == 1 ? "" : "s"} hospitalisé${b.patients == 1 ? "" : "s"} : chaque victime amenée ici rapporte 600 €.` font-size="0.8rem" color="#9aa4b2"
       column gap=6 testId="upgrades"
@@ -101,7 +101,7 @@ component BuildingSheet
               text up.label font-size="0.82rem" font-weight=600
               text up.detail font-size="0.74rem" color="#9aa4b2" line-height=1.35
               if not up.owned
-                text up.upkeep class=Mono font-size="0.64rem" color="#6b7686"
+                text up.upkeep class=Mono font-size="0.64rem" color="#808b9c"
             if up.owned
               Icon(name="check", size=16, color="#3fb950")
             else if up.why == ""
@@ -110,7 +110,7 @@ component BuildingSheet
             else
               row gap=4 align-items="center"
                 if up.why.startsWith("Niveau")
-                  Icon(name="lock", size=12, color="#6b7686")
+                  Icon(name="lock", size=12, color="#808b9c")
                 text (up.why == "Fonds insuffisants" ? up.price : up.why) class=Mono font-size="0.68rem" color="#9aa4b2" text-align="right"
       column gap=6
         Heading(text="Acheter un véhicule", detail="")
@@ -119,14 +119,14 @@ component BuildingSheet
             CallSign(label=it.label, service=it.service, color=(it.level > 0 and it.why.startsWith("Niveau") ? "#4b5668" : serviceColor(it.service)))
             column flex=1 min-width=0 gap=1
               text it.long font-size="0.8rem" font-weight=500
-              text (it.owned > 0 ? `${it.upkeep} · ${it.owned} en service` : it.upkeep) class=Mono font-size="0.66rem" color="#6b7686"
+              text (it.owned > 0 ? `${it.upkeep} · ${it.owned} en service` : it.upkeep) class=Mono font-size="0.66rem" color="#808b9c"
             if it.why == ""
               button press=buy(it.type) class=Primary padding="6px 10px" box-shadow=(hint == `buy-${it.type}` ? "0 0 0 2px #e6edf3" : "none") testId=`buy-${it.type}`
                 text it.price class=Mono font-size="0.75rem" font-weight=600 color="#0b0e12"
             else
               row gap=4 align-items="center"
                 if it.why.startsWith("Niveau")
-                  Icon(name="lock", size=12, color="#6b7686")
+                  Icon(name="lock", size=12, color="#808b9c")
                 text it.why class=Mono font-size="0.68rem" color="#9aa4b2" text-align="right"
 
 component SiteSheet
@@ -141,7 +141,7 @@ component SiteSheet
   view
     column gap=12 testId="site-sheet"
       row align-items="flex-start" gap=10
-        Icon(name=(s.open ? s.kind : "lock"), size=24, color=(s.open ? kindColor(s.kind) : "#6b7686"))
+        Icon(name=(s.open ? s.kind : "lock"), size=24, color=(s.open ? kindColor(s.kind) : "#808b9c"))
         column flex=1 min-width=0 gap=2
           text `${s.label.toUpperCase()} · SITE RÉEL` class=Caps color=kindColor(s.kind)
           text s.name font-size="1.15rem" font-weight=600 role="heading" aria-level=2

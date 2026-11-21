@@ -33,7 +33,7 @@ style Sans
 style Mono
   font-family="'IBM Plex Mono', ui-monospace, Menlo, monospace" font-variant-numeric="tabular-nums"
 style Caps
-  font-family="'IBM Plex Mono', ui-monospace, Menlo, monospace" font-size="0.68rem" font-weight=600 letter-spacing="0.08em" text-transform="uppercase" color="#6b7686"
+  font-family="'IBM Plex Mono', ui-monospace, Menlo, monospace" font-size="0.68rem" font-weight=600 letter-spacing="0.08em" text-transform="uppercase" color="#808b9c"
 style Panel
   background-color="#11151b" border="1px solid #252c36" border-radius=6
 style Row

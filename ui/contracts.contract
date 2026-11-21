@@ -39,4 +39,4 @@ component ContractsPanel
           Meter(fraction=c.fraction, color=contractColor(c.state))
           row gap=8 align-items="center"
             text c.progressText class=Mono font-size="0.75rem" color="#9aa4b2" flex=1
-            text `${c.reward} · ${c.xp} XP` class=Mono font-size="0.75rem" color=(c.state == "failed" ? "#6b7686" : money())
+            text `${c.reward} · ${c.xp} XP` class=Mono font-size="0.75rem" color=(c.state == "failed" ? "#808b9c" : money())

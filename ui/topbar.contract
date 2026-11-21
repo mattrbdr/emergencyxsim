@@ -20,7 +20,7 @@ component TopBar
         column gap=1
           if wide
             text snap.date.toUpperCase() class=Caps color="#9aa4b2" white-space="nowrap" testId="date"
-          text snap.clock class=Mono font-size=(wide ? "1.35rem" : "1.1rem") font-weight=500 line-height=1 testId="clock"
+          text snap.clock class=Mono font-size=(wide ? "1.35rem" : "1.1rem") font-weight=500 line-height=1.3 testId="clock"
         // Speed: pause and ×1 ×2 ×4.
         row role="radiogroup" aria-label="Vitesse du temps" appearance="none" border="1px solid #252c36" border-radius=4 overflow="hidden" flex-shrink=0
           button role="radio" aria-checked=snap.paused aria-label=(snap.paused ? "Reprendre" : "Pause") press=togglePause appearance="none" width="2.25rem" height="2rem" display="flex" align-items="center" justify-content="center" background-color=(snap.paused ? "#f0a531" : "transparent") testId="pause"

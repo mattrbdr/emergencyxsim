@@ -27,7 +27,7 @@ component CallQueue
         Heading(text="Clôturés", detail=`${closed.length}`)
         for c in closed key=c.id
           row gap=8 align-items="baseline" padding="6px 4px" border-bottom="1px solid #1a2029"
-            text c.timeText class=Mono font-size="0.7rem" color="#6b7686" width="2.6rem"
+            text c.timeText class=Mono font-size="0.7rem" color="#808b9c" width="2.6rem"
             text c.title font-size="0.8rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis" color="#c9d1d9"
             text (c.reward != "" ? c.reward : c.stateLabel) class=Mono font-size="0.7rem" color=outcomeColor(c.outcome)
 
@@ -41,7 +41,7 @@ component CallLine
   view
     column press=pick role="button" aria-label=`Priorité ${c.priority}, ${c.title}, ${c.address}, ${c.stateLabel}, ${c.timeText}` gap=3 padding="8px 8px 8px 10px" border-left-width=3 border-left-style="solid" border-left-color=priorityColor(c.priority) border-bottom="1px solid #1a2029" background-color=(active ? "#1a212b" : "transparent") box-shadow=(hinted ? "0 0 0 2px #e6edf3" : "none") testId=tid
       row gap=8 align-items="baseline"
-        text c.at class=Mono font-size="0.7rem" color="#6b7686" width="2.6rem"
+        text c.at class=Mono font-size="0.7rem" color="#808b9c" width="2.6rem"
         text `P${c.priority}` class=Mono font-size="0.7rem" font-weight=600 color=priorityColor(c.priority) width="1.4rem"
         text c.title font-weight=600 font-size="0.86rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
         text c.timeText class=Mono font-size="0.74rem" font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#c9d1d9") testId=`time-${c.id}`

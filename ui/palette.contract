@@ -2,7 +2,7 @@
 
 fn ink(): string = "#e6edf3"
 fn ink2(): string = "#9aa4b2"
-fn ink3(): string = "#6b7686"
+fn ink3(): string = "#808b9c"
 fn surface(): string = "#11151b"
 fn raised(): string = "#171c24"
 fn rule(): string = "#252c36"

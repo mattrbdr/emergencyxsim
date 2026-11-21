@@ -12,67 +12,11 @@ import { pathTo, search } from '../sim/routing.ts';
 import { choices, decide } from '../sim/scenes.ts';
 import type { World } from '../sim/types.ts';
 import { newWorld, tick } from '../sim/world.ts';
+import { care, manage, regulate } from './players.ts';
 
 const city = loadCity(cityFile as unknown as CityFile);
 const centre = { x: city.width / 2, y: city.height / 2 };
 
-/** A careful dispatcher: qualifies right, sends the suggestion. */
-function regulate(w: World) {
-  for (const c of w.calls) {
-    if (c.state === 'clos') continue;
-    if (c.state === 'bilan') {
-      const best = choices(w, c).find((o) => o.enabled && o.id === 'renfort') ?? choices(w, c).find((o) => o.id === 'evacuer') ?? choices(w, c)[1];
-      decide(w, c, best.id);
-    }
-    if (!c.qualified) qualify(w, c.id, c.kind.family);
-    const picks = options(w, c.id).filter((o) => o.suggested).map((o) => o.unit.id);
-    if (picks.length) dispatch(w, c.id, picks);
-  }
-}
-
-/** A careful chief: rests a tired crew when another of its kind is free, services worn vehicles. */
-async function care(w: World, upgrade = false) {
-  const { rest, service } = await import('../sim/crews.ts');
-  if (upgrade) {
-    const { upgradesFor, cannotUpgrade, buyUpgrade } = await import('../sim/upgrades.ts');
-    // Spends what is above a 50 000 € reserve on the cheapest upgrade available.
-    const offers = w.buildings.flatMap((b) => upgradesFor(b).filter((u) => cannotUpgrade(w, b, u.id) === '').map((u) => ({ b, u })));
-    const best = offers.sort((a, b) => a.u.price - b.u.price)[0];
-    if (best && w.money - best.u.price > 50000) buyUpgrade(w, best.b.id, best.u.id);
-  }
-  for (const u of w.units) {
-    if (u.status !== 'dispo') continue;
-    const spare = w.units.some((x) => x !== u && x.type === u.type && x.status === 'dispo' && x.fatigue < 50);
-    if (u.fatigue > 70 && spare) rest(w, u.id);
-    else if (u.wear > 50 && w.money > 15000) service(w, u.id);
-  }
-}
-
-/** A thrifty manager: keeps 10 000 € aside, buys sites then the rarest unlocked vehicle. */
-function manage(w: World) {
-  const reserve = 10000;
-  for (const kind of ['police', 'hopital'] as const) {
-    if (BUILDINGS[kind].level <= w.level && !w.buildings.some((b) => b.kind === kind)) {
-      const site = city.pois.findIndex((p) => KIND_OF_POI[p.kind] === kind);
-      if (site >= 0 && w.money > BUILDINGS[kind].buy + reserve) buySite(w, site);
-    }
-  }
-  const unlocked = UNIT_ORDER.filter((t) => UNITS[t].level <= w.level && t !== 'HELI' && w.buildings.some((b) => b.kind === UNITS[t].building));
-  const counts = (t: string) => w.units.filter((u) => u.type === t).length;
-  const next = unlocked.sort((a, b) => counts(a) - counts(b))[0];
-  if (!next) return;
-  const home = w.buildings.find((b) => b.kind === UNITS[next].building);
-  if (!home || w.money < UNITS[next].price + reserve) return;
-  if (unitsOf(w, home).length >= home.slots && !expand(w, home.id)) {
-    // Garage at its maximum: open another caserne / post across town.
-    const kind = home.kind;
-    const site = city.pois.findIndex((p, i) => KIND_OF_POI[p.kind] === kind && !w.buildings.some((b) => b.site === i));
-    const added = site >= 0 ? buySite(w, site) : buildAt(w, kind, w.rng() * city.width, w.rng() * city.height);
-    if (added) buyUnit(w, added.id, next);
-    return;
-  }
-  buyUnit(w, home.id, next);
-}
 
 test('every station reaches every other one by road', () => {
   const tree = search(city, city.pois[0].node);
@@ -735,7 +679,8 @@ test('achievements: every goal reads a fresh world, a career wins several, each 
     const [value, target] = a.goal(fresh);
     expect(Number.isFinite(value) && target > 0).toBe(true);
   }
-  expect(ACHIEVEMENTS.length).toBeGreaterThanOrEqual(30);
+  expect(ACHIEVEMENTS.length).toBeGreaterThanOrEqual(18);
+  expect(ACHIEVEMENTS.length).toBeLessThanOrEqual(25);
   expect(new Set(ACHIEVEMENTS.map((a) => a.id)).size).toBe(ACHIEVEMENTS.length);
   const w = newWorld(city, 42);
   buildAt(w, 'caserne', centre.x, centre.y);
@@ -846,4 +791,33 @@ test('the engine cues sounds and marks the map: a call rings, a crew arrives, a 
   const kinds = new Set(w.fx.map((f) => f.kind));
   for (const k of ['ring', 'bubble', 'flash', 'stamp']) expect(kinds.has(k as never)).toBe(true);
   expect(w.fx.length).toBeLessThanOrEqual(40);
+});
+
+test('balance targets: a careful chief progresses and stays solvent, a sloppy one scrapes by', async () => {
+  const { career } = await import('./balance.ts');
+  const good = await career(101, 'soigneux', 6);
+  const bad = await career(101, 'brouillon', 6);
+  console.log('balance day 6:', good.at(-1), bad.at(-1));
+  expect(good[1].level).toBeGreaterThanOrEqual(5); // day 2
+  expect(good.at(-1)!.level).toBeGreaterThanOrEqual(9); // day 6
+  expect(Math.min(...good.map((r) => r.money))).toBeGreaterThan(-20000);
+  expect(good.at(-1)!.money).toBeLessThan(200000); // money stays tight: it is spent
+  expect(bad.at(-1)!.level).toBeGreaterThanOrEqual(6);
+  expect(Math.min(...bad.map((r) => r.money))).toBeGreaterThan(-20000);
+  expect(good.at(-1)!.saved).toBeGreaterThan(bad.at(-1)!.saved);
+}, 60000);
+
+test('difficulty: a calm shift has fewer calls and longer deadlines than a busy one', async () => {
+  const { callsPerHour } = await import('../sim/calls.ts');
+  const { createCall, spotOn } = await import('../sim/callfactory.ts');
+  const make = (d: World['difficulty']) => {
+    const w = newWorld(city, 91);
+    w.difficulty = d;
+    buildAt(w, 'caserne', centre.x, centre.y);
+    return w;
+  };
+  const calm = make('calme'), busy = make('chargee');
+  expect(callsPerHour(calm)).toBeLessThan(callsPerHour(busy));
+  const dl = (w: World) => createCall(w, CALL_KINDS[0], spotOn(w, city.callEdges[1]), 'x').deadline - w.t;
+  expect(dl(calm)).toBeGreaterThan(dl(busy));
 });

@@ -263,6 +263,8 @@ shape Snap
   day: number
   date: string
   night: number
+  repEffect: string
+  difficulty: string
   weather: Weather
   posting: string
   cue: Cue

@@ -62,5 +62,5 @@ component Empty
     text: string
   view
     column align-items="center" gap=10 padding="28px 12px" class=Row border-style="dashed"
-      Icon(name=icon, size=22, color="#6b7686")
+      Icon(name=icon, size=22, color="#808b9c")
       text text color="#9aa4b2" text-align="center" font-size="0.88rem"

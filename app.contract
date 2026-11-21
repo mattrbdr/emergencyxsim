@@ -269,9 +269,9 @@ component EmergencySim
           column role="tabpanel" id=`panel-${t.name}` position="absolute" inset=0
             for e in t.stack key=e.id
               column navigationKey=`${e.id}` position="absolute" inset=0 overflow="hidden" background-color="#0b0e12"
-                if e.name == "regulation"
+                if e.name == "regulation" and ready
                   Regulation(snap=snap, wide=wide, barHeight=barHeight, panel=panel, picked=picked, sideOpen=sideOpen, drawerOpen=drawerOpen, guiding=guiding, hint=hint, showToast=showToast, placingLabel=placingLabel, camSeq=camSeq, mapSel=mapSel, down=down, drag=drag, up=up, zoomWheel=zoomWheel, zoomIn=zoomIn, zoomOut=zoomOut, fit=fit, toggleOverlay=toggleOverlay, cancelPosting=cancelPosting, openBuild=openBuild, confirmPlacing=confirmPlacing, cancelPlacing=cancelPlacing, skipGuide=skipGuide, tipSeen=tipSeen, hideToast=hideToast, pickCall=pickCall, toggleDrawer=toggleDrawer, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding)
-                if e.name == "flotte"
+                if e.name == "flotte" and ready
                   scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-flotte"
                     FleetView(buildings=snap.buildings, units=snap.units, seq=snap.seq, hint=snap.guide.hint, wide=wide, pushed=false, upkeep=snap.upkeepText, sel=(wide ? fleetSel : ""), pick=pickFleet, showOnMap=showOnMap)
                 if e.name == "detail"
@@ -283,10 +283,10 @@ component EmergencySim
                       text (e.params.sel.startsWith("b-") ? "Base" : "Véhicule") role="heading" aria-level=2 font-size="0.9rem" font-weight=600
                     scroll flex=1 min-height=0 padding=14
                       FleetView(buildings=snap.buildings, units=snap.units, seq=snap.seq, hint=snap.guide.hint, wide=false, pushed=true, upkeep=snap.upkeepText, sel=e.params.sel, pick=pickFleet, showOnMap=showOnMap)
-                if e.name == "carriere"
+                if e.name == "carriere" and ready
                   scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-carriere"
-                    CareerView(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, coverage=snap.coverage, stats=snap.stats, city=snap.city, rank=snap.rank, rankIcon=snap.rankIcon, achievements=snap.achievements, achievementsDone=snap.achievementsDone, wide=wide, settings=snap.settings, setSetting=setSetting, reset=resetCareer)
-                if e.name == "journal"
+                    CareerView(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, coverage=snap.coverage, repEffect=snap.repEffect, difficulty=snap.difficulty, stats=snap.stats, city=snap.city, rank=snap.rank, rankIcon=snap.rankIcon, achievements=snap.achievements, achievementsDone=snap.achievementsDone, wide=wide, settings=snap.settings, setSetting=setSetting, reset=resetCareer)
+                if e.name == "journal" and ready
                   scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-journal"
                     JournalView(seq=snap.seq, date=snap.date, bulletin=snap.weather.bulletin, weatherIcon=snap.weather.icon)
       // The tabs: a rail drawn by the game on a wide screen; the platform's tab bar on a phone
@@ -295,21 +295,22 @@ component EmergencySim
         for v in ["regulation", "flotte", "carriere", "journal"] key=v
           button role="tab" aria-controls=`panel-${v}` aria-selected=(tabName == v) aria-label=tabLabel(v) title=tabLabel(v) press=goTab(v) position="relative" flex=(wide ? "none" : 1) height=(wide ? "48px" : "auto") padding=(wide ? "0px" : "6px 0px 4px") display="flex" flex-direction="column" align-items="center" justify-content="center" gap=2 border-left-width=(wide ? 2 : 0) border-left-style="solid" border-left-color=(wide and tabName == v ? "#e6edf3" : "transparent") box-shadow=(hint == "buy-VSAV" and v == "flotte" and tabName != "flotte" ? "inset 0 0 0 2px #e6edf3" : "none") testId=`nav-${v}`
             if wide
-              Icon(name=tabIcon(v), size=19, color=(tabName == v ? "#e6edf3" : "#6b7686"))
+              Icon(name=tabIcon(v), size=19, color=(tabName == v ? "#e6edf3" : "#808b9c"))
             else
-              image tabSymbol(v) width=22 height=22 color=(tabName == v ? "#e6edf3" : "#6b7686")
-              text tabLabel(v) font-size="0.62rem" font-weight=600 color=(tabName == v ? "#e6edf3" : "#6b7686") white-space="nowrap"
+              image tabSymbol(v) width=22 height=22 color=(tabName == v ? "#e6edf3" : "#808b9c")
+              text tabLabel(v) font-size="0.62rem" font-weight=600 color=(tabName == v ? "#e6edf3" : "#808b9c") white-space="nowrap"
             if v == "regulation" and snap.newCalls > 0
               row position="absolute" top=(wide ? 6 : 2) right=(wide ? 6 : "calc(50% - 24px)") padding="1px 4px" border-radius=8 background-color="#f2555a" aria-label=`${snap.newCalls} appels à qualifier` testId="badge-calls"
                 text `${snap.newCalls}` class=Mono font-size="0.6rem" font-weight=600 color="#0b0e12"
             if v == "carriere" and snap.achievementsDone > seenAchievements and tabName != "carriere"
               row position="absolute" top=(wide ? 9 : 4) right=(wide ? 10 : "calc(50% - 18px)") width=7 height=7 border-radius=4 background-color="#f0a531" aria-label="Nouveau succès"
       // Overlays over every tab: the top bar, the crisis strip, cards, and the town picker.
-      column position="absolute" top=0 left=navW right=0
-        TopBar(snap=snap, wide=wide, setSpeed=setSpeed, togglePause=togglePause, openContracts=openContracts)
-        if snap.crisis.active
-          view margin-top=`calc(env(safe-area-inset-top) + ${wide ? 50 : 48}px)`
-            CrisisBar(c=snap.crisis, open=openCrisis)
+      if ready
+        column position="absolute" top=0 left=navW right=0
+          TopBar(snap=snap, wide=wide, setSpeed=setSpeed, togglePause=togglePause, openContracts=openContracts)
+          if snap.crisis.active
+            view margin-top=`calc(env(safe-area-inset-top) + ${wide ? 50 : 48}px)`
+              CrisisBar(c=snap.crisis, open=openCrisis)
       if snap.showUnlock and ready
         UnlockCard(unlock=snap.unlock, done=levelSeen)
       if snap.report.show and not snap.showUnlock and ready
@@ -400,7 +401,7 @@ component Regulation
       if showToast and snap.placing == ""
         view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 396 : 10) right=(wide ? (sideOpen ? 488 : 64) : 60) display="flex" justify-content="center" pointer-events="none"
           row press=hideToast pointer-events="auto" gap=10 align-items="center" padding="9px 12px" max-width="34rem" background-color="#11151b" border="1px solid #252c36" border-left-width=3 border-left-style="solid" border-left-color=toneColor(snap.toast.tone) border-radius=4 animation="drop 260ms cubic-bezier(0.2, 0.8, 0.2, 1)" testId="toast"
-            text snap.toast.at class=Mono font-size="0.7rem" color="#6b7686"
+            text snap.toast.at class=Mono font-size="0.7rem" color="#808b9c"
             text snap.toast.text font-size="0.86rem"
       if wide
         // Left: the calls.

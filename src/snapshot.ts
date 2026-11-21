@@ -1,4 +1,6 @@
 // The view model: turns the world into the shapes ui/model.contract declares.
+import { DIFFICULTY } from '../sim/catalog/difficulty.ts';
+import { reputationFactor } from '../sim/economy.ts';
 import type { Result } from '../app.contract.d.ts';
 import { CREW, isTired, servicePrice } from '../sim/crews.ts';
 import { cannotUpgrade, has, maxSlots, upgradesFor, upgradesUpkeep } from '../sim/upgrades.ts';
@@ -280,13 +282,15 @@ export function snapshot(w: World): Snap {
     weather: weatherRow(w),
     // Night on the map in five steps (0 day – 4 deep night), for the city canvas.
     night: nightStep(w),
+    repEffect: `primes ×${reputationFactor(w).toFixed(2).replace('.', ',')} · appels ×${(0.6 + w.reputation / 125).toFixed(2).replace('.', ',')}`,
+    difficulty: DIFFICULTY[w.difficulty].label,
     posting: w.units.find((u) => u.id === w.posting)?.name ?? '',
     cue: { id: w.cue.id, name: w.cue.name },
     settings: { ...w.settings },
     rank: rankOf(w.level).title,
     rankIcon: rankOf(w.level).icon,
     achievements: achievementRows(w),
-    achievementsDone: w.achievements.length,
+    achievementsDone: ACHIEVEMENTS.filter((x) => w.achievements.includes(x.id)).length,
     clock: clockText(w.t),
     speed: w.speed,
     paused: w.paused,

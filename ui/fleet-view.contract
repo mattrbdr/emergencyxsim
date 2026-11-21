@@ -44,7 +44,7 @@ component FleetView
             Count(label="Disponibles", n=units.filter(u => u.status == "dispo").length, color="#3fb950")
             Count(label="En intervention", n=units.filter(u => u.status == "route" or u.status == "surplace" or u.status == "transport" or u.status == "hopital").length, color="#f0a531")
             Count(label="Repos", n=units.filter(u => u.status == "repos").length, color="#58a6ff")
-            Count(label="Atelier", n=units.filter(u => u.status == "atelier").length, color="#6b7686")
+            Count(label="Atelier", n=units.filter(u => u.status == "atelier").length, color="#808b9c")
           text `Entretien total ${upkeep}` class=Mono font-size="0.72rem" color="#9aa4b2"
           row role="radiogroup" aria-label="Filtrer les véhicules" border="1px solid #252c36" border-radius=4 overflow="hidden" align-self="flex-start" flex-wrap="wrap"
             for f in ["tous", "dispo", "fatigues", "repos"] key=f
@@ -62,7 +62,7 @@ component FleetView
                     view width="4rem"
                       Meter(fraction=(b.slots > 0 ? b.used / b.slots : 0), color=kindColor(b.kind))
                     text `${b.used}/${b.slots} places` class=Mono font-size="0.66rem" color="#9aa4b2" white-space="nowrap"
-                    text `améliorations ${b.upgradesText}` class=Mono font-size="0.66rem" color="#6b7686" white-space="nowrap"
+                    text `améliorations ${b.upgradesText}` class=Mono font-size="0.66rem" color="#808b9c" white-space="nowrap"
                 text b.upkeep class=Mono font-size="0.68rem" color="#9aa4b2" white-space="nowrap" align-self="flex-start"
               for u in units.filter(x => x.building == b.id and keep(x, filter)) key=u.id
                 row press=pick(`u-${u.id}`) role="button" aria-label=`${u.name}, ${u.statusLabel}, fatigue ${u.fatigue} %` gap=8 align-items="center" padding="7px 12px" border-top="1px solid #1a2029" background-color=(sel == `u-${u.id}` ? "#1a212b" : "transparent") testId=`fleet-unit-${u.id}`
@@ -71,7 +71,7 @@ component FleetView
                   view flex=1
                   view width="3rem" aria-hidden=true
                     Meter(fraction=u.fatigue / 100, color=gauge(u.fatigue))
-                  text `${u.fatigue} %` class=Mono font-size="0.64rem" width="2.4rem" text-align="right" color="#6b7686"
+                  text `${u.fatigue} %` class=Mono font-size="0.64rem" width="2.4rem" text-align="right" color="#808b9c"
       if sel != ""
         column flex=(wide ? "0 0 26rem" : 1) min-width=0 gap=10 padding=(wide ? 16 : 0) background-color=(wide ? "#0e1217" : "transparent") border=(wide ? "1px solid #252c36" : "none") border-radius=4 testId="fleet-detail"
           if not wide and not pushed
@@ -92,7 +92,7 @@ component FleetView
                 text "Ce véhicule n'est plus en service." color="#9aa4b2"
       else if wide
         column flex="0 0 26rem" align-items="center" justify-content="center" padding=24 border="1px dashed #252c36" border-radius=4 min-height="12rem"
-          text "Choisissez une base ou un véhicule." font-size="0.84rem" color="#6b7686"
+          text "Choisissez une base ou un véhicule." font-size="0.84rem" color="#808b9c"
 
 component Count
   props

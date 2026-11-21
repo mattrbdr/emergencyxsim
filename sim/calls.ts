@@ -1,5 +1,6 @@
 // The life of a call: it comes in, the player qualifies it, dispatches, the
 // scene is worked, and it closes saved, lost or failed.
+import { DIFFICULTY } from './catalog/difficulty.ts';
 import { noteQualification } from './achievements.ts';
 import { CALL_KINDS, type Family } from './catalog/calls.ts';
 import { RULES } from './catalog/rules.ts';
@@ -30,7 +31,7 @@ export function callsPerHour(w: World): number {
   const hour = hourOf(w.t);
   const night = hour < 6 || hour >= 23 ? 0.55 : 1;
   const busy = 1 + Math.max(0, 1 - Math.abs(hour - 12.5) / 2) * 0.3 + Math.max(0, 1 - Math.abs(hour - 18) / 1.5) * 0.5;
-  return (2 + w.units.length * 1.1) * night * busy * (0.6 + w.reputation / 125) * rateFactor(w);
+  return (2 + w.units.length * 0.85) * night * busy * (0.6 + w.reputation / 125) * rateFactor(w) * DIFFICULTY[w.difficulty].calls;
 }
 
 export function spawnCall(w: World) {
@@ -294,6 +295,16 @@ export function updateCall(w: World, call: Call, dt: number) {
     call.priority = 1;
     adjustReputation(w, RULES.reputation.escalation);
     say(w, `Propagation · ${call.street} · renfort ${call.kind.escalate.map((t) => UNITS[t].label).join(', ')} demandé`, 'alert', true);
+    return;
+  }
+  // A crew that can treat is already there: the victim is kept alive while the rest comes (once).
+  const medic = onSceneTypes(w, call).some((t) => UNITS[t].carries || t === 'SMUR' || t === 'VLM');
+  if (call.kind.victims > 0 && medic && !call.stabilized) {
+    call.stabilized = true;
+    call.deadline = w.t + RULES.stabilizeTime;
+    call.bonus *= 0.7;
+    adjustReputation(w, RULES.reputation.escalation / 2);
+    say(w, `${call.street} · victime stabilisée sur place, renfort attendu`, 'alert', true);
     return;
   }
   if (call.kind.victims > 0) {

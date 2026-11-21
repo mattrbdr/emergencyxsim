@@ -33,6 +33,6 @@ component JournalView
       column gap=0
         for l in lines key=l.id
           row gap=10 align-items="flex-start" padding="8px 2px" border-bottom="1px solid #1a2029"
-            text l.at class=Mono font-size="0.7rem" color="#6b7686" padding-top=2
+            text l.at class=Mono font-size="0.7rem" color="#808b9c" padding-top=2
             view width=3 align-self="stretch" background-color=toneColor(l.tone)
             text l.text class=Mono font-size="0.76rem" line-height=1.45 color="#c9d1d9" flex=1 min-width=0

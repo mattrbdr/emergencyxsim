@@ -5,7 +5,7 @@ use Tag, CallSign, Heading, Empty, Meter from "./parts.contract"
 use Mono, Caps, Secondary, Quiet, statusColor, plural from "./theme.contract"
 use serviceColor, kindColor from "./palette.contract"
 
-fn statusTone(code: number): string = code == 1 ? "#3fb950" : code == 3 ? "#f2555a" : code == 2 ? "#f0a531" : code == 6 ? "#9aa4b2" : code == 7 ? "#58a6ff" : code == 8 ? "#6b7686" : "#b48ef0"
+fn statusTone(code: number): string = code == 1 ? "#3fb950" : code == 3 ? "#f2555a" : code == 2 ? "#f0a531" : code == 6 ? "#9aa4b2" : code == 7 ? "#58a6ff" : code == 8 ? "#808b9c" : "#b48ef0"
 
 fn gaugeColor(v: number): string = v > 90 ? "#f2555a" : v > 70 ? "#f0a531" : "#9aa4b2"
 
@@ -40,7 +40,7 @@ component Fleet
             row press=pickUnit(u.id) role="button" aria-label=`${u.name}, statut ${u.statusCode}, ${u.statusLabel}` gap=8 align-items="center" padding="6px 4px" border-bottom="1px solid #1a2029" testId=`unit-${u.id}`
               text u.name class=Mono font-size="0.78rem" font-weight=600 width="4.6rem" color=serviceColor(u.service)
               StatusCode(code=u.statusCode, label=u.statusLabel)
-              text (u.callTitle != "" ? u.callTitle : "") font-size="0.72rem" color="#6b7686" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+              text (u.callTitle != "" ? u.callTitle : "") font-size="0.72rem" color="#808b9c" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
               if u.eta != ""
                 text u.eta class=Mono font-size="0.68rem" color="#9aa4b2"
               // Crew fatigue at a glance.

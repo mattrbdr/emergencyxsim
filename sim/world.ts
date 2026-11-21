@@ -27,7 +27,7 @@ export function newWorld(city: City, seed: number): World {
     stationTrees: new Map(), callTrees: new Map(),
     cam: { cx: city.width / 2, cy: city.height / 2, zoom: 0.2, tx: city.width / 2, ty: city.height / 2, tz: 0.2, seq: 1, touched: false },
     view: { w: 0, h: 0 }, pointers: new Map(), pinch: null, posting: '',
-    cue: { id: 0, name: '', seq: -1 }, fx: [], fxId: 0, settings: { sound: true, sirens: true, motion: true }, placing: null, overlay: false,
+    cue: { id: 0, name: '', seq: -1 }, fx: [], fxId: 0, settings: { sound: true, sirens: true, motion: true }, difficulty: 'normal', placing: null, overlay: false,
     contracts: [], dayStats: emptyDay(1), streak: 0, tutorial: 0, tip: '', tipsSeen: [],
     majors: [], nextMajorAt: firstMajorAt, majorReport: null, blocked: new Set(),
     achievements: [], records: emptyRecords(),

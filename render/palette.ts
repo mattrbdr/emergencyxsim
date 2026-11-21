@@ -3,7 +3,7 @@
 export const PALETTE = {
   ink: '#e6edf3',
   ink2: '#9aa4b2',
-  ink3: '#6b7686',
+  ink3: '#808b9c',
   bg: '#0b0e12',
   surface: '#11151b',
   raised: '#171c24',

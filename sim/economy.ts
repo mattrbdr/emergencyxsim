@@ -1,4 +1,5 @@
 // Money and reputation: rewards for interventions, hourly upkeep, purchases.
+import { DIFFICULTY } from './catalog/difficulty.ts';
 import { upgradesUpkeep } from './upgrades.ts';
 import { BUILDINGS } from './catalog/buildings.ts';
 import { RULES } from './catalog/rules.ts';
@@ -13,7 +14,7 @@ export const reputationFactor = (w: World) =>
 
 export function reward(w: World, kind: CallKind, secondsEarly: number): number {
   const speedBonus = 1 + Math.min(RULES.earlyBonus.max, Math.max(0, secondsEarly / 60) * RULES.earlyBonus.perMinute);
-  return Math.round((kind.reward * speedBonus * reputationFactor(w)) / 10) * 10;
+  return Math.round((kind.reward * speedBonus * reputationFactor(w) * DIFFICULTY[w.difficulty].reward) / 10) * 10;
 }
 
 export function earn(w: World, amount: number) {
