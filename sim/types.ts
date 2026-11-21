@@ -1,4 +1,5 @@
 // The game state. Every module of sim/ reads and writes this one shape.
+import type { Fx } from './fx.ts';
 import type { Records } from './achievements.ts';
 import type { BuildingKind } from './catalog/buildings.ts';
 import type { CallKind } from './catalog/calls.ts';
@@ -173,6 +174,12 @@ export interface World {
   pointers: Map<number, Pointer>;
   pinch: { d: number; zoom: number } | null;
   /** Build mode: the kind being placed and where the ghost stands (node, or -1). */
+  /** The sound of the moment and the marks on the map (sim/fx.ts); not saved. */
+  cue: { id: number; name: string; seq: number };
+  fx: Fx[];
+  fxId: number;
+  /** Player settings, saved with the career. */
+  settings: { sound: boolean; sirens: boolean; motion: boolean };
   /** A vehicle waiting for the player to tap where to station it (sim/posting.ts). */
   posting: string;
   placing: { kind: BuildingKind; node: number; gain: number; after: number } | null;

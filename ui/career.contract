@@ -1,5 +1,5 @@
 // Progress: the card a new level shows, and the career panel (stats, settings).
-use Unlock, Stats, ShopItem, AchievementRow, RoadmapStep from "./model.contract"
+use Unlock, Stats, ShopItem, AchievementRow, RoadmapStep, Settings from "./model.contract"
 use Icon from "./icons.contract"
 use CallSign, Heading, Meter from "./parts.contract"
 use Mono, Caps, Primary, Secondary, Quiet, money from "./theme.contract"
@@ -80,6 +80,8 @@ component CareerView
     achievements: AchievementRow[]
     achievementsDone: number
     wide: bool
+    settings: Settings
+    setSetting: action
     reset: action
   state section = "bilan"
   state onlyTodo = false
@@ -103,9 +105,14 @@ component CareerView
           Cell(label="Réputation", value=`${reputation} %`, color="#e6edf3")
           Cell(label="Couverture 3 min", value=`${coverage} %`, color=(coverage >= 70 ? "#3fb950" : coverage >= 40 ? "#f0a531" : "#f2555a"))
       row role="tablist" border-bottom="1px solid #252c36"
-        for t in ["bilan", "succes", "progression"] key=t
+        for t in ["bilan", "succes", "progression", "reglages"] key=t
           button role="tab" aria-selected=(section == t) press=pick(t) appearance="none" flex=1 padding="9px 4px" border-bottom-width=2 border-bottom-style="solid" border-bottom-color=(section == t ? "#e6edf3" : "transparent") testId=`career-${t}`
-            text (t == "bilan" ? "Bilan" : t == "succes" ? `Succès ${achievementsDone} / ${achievements.length}` : "Progression") font-size="0.84rem" font-weight=600 color=(section == t ? "#e6edf3" : "#9aa4b2")
+            text (t == "bilan" ? "Bilan" : t == "succes" ? `Succès ${achievementsDone} / ${achievements.length}` : t == "progression" ? "Progression" : "Réglages") font-size="0.84rem" font-weight=600 color=(section == t ? "#e6edf3" : "#9aa4b2")
+      if section == "reglages"
+        column gap=8 testId="settings"
+          Toggle(label="Son", detail="Sonneries, radio, alarmes et gains.", on=settings.sound, flip=setSetting("sound", not settings.sound), tid="setting-sound")
+          Toggle(label="Sirènes au départ", detail="Le deux-tons quand un véhicule part.", on=settings.sirens, flip=setSetting("sirens", not settings.sirens), tid="setting-sirens")
+          Toggle(label="Animations", detail="Ondes, gyrophares, tampons. Désactivées, les informations restent affichées.", on=settings.motion, flip=setSetting("motion", not settings.motion), tid="setting-motion")
       if section == "bilan"
         CareerStats(stats=stats, reputation=reputation, city=city, reset=reset)
       if section == "succes"
@@ -188,3 +195,18 @@ component Cell
 
 keyframes rise
   from opacity=0 translate="0px 12px"
+
+component Toggle
+  props
+    label: string
+    detail: string
+    on: bool
+    flip: action
+    tid: string
+  view
+    button press=flip role="switch" aria-checked=on appearance="none" display="flex" align-items="center" gap=12 padding="10px 12px" background-color="#171c24" border-radius=4 text-align="left" testId=tid
+      column flex=1 min-width=0 gap=2
+        text label font-weight=600 font-size="0.88rem"
+        text detail font-size="0.74rem" color="#9aa4b2" line-height=1.35
+      view width=40 height=22 border-radius=11 background-color=(on ? "#3fb950" : "#30394a") position="relative" flex-shrink=0
+        view position="absolute" top=3 left=(on ? 21 : 3) width=16 height=16 border-radius=8 background-color="#e6edf3"

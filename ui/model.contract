@@ -229,6 +229,15 @@ shape RoadmapStep
   calls: number
   majors: string[]
 
+shape Cue
+  id: number
+  name: string
+
+shape Settings
+  sound: bool
+  sirens: bool
+  motion: bool
+
 shape Preset
   id: string
   label: string
@@ -255,6 +264,8 @@ shape Snap
   date: string
   weather: Weather
   posting: string
+  cue: Cue
+  settings: Settings
   rank: string
   rankIcon: string
   achievements: AchievementRow[]

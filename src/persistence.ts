@@ -44,6 +44,7 @@ export interface Save {
   // Since v4.
   achievements?: string[];
   records?: World['records'];
+  settings?: World['settings'];
 }
 
 const encode = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
@@ -83,7 +84,7 @@ export function snapshotSave(w: World): Save {
     major: majorToSave(w),
     blocked: [...w.blocked],
     startDate: w.startDate,
-    achievements: w.achievements, records: w.records,
+    achievements: w.achievements, records: w.records, settings: w.settings,
   };
 }
 

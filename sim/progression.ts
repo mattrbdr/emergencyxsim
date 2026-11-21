@@ -1,4 +1,5 @@
 // Experience and levels: what the player has unlocked.
+import { cue } from './fx.ts';
 import { BUILDINGS, BUILDING_ORDER, type BuildingKind } from './catalog/buildings.ts';
 import { kindsUnlockedAt } from './catalog/calls.ts';
 import { levelFor } from './catalog/levels.ts';
@@ -16,6 +17,7 @@ export function gainXp(w: World, amount: number) {
   const level = levelFor(w.xp);
   if (level > w.level) {
     w.level = level;
+    cue(w, 'promo');
     const units = UNIT_ORDER.filter((t) => UNITS[t].level === level).map((t) => UNITS[t].label);
     const buildings = BUILDING_ORDER.filter((k) => BUILDINGS[k].level === level).map((k) => BUILDINGS[k].label);
     const calls = kindsUnlockedAt(level).length;

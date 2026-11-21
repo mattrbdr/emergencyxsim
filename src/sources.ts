@@ -88,6 +88,14 @@ export const sources: Sources = {
       costly: p.loss >= 0.05,
     })),
   postUnit: ([id]) => { startPosting(game.world, id); game.world.seq++; return ack(); },
+  setSetting: ([name, on], _store, storage) => {
+    const s = game.world.settings;
+    if (name === 'sound' || name === 'sirens' || name === 'motion') s[name] = on;
+    game.world.dirty = true;
+    save(storage);
+    game.world.seq++;
+    return ack();
+  },
   cancelPosting: () => { game.world.posting = ''; game.world.seq++; return ack(); },
   standDown: ([id], _store, storage) => { if (standDown(game.world, id)) save(storage); game.world.seq++; return ack(); },
   recallUnit: ([id]) => { recall(game.world, id); game.world.seq++; return ack(); },

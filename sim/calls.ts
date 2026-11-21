@@ -12,6 +12,7 @@ import { createCall, spotOn } from './callfactory.ts';
 import { departureCost } from './coverage.ts';
 import { isTired, turnout } from './crews.ts';
 import { homeHas } from './upgrades.ts';
+import { cue, fx } from './fx.ts';
 import { pickStreet } from './places.ts';
 import { callWeight, draws, rateFactor } from './weather.ts';
 import { decisionTimeout, rollTwist } from './scenes.ts';
@@ -56,6 +57,8 @@ export function spawnCall(w: World) {
   w.calls.push(call);
   w.stats.calls++;
   say(w, `Appel reçu${call.priority === 1 ? ', priorité 1' : ''} · ${call.street}`, call.priority === 1 ? 'alert' : 'info', true);
+  cue(w, call.priority === 1 ? 'appel_p1' : 'appel');
+  fx(w, 'ring', call.x, call.y, '', call.priority === 1 ? 'bad' : 'alert');
 }
 
 // ---------------------------------------------------------------- commands
@@ -107,6 +110,7 @@ export function dispatch(w: World, callId: string, unitIds: string[]): number {
     if (!call.qualified) { call.qualified = true; call.guessedRight = true; }
     if (call.state === 'nouveau' || call.state === 'attente') call.state = 'engage';
     say(w, `Départ ${names.join(', ')} · ${call.street}`, 'info');
+    cue(w, 'depart');
     w.seq++;
   }
   return sent;
@@ -338,12 +342,15 @@ function finish(w: World, call: Call) {
   adjustReputation(w, call.priority === 1 ? RULES.reputation.successP1 : RULES.reputation.success);
   if (call.kind.victims > 0) w.stats.saved += call.kind.victims;
   say(w, `Fin d'intervention · ${call.street} · +${euros(money)}, +${call.kind.xp} XP`, 'money', call.priority === 1);
+  cue(w, 'gain');
+  fx(w, 'gain', call.x, call.y, `+${euros(money)}`, 'good');
   close(w, call, call.kind.transport);
 }
 
 function close(w: World, call: Call, transport = false) {
   call.state = 'clos';
   call.closedAt = w.t;
+  fx(w, 'stamp', call.x, call.y, call.outcome === 'sauve' ? 'SAUVÉ' : call.outcome === 'perdu' ? 'PERDU' : 'ÉCHEC', call.outcome === 'sauve' ? 'good' : 'bad');
   recordCall(w, call);
   let carrier: string | undefined;
   if (transport) {

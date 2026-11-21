@@ -25,6 +25,14 @@ shape Viewport
   width: number
   height: number
 
+sound "assets/sounds/appel.wav"
+sound "assets/sounds/appel_p1.wav"
+sound "assets/sounds/radio.wav"
+sound "assets/sounds/depart.wav"
+sound "assets/sounds/crise.wav"
+sound "assets/sounds/gain.wav"
+sound "assets/sounds/promo.wav"
+
 // The four tabs; the fleet pushes a station's or a vehicle's page on the phone.
 routes nav
   tab regulation "/"
@@ -81,6 +89,9 @@ component EmergencySim
     every(250, step)
   task toastTimer when showToast key=snap.toast.id
     after(4500, hideToast)
+  // The sound of the moment, and a buzz for what is urgent.
+  task cueSound when ready and snap.cue.id > 0 key=snap.cue.id
+    after(1, playCue)
   task buzz when showToast and snap.toast.tone == "alert" key=snap.toast.id
     after(16, alertHaptic)
 
@@ -96,6 +107,29 @@ component EmergencySim
     send commanded = setPaused(not snap.paused)
   action hideToast
     hiddenToast = snap.toast.id
+  action playCue
+    let n = snap.cue.name
+    if snap.settings.sound
+      if n == "appel"
+        playSound("assets/sounds/appel.wav", gain=0.55, group="phone")
+      else if n == "appel_p1"
+        playSound("assets/sounds/appel_p1.wav", gain=0.7, group="phone")
+      else if n == "radio"
+        playSound("assets/sounds/radio.wav", gain=0.45)
+      else if n == "depart" and snap.settings.sirens
+        playSound("assets/sounds/depart.wav", gain=0.3, group="siren")
+      else if n == "crise"
+        playSound("assets/sounds/crise.wav", gain=0.7)
+      else if n == "gain"
+        playSound("assets/sounds/gain.wav", gain=0.4)
+      else if n == "promo"
+        playSound("assets/sounds/promo.wav", gain=0.6)
+    if n == "crise" or n == "appel_p1"
+      haptic("warning")
+    else if n == "gain" or n == "promo"
+      haptic("success")
+  action setSetting(name: string, on: bool)
+    send commanded = setSetting(name, on)
   action alertHaptic
     haptic("warning")
   action onReady
@@ -251,7 +285,7 @@ component EmergencySim
                       FleetView(buildings=snap.buildings, units=snap.units, seq=snap.seq, hint=snap.guide.hint, wide=false, pushed=true, upkeep=snap.upkeepText, sel=e.params.sel, pick=pickFleet, showOnMap=showOnMap)
                 if e.name == "carriere"
                   scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-carriere"
-                    CareerView(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, coverage=snap.coverage, stats=snap.stats, city=snap.city, rank=snap.rank, rankIcon=snap.rankIcon, achievements=snap.achievements, achievementsDone=snap.achievementsDone, wide=wide, reset=resetCareer)
+                    CareerView(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, coverage=snap.coverage, stats=snap.stats, city=snap.city, rank=snap.rank, rankIcon=snap.rankIcon, achievements=snap.achievements, achievementsDone=snap.achievementsDone, wide=wide, settings=snap.settings, setSetting=setSetting, reset=resetCareer)
                 if e.name == "journal"
                   scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-journal"
                     JournalView(seq=snap.seq, date=snap.date, bulletin=snap.weather.bulletin, weatherIcon=snap.weather.icon)

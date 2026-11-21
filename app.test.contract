@@ -151,6 +151,14 @@ test "the views: fleet, career progression and the log, with time still running"
   clock data
   clock +300
   expect tree has "step-25"
+  tap "career-reglages"
+  clock data
+  clock +300
+  expect state snap.settings.sound == true
+  tap "setting-sound"
+  clock data
+  clock +300
+  expect state snap.settings.sound == false
   clock +4000
   clock data
   expect state snap.calls.length >= 1

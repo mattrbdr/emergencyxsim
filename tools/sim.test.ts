@@ -828,3 +828,22 @@ test('waves are announced ten minutes ahead', async () => {
   updateConditions(w);
   expect(w.log.length).toBe(n);
 });
+
+test('the engine cues sounds and marks the map: a call rings, a crew arrives, a call closes', () => {
+  const w = newWorld(city, 81);
+  buildAt(w, 'caserne', centre.x, centre.y);
+  w.speed = 4;
+  w.nextCallAt = 0;
+  const heard = new Set<string>();
+  let last = 0;
+  for (let i = 0; i < 4 * 60 * 30 && !w.fx.some((f) => f.kind === 'stamp'); i++) {
+    tick(w, 250);
+    if (w.cue.id !== last) { last = w.cue.id; heard.add(w.cue.name); }
+    regulate(w);
+    if (w.cue.id !== last) { last = w.cue.id; heard.add(w.cue.name); }
+  }
+  expect([...heard]).toEqual(expect.arrayContaining(['appel', 'depart', 'radio']));
+  const kinds = new Set(w.fx.map((f) => f.kind));
+  for (const k of ['ring', 'bubble', 'flash', 'stamp']) expect(kinds.has(k as never)).toBe(true);
+  expect(w.fx.length).toBeLessThanOrEqual(40);
+});

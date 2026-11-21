@@ -1,5 +1,6 @@
 // Vehicles on the move: driving the road graph (or flying straight), arriving
 // on scene, carrying victims to hospital, going home.
+import { cue, fx } from './fx.ts';
 import { RULES } from './catalog/rules.ts';
 import { UNITS, type UnitDef } from './catalog/units.ts';
 import { checkBreakdown, pace, turnout, wearOut } from './crews.ts';
@@ -131,6 +132,9 @@ export function arrive(w: World, u: Unit) {
       w.stats.responses++;
     }
     say(w, `${u.name} · statut 3 · ${call.street}`, 'info');
+    cue(w, 'radio');
+    fx(w, 'bubble', u.x, u.y, `${u.name} : sur les lieux`, 'info', u.id);
+    fx(w, 'flash', call.x, call.y);
   } else if (u.status === 'transport') {
     u.status = 'hopital';
     const own = w.buildings.find((b) => b.kind === 'hopital' && Math.hypot(b.x - u.x, b.y - u.y) < 40);

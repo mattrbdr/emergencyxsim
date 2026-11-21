@@ -2,6 +2,7 @@
 // arrival, work and transport are the everyday ones); this module opens the
 // phases in turn, asks the command decisions, carries crews over from one
 // phase to the next, and settles the incident.
+import { cue } from './fx.ts';
 import { anyHas } from './upgrades.ts';
 import type { CallKind } from './catalog/calls.ts';
 import { MAJORS, type MajorKind } from './catalog/majors.ts';
@@ -125,6 +126,7 @@ export function startMajor(w: World, kind: MajorKind, spot = pickSpot(w, kind)):
   };
   w.majors.push(m);
   say(w, `ALERTE · ${kind.title} · ${spot.street}`, 'alert', true);
+  cue(w, 'crise');
   if (kind.effect === 'flood') flood(w, m);
   openPhase(w, m, []);
   if (kind.effect === 'pursuit') {

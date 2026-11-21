@@ -8,6 +8,7 @@ import { siteOf } from '../sim/majors.ts';
 import { shiftHour, today } from '../sim/weather.ts';
 import type { Building, Call, Unit, World } from '../sim/types.ts';
 import { syncView, toScreen } from './camera.ts';
+import { beacon, drawFx } from './fx.ts';
 import { drawIcon } from './sprites.ts';
 import { FONT, MAP, PRIORITY, SERVICE, WORKING } from './theme.ts';
 
@@ -30,6 +31,7 @@ export function drawLive(w: World, ctx: Ctx2D, frame: Frame, selected: string): 
   for (const b of w.buildings) drawBuilding(w, ctx, b, selected === `building:${b.id}`);
   for (const c of w.calls) if (c.state !== 'clos') drawCall(w, ctx, c, now, selected === `call:${c.id}`);
   drawUnits(w, ctx, alpha, now, selected);
+  drawFx(w, ctx, now);
   drawGhost(w, ctx, now);
   return true;
 }
@@ -358,13 +360,14 @@ function drawUnits(w: World, ctx: Ctx2D, alpha: number, now: number, selected: s
         heading = a + Math.PI;
       }
     }
-    drawVehicle(ctx, u, x, y, heading, now, selected === `unit:${u.id}`, w.cam.zoom);
+    drawVehicle(ctx, u, x, y, heading, now, selected === `unit:${u.id}`, w.cam.zoom, !w.settings.motion);
   }
 }
 
-function drawVehicle(ctx: Ctx2D, u: Unit, x: number, y: number, heading: number, now: number, selected: boolean, z: number) {
+function drawVehicle(ctx: Ctx2D, u: Unit, x: number, y: number, heading: number, now: number, selected: boolean, z: number, calm: boolean) {
   const color = u.status === 'retour' ? MAP.muted : SERVICE[u.service];
   const busy = u.status === 'route' || u.status === 'transport';
+  if (busy) beacon(ctx, x, y, u.service, now, calm);
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(heading);

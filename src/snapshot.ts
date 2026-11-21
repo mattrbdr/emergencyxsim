@@ -273,6 +273,8 @@ export function snapshot(w: World): Snap {
     date: dateText(today(w).date),
     weather: weatherRow(w),
     posting: w.units.find((u) => u.id === w.posting)?.name ?? '',
+    cue: { id: w.cue.id, name: w.cue.name },
+    settings: { ...w.settings },
     rank: rankOf(w.level).title,
     rankIcon: rankOf(w.level).icon,
     achievements: achievementRows(w),

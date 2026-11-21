@@ -1,6 +1,7 @@
 // On scene: the first crew's report may change the situation (a twist), and the
 // player decides — reinforcements, make do, or evacuate now. Each choice has a
 // price: time, chance of success, reward.
+import { cue, fx } from './fx.ts';
 import { anyHas } from './upgrades.ts';
 import { RULES } from './catalog/rules.ts';
 import { TWISTS } from './catalog/twists.ts';
@@ -39,6 +40,8 @@ export function rollTwist(w: World, call: Call) {
     call.twist = { id: twist.id, report: twist.report, add: twist.add, from: crew?.name ?? 'Le premier engin' };
     call.decisionLeft = RULES.decisionTime;
     call.state = 'bilan';
+    cue(w, 'radio');
+    fx(w, 'bubble', call.x, call.y, `${call.twist?.from ?? 'Chef d\'agrès'} : bilan, décision demandée`, 'alert');
     say(w, `${call.twist.from} · ${call.street} : ${twist.report}`, 'alert', true);
     w.seq++;
     return;
