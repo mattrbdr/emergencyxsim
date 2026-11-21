@@ -1,0 +1,57 @@
+// The console's look: slate surfaces, 1 px rules, square-ish corners, one strong
+// colour per service, IBM Plex Sans for words and IBM Plex Mono for numbers and codes.
+// The control room is dark on every platform (the root sets color-scheme="dark").
+
+font "IBM Plex Sans"
+  400 = "assets/fonts/IBMPlexSans-Regular.ttf"
+  500 = "assets/fonts/IBMPlexSans-Medium.ttf"
+  600 = "assets/fonts/IBMPlexSans-SemiBold.ttf"
+  700 = "assets/fonts/IBMPlexSans-Bold.ttf"
+
+font "IBM Plex Mono"
+  400 = "assets/fonts/IBMPlexMono-Regular.ttf"
+  500 = "assets/fonts/IBMPlexMono-Medium.ttf"
+  600 = "assets/fonts/IBMPlexMono-SemiBold.ttf"
+
+// ---------------------------------------------------------------- colours
+
+fn ink(): string = "#e6edf3"
+fn ink2(): string = "#9aa4b2"
+fn ink3(): string = "#6b7686"
+fn surface(): string = "#11151b"
+fn raised(): string = "#171c24"
+fn rule(): string = "#252c36"
+fn money(): string = "#d8a64a"
+
+fn serviceColor(s: string): string = s == "pompiers" ? "#f2555a" : s == "samu" ? "#3fb950" : s == "police" ? "#4c8dff" : "#9aa4b2"
+fn kindColor(k: string): string = k == "caserne" ? "#f2555a" : k == "hopital" ? "#3fb950" : k == "police" ? "#4c8dff" : "#9aa4b2"
+fn priorityColor(p: number): string = p == 1 ? "#f2555a" : p == 2 ? "#f0a531" : "#c9b037"
+fn familyColor(f: string): string = f == "feu" ? "#f2555a" : f == "sap" ? "#3fb950" : f == "police" ? "#4c8dff" : f == "route" ? "#f0a531" : f == "technique" ? "#b48ef0" : "#9aa4b2"
+fn familyIcon(f: string): string = f == "" ? "phone" : f
+fn needColor(s: string): string = s == "surplace" ? "#3fb950" : s == "engage" ? "#f0a531" : "#f2555a"
+fn toneColor(t: string): string = t == "good" ? "#3fb950" : t == "bad" ? "#f2555a" : t == "alert" ? "#f0a531" : t == "money" ? "#d8a64a" : "#56c2e6"
+fn statusColor(s: string): string = s == "dispo" ? "#3fb950" : s == "route" ? "#f0a531" : s == "surplace" ? "#f2555a" : s == "transport" ? "#b48ef0" : s == "hopital" ? "#b48ef0" : "#56c2e6"
+fn callStateColor(s: string): string = s == "traitement" ? "#56c2e6" : s == "engage" ? "#f0a531" : "#f2555a"
+fn outcomeColor(o: string): string = o == "sauve" ? "#3fb950" : o == "perdu" ? "#f2555a" : "#f0a531"
+fn plural(n: number, one: string, many: string): string = `${n} ${n == 1 ? one : many}`
+
+// ---------------------------------------------------------------- shared looks
+
+style Sans
+  font-family="'IBM Plex Sans', -apple-system, system-ui, sans-serif"
+style Mono
+  font-family="'IBM Plex Mono', ui-monospace, Menlo, monospace" font-variant-numeric="tabular-nums"
+style Caps
+  font-family="'IBM Plex Mono', ui-monospace, Menlo, monospace" font-size="0.68rem" font-weight=600 letter-spacing="0.08em" text-transform="uppercase" color="#6b7686"
+style Panel
+  background-color="#11151b" border="1px solid #252c36" border-radius=6
+style Row
+  background-color="#171c24" border="1px solid #1f2630" border-radius=4
+style Primary
+  appearance="none" background-color="#e6edf3" color="#0b0e12" border-radius=4 padding="10px 14px" display="flex" align-items="center" justify-content="center" gap=8
+style Secondary
+  appearance="none" background-color="#171c24" color="#e6edf3" border="1px solid #30394a" border-radius=4 padding="9px 12px" display="flex" align-items="center" justify-content="center" gap=8
+style Quiet
+  appearance="none" background-color="transparent" color="#9aa4b2" border-radius=4 padding="6px 8px" display="flex" align-items="center" gap=6
+style IconButton
+  appearance="none" width="2.5rem" height="2.5rem" border-radius=4 display="flex" align-items="center" justify-content="center" background-color="#11151b" border="1px solid #252c36"

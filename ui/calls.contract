@@ -1,0 +1,58 @@
+// The call queue: open calls by priority, then the last closed ones.
+use CallRow from "./model.contract"
+use Icon from "./icons.contract"
+use Tag, Meter, Heading, Empty from "./parts.contract"
+use Mono, Caps, priorityColor, familyColor, familyIcon, needColor, callStateColor, outcomeColor, money from "./theme.contract"
+
+component CallQueue
+  props
+    calls: CallRow[]
+    closed: CallRow[]
+    selected: string
+    pick: action
+    firstBuilding: bool
+  view
+    column role="tabpanel" id="panel-appels" gap=6
+      if calls.length == 0
+        Empty(icon="phone", text=(firstBuilding ? "Aucun appel tant que vous n'avez pas de caserne. Touchez « Construire »." : "Ligne calme. Les appels arrivent ici."))
+      for c in calls key=c.id
+        CallCard(c=c, active=(c.id == selected), pick=pick(c.id))
+      if closed.length > 0
+        view height=8
+        Heading(text="Terminés", detail=`${closed.length}`)
+        for c in closed key=c.id
+          row gap=10 align-items="center" padding="7px 10px" border-bottom="1px solid #1f2630"
+            view width=6 height=6 background-color=outcomeColor(c.outcome) flex-shrink=0
+            column flex=1 min-width=0
+              text c.title font-size="0.82rem" font-weight=500 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+              text c.address class=Mono font-size="0.68rem" color="#6b7686" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+            column align-items="flex-end" gap=0
+              text c.stateLabel class=Mono font-size="0.68rem" font-weight=600 color=outcomeColor(c.outcome)
+              if c.reward != ""
+                text c.reward class=Mono font-size="0.68rem" color=money()
+
+component CallCard
+  props
+    c: CallRow
+    active: bool
+    pick: action
+  view
+    column press=pick role="button" aria-label=`Priorité ${c.priority}, ${c.title}, ${c.address}, ${c.stateLabel}, ${c.timeText}` gap=7 padding="10px 12px 10px 14px" position="relative" overflow="hidden" border-radius=4 background-color=(active ? "#1c2330" : "#171c24") border-width=1 border-style="solid" border-color=(active ? "#4b5668" : "#1f2630") testId=`call-${c.id}`
+      view position="absolute" left=0 top=0 bottom=0 width=3 background-color=priorityColor(c.priority)
+      row align-items="center" gap=8
+        text `P${c.priority}` class=Mono font-size="0.7rem" font-weight=600 color=priorityColor(c.priority)
+        Icon(name=familyIcon(c.family), size=14, color=familyColor(c.family))
+        text c.title font-weight=600 font-size="0.92rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+        text c.at class=Mono font-size="0.68rem" color="#6b7686"
+      text c.address class=Mono font-size="0.72rem" color="#9aa4b2" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+      row gap=8 align-items="center"
+        Tag(text=c.stateLabel, color=callStateColor(c.state))
+        if c.escalated
+          Tag(text="Propagation", color="#f0a531")
+        view flex=1
+        text c.timeText class=Mono font-size="0.78rem" font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#e6edf3") testId=`time-${c.id}`
+      Meter(fraction=c.fraction, color=(c.state == "traitement" ? "#56c2e6" : priorityColor(c.priority)))
+      if c.needs.length > 0
+        row gap=4 flex-wrap="wrap"
+          for n, i in c.needs key=i
+            text n.type class=Mono font-size="0.64rem" font-weight=600 padding="1px 5px" border-radius=2 color=needColor(n.state) border-width=1 border-style="solid" border-color=needColor(n.state)

@@ -1,0 +1,49 @@
+// The strip across the top: town, day and clock, speed, money, level, reputation.
+use Snap from "./model.contract"
+use Icon from "./icons.contract"
+use Figure, Meter from "./parts.contract"
+use Mono, Caps, money from "./theme.contract"
+
+component TopBar
+  props
+    snap: Snap
+    wide: bool
+    setSpeed: action
+    togglePause: action
+    openCareer: action
+  view
+    row position="absolute" top=0 left=0 right=0 padding-top="env(safe-area-inset-top)" background-color="#0e1217" border-bottom="1px solid #252c36" testId="bar"
+      row flex=1 align-items="center" gap=(wide ? 20 : 10) padding=(wide ? "8px 16px" : "8px 10px") min-width=0
+        if wide
+          row gap=10 align-items="center" min-width=0
+            view width=30 height=30 border-radius=4 background-color="#f2555a" display="flex" align-items="center" justify-content="center" flex-shrink=0
+              Icon(name="caserne", size=18, color="#0b0e12")
+            column gap=0 min-width=0
+              text "EMERGENCY SIM" class=Mono font-size="0.72rem" font-weight=600 letter-spacing="0.14em"
+              text snap.city.toUpperCase() class=Caps white-space="nowrap" overflow="hidden" text-overflow="ellipsis" max-width="14rem"
+        row gap=8 align-items="baseline"
+          text `J${snap.day}` class=Caps color="#9aa4b2"
+          text snap.clock class=Mono font-size=(wide ? "1.5rem" : "1.25rem") font-weight=500 line-height=1 testId="clock"
+        // Speed: pause and ×1 ×2 ×4.
+        row role="radiogroup" aria-label="Vitesse du temps" appearance="none" border="1px solid #252c36" border-radius=4 overflow="hidden"
+          button role="radio" aria-checked=snap.paused aria-label=(snap.paused ? "Reprendre" : "Pause") press=togglePause appearance="none" width="2.25rem" height="2rem" display="flex" align-items="center" justify-content="center" background-color=(snap.paused ? "#f0a531" : "transparent") testId="pause"
+            Icon(name=(snap.paused ? "play" : "pause"), size=14, color=(snap.paused ? "#0b0e12" : "#e6edf3"))
+          if wide
+            for s in [1, 2, 4] key=s
+              button role="radio" aria-checked=(not snap.paused and snap.speed == s) aria-label=`Vitesse ×${s}` press=setSpeed(s) appearance="none" width="2.25rem" height="2rem" border-left="1px solid #252c36" background-color=(not snap.paused and snap.speed == s ? "#e6edf3" : "transparent") testId=`speed-${s}`
+                text `×${s}` class=Mono font-size="0.78rem" font-weight=600 color=(not snap.paused and snap.speed == s ? "#0b0e12" : "#9aa4b2")
+          else
+            button aria-label=`Vitesse ×${snap.speed}, changer` press=setSpeed(snap.speed == 4 ? 1 : snap.speed * 2) appearance="none" width="2.5rem" height="2rem" border-left="1px solid #252c36" testId="speed-cycle"
+              text `×${snap.speed}` class=Mono font-size="0.78rem" font-weight=600
+        view flex=1
+        Figure(icon="money", label=(wide ? snap.upkeepText : "Caisse"), value=snap.moneyText, color=(snap.money < 0 ? "#f2555a" : money()))
+        if wide
+          Figure(icon="reputation", label="Réputation", value=`${snap.reputation} %`, color="#e6edf3")
+        // Level: a badge and the XP bar; opens the career panel.
+        button press=openCareer appearance="none" aria-label=`Niveau ${snap.level}, ${snap.xpText}` display="flex" align-items="center" gap=8 padding="4px 6px" border-radius=4 testId="level"
+          view width="2rem" height="2rem" border="1px solid #b48ef0" border-radius=4 display="flex" align-items="center" justify-content="center"
+            text `${snap.level}` class=Mono font-weight=600 color="#b48ef0"
+          if wide
+            column gap=4 width="7rem"
+              text snap.xpText class=Caps color="#9aa4b2"
+              Meter(fraction=snap.levelProgress, color="#b48ef0")

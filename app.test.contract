@@ -1,56 +1,84 @@
 seed 3
 
-test "the welcome screen opens the shift"
-  expect tree has "intro"
-  tap "start"
+test "first launch asks for a town; the demo town starts a career"
+  expect tree has "city-picker"
+  tap "city-demo"
   clock data
-  expect tree missing "intro"
-  expect state snap.started == true
-  expect text "clock" == "07:00"
+  expect tree missing "city-picker"
+  expect state snap.money == 30000
+  expect state snap.level == 1
+  expect tree has "build-menu"
 
-test "a call is qualified, dispatched and handled"
-  tap "start"
+test "the first caserne is free and comes with a VSAV"
+  tap "city-demo"
   clock data
-  clock +3000
+  clock +500
+  tap "build-caserne"
+  clock data
+  clock +300
+  tap "map"
+  clock data
+  clock +300
+  expect state snap.buildings.length == 1
+  expect state snap.money == 30000
+  expect state snap.units.0 .type == "VSAV"
+  expect tree has "building-sheet"
+  expect tree has "buy-VSAV"
+  expect tree missing "buy-FPT"
+
+test "a call is qualified, dispatched and paid"
+  tap "city-demo"
+  clock data
+  clock +500
+  tap "build-caserne"
+  clock data
+  clock +300
+  tap "map"
+  clock data
+  clock +300
+  tap "building-close"
+  clock +5000
   clock data
   expect state snap.calls.length == 1
-  tap "call-c1"
+  tap "call-c3"
   clock data
-  expect tree has "qualify"
-  tap "q-feu"
+  clock +300
+  tap "q-sap"
   clock data
-  expect text "sheet-title" == "Feu de poubelles"
-  expect state snap.score == 20
-  tap "engage-suggested"
+  clock +300
+  expect text "sheet-title" == "Malaise sur la voie publique"
+  tap "engage"
   clock data
-  expect state snap.calls.0 .state == "engage"
-  expect state snap.free == 20
-  clock +60000
+  clock +300
+  expect state snap.free == 0
+  tap "speed-cycle"
   clock data
-  expect state snap.handled == 1
-  expect tree missing "sheet"
-
-test "a wrong qualification costs points and reveals the call"
-  tap "start"
-  clock data
-  clock +3000
-  clock data
-  tap "call-c1"
-  clock data
-  tap "q-police"
-  clock data
-  expect state snap.score == -30
-  expect text "sheet-title" == "Feu de poubelles"
-
-test "speed and pause"
-  tap "start"
-  clock data
-  tap "speed-4"
+  tap "speed-cycle"
   clock data
   expect state snap.speed == 4
-  tap "pause"
+  clock +20000
   clock data
-  expect state snap.paused == true
-  clock +10000
+  expect state snap.stats.saved == 1
+  expect state snap.money >= 30001
+
+test "the career survives a reload"
+  tap "city-demo"
   clock data
-  expect text "clock" == "07:00"
+  clock +500
+  tap "build-caserne"
+  clock data
+  clock +300
+  tap "map"
+  clock data
+  clock +300
+  tap "buy-VSAV"
+  clock data
+  clock +300
+  expect state snap.units.length == 2
+  reload
+  clock data
+  clock +300
+  clock data
+  expect tree missing "city-picker"
+  expect state snap.units.length == 2
+  expect state snap.money == 12000

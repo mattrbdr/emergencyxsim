@@ -1,66 +1,79 @@
 # Emergency Sim
 
-Simulateur de centre de traitement des appels d'urgence. Vous recevez les appels, vous les qualifiez, puis vous engagez **pompiers, SAMU et police**. Les véhicules roulent sur les rues d'une vraie ville (OpenStreetMap). Construit avec [Exact](https://github.com/expo/exact) : une seule source pour le web, iOS, macOS, Android et Linux.
+Dirigez les secours de **votre** commune : ses vraies rues, ses vraies casernes et ses hôpitaux, tirés d'OpenStreetMap.
 
-| Accueil | Appel entrant | Engagement | Intervention |
-|---|---|---|---|
-| ![](screenshots/iphone-accueil.png) | ![](screenshots/iphone-appel.png) | ![](screenshots/iphone-garde.png) | ![](screenshots/iphone-intervention.png) |
+Le jeu se déroule en mode carrière, sauvegardé en continu :
+- vous démarrez avec 30 000 €, une caserne et un VSAV ;
+- chaque intervention réussie rapporte de l'argent et de l'expérience ;
+- **12 niveaux** débloquent bâtiments, véhicules et interventions.
 
-![Salle de régulation sur grand écran](screenshots/bureau-en-route.png)
+Construit avec [Exact](https://github.com/expo/exact) : une seule source pour le web, iOS, macOS, Android et Linux.
+
+| Votre ville | Construire | Caserne et garage | Fiche d'appel | En route |
+|---|---|---|---|---|
+| ![](screenshots/iphone-1-ville.png) | ![](screenshots/iphone-2-construire.png) | ![](screenshots/iphone-3-caserne.png) | ![](screenshots/iphone-5-fiche.png) | ![](screenshots/iphone-6-en-route.png) |
+
+![Console de régulation sur grand écran](screenshots/bureau-5-engagement.png)
 
 ## Le jeu
 
-- **Garde de 12 h** (07:00 → 19:00), vitesse ×1 / ×2 / ×4 et pause. Le volume d'appels augmente aux heures de pointe, la circulation aussi.
-- **Appels réalistes** : l'appelant décrit la situation (« Mon mari ne respire plus ! »), vous la **qualifiez** :
-  - incendie ;
-  - secours à personne ;
-  - police ;
-  - accident / mixte.
+**Votre ville**
+- Tapez le nom de votre commune : rues, bâtiments, cours d'eau et bases réelles sont téléchargés depuis OpenStreetMap (Overpass), puis sauvegardés.
+- Une ville de démonstration permet de jouer hors ligne.
 
-  Une erreur coûte des points.
-- **13 types d'interventions** : feu de poubelles, feu de véhicule, feu d'appartement, malaise, arrêt cardio-respiratoire, détresse respiratoire, chute de personne âgée, cambriolage, rixe, vol à l'arraché, différend familial, accident, accident grave avec victime incarcérée.
-- **7 types de véhicules** :
-  - pompiers : FPT, VSAV, EPA ;
-  - SAMU : SMUR, ambulance ;
-  - police : Police-secours, BAC.
+**Construire**
+- Posez un bâtiment n'importe où sur une route, ou **reprenez un site réel** (carré pointillé sur la carte), moins cher.
+- Trois bâtiments : caserne, poste de police, hôpital.
+- Chaque garage s'agrandit de 2 places à chaque extension.
+- Une victime amenée dans **votre** hôpital rapporte 600 €.
 
-  Ils sont répartis dans les vraies casernes, hôpitaux et commissariats.
-- **Routage réel** : plus court chemin (Dijkstra) sur le graphe routier, avec la circulation, l'ETA en direct et l'itinéraire tracé sur la carte.
-- **Interventions complètes** : arrivée sur les lieux → traitement → transport de la victime vers l'hôpital le plus proche (lits limités) → retour en caserne. Un feu non traité **se propage** et demande des renforts. Une victime secourue trop tard est perdue.
-- **Bilan de garde** : score, victimes sauvées/perdues, délai moyen, justesse des qualifications, coût.
+**Économie**
+- Primes selon l'urgence et la rapidité d'arrivée, modulées par la **réputation**.
+- **Entretien horaire** de chaque véhicule et de chaque bâtiment.
+- Un véhicule libre peut être revendu à moitié prix.
+
+**Progression** : 12 niveaux. Un type d'intervention n'arrive qu'une fois que vous possédez **tous** les véhicules qu'il demande : c'est l'achat qui ouvre les nouvelles missions.
+
+| Niv. | Débloque | Exemples d'interventions |
+|---|---|---|
+| 1 | Caserne, VSAV | malaise, chute de personne âgée, blessé léger |
+| 2 | FPT | feux de poubelles, de véhicule, de végétation, alarme incendie |
+| 3 | Poste de police, Police-secours | tapage, différend familial, cambriolage, animal errant |
+| 4 | VSR | accident de la route, accident de deux-roues |
+| 5 | Hôpital, ambulance | transport urgent, intoxication au CO, accident de travail |
+| 6 | SMUR | arrêt cardiaque, détresse respiratoire, AVC |
+| 7 | EPA | feu d'appartement, personne bloquée en hauteur |
+| 8 | BAC | vol à l'arraché, rixe, braquage |
+| 9 | VTU | inondation, fuite de gaz, frelons, ascenseur bloqué |
+| 10 | FPTGP | feu d'entrepôt, feu industriel |
+| 11 | Hélicoptère SAMU (vole en ligne droite) | noyade, accident grave isolé |
+| 12 | VPMA | accident de car, plan rouge |
+
+En tout : **34 types d'interventions** et **12 véhicules**.
+
+**Régulation**
+- Pour chaque appel, l'appelant décrit la situation et vous qualifiez l'appel parmi 5 familles. Une erreur coûte de la réputation.
+- Le jeu suggère les véhicules les plus proches ; vous pouvez modifier la sélection.
+- Les itinéraires empruntent les vraies rues, avec la circulation des heures de pointe.
+- Un feu non traité se propage. Une victime secourue trop tard est perdue.
 
 ## Tester sur iPhone (sans compte Apple)
 
-Le jeu tourne dans **Safari**. Aucune app à installer, aucun compte Apple.
+Le jeu tourne dans **Safari**, la carrière est sauvegardée dans le navigateur.
 
-**Option A, sans ordinateur (GitHub Pages)**
-1. Sur GitHub : *Settings → Pages → Build and deployment → Deploy from a branch*. Choisissez la branche `claude/beautiful-fermi-drf3im` et le dossier `/docs`, puis *Save*.
-2. Une à deux minutes plus tard, ouvrez `https://<votre-compte>.github.io/emergencyxsim/` dans Safari sur l'iPhone.
-3. Partager → **Sur l'écran d'accueil** : le jeu s'ouvre en plein écran comme une app.
+**Option A : GitHub Pages, sans ordinateur**
+1. Sur GitHub : *Settings → Pages → Deploy from a branch*. Choisissez la branche `claude/beautiful-fermi-drf3im` et le dossier `/docs`, puis *Save*.
+2. Ouvrez `https://<votre-compte>.github.io/emergencyxsim/` dans Safari.
+3. Partager → **Sur l'écran d'accueil** pour l'ouvrir en plein écran.
 
-Sur un dépôt privé, GitHub Pages demande un forfait payant. Sinon, utilisez l'option B ou C.
+Sur un dépôt privé, GitHub Pages demande un forfait payant.
 
-**Option B, depuis votre ordinateur (même Wi-Fi)**
+**Option B : depuis votre ordinateur, sur le même Wi-Fi**
 ```sh
 git clone https://github.com/expo/exact ../exact
-bun ../exact/scripts/exact.mjs setup        # une seule fois (quelques minutes)
-bun exact.mjs web --lan                      # affiche une URL http://192.168.x.x:8765/
+bun ../exact/scripts/exact.mjs setup        # une seule fois
+bun exact.mjs web --lan                      # ouvrez l'URL affichée dans Safari sur l'iPhone
 ```
-Ouvrez cette URL dans Safari sur l'iPhone. Chaque modification du code recharge le jeu.
-
-**Option C, hébergeur statique gratuit** : `bun run build`, puis glissez le dossier `dist/` sur Netlify Drop ou Cloudflare Pages.
-
-## Votre ville (OpenStreetMap)
-
-La carte livrée est une **ville de démonstration** générée (`tools/gen-demo-city.ts`). Pour jouer sur toute votre commune, avec ses rues, bâtiments, cours d'eau, casernes, hôpitaux et commissariats réels :
-
-```sh
-bun tools/bake-osm.ts "Annecy"                    # nom exact de la commune dans OSM
-bun tools/bake-osm.ts "Saint-Denis" --insee 93066 # si plusieurs communes portent ce nom
-tools/build-pages.sh                              # pour mettre à jour la version GitHub Pages
-```
-
-Le script interroge l'API Overpass (`overpass-api.de`) et écrit `data/city.json`. S'il manque un type de service dans la commune, une base fictive est ajoutée. Données © contributeurs OpenStreetMap (ODbL).
 
 ## Développer
 
@@ -68,18 +81,21 @@ Le script interroge l'API Overpass (`overpass-api.de`) et écrit `data/city.json
 |---|---|
 | `bun exact.mjs web` | serveur de dev, rechargement à chaque sauvegarde |
 | `bun exact.mjs test web` | tests de bout en bout (`app.test.contract`) |
-| `bun test tools/` | tests du moteur (routage, interventions, garde complète) |
-| `bun exact.mjs verify` | build + tests + contrôles (largeurs, accessibilité, grand texte) |
-| `bun exact.mjs agent web --size 390x844 "tap start" "clock +30000" "screenshot shot.png"` | piloter le jeu et faire une capture |
+| `bun test tools/` | tests du moteur, dont une carrière simulée de 3 jours |
+| `bun tools/gen-icons.ts` | régénère `ui/icons.contract` depuis `sim/catalog/icons.ts` |
+| `bun tools/bake-osm.ts "Annecy"` | remplace la ville livrée par une vraie commune |
 | `tools/build-pages.sh` | reconstruit `docs/` pour GitHub Pages |
 
 ### Architecture
 
-| Fichier | Rôle |
+| Dossier | Rôle |
 |---|---|
-| `app.contract` | Toute l'interface en Contract, le langage d'interface d'Exact : barre de garde, file d'appels, fiche d'appel, flotte, journal, notifications, accueil, bilan. |
-| `app.ts` | Module de données d'Exact : il répond aux requêtes de l'interface et dessine les canvas. |
-| `sim/` | Moteur pur et déterministe (même graine = même garde) : `world.ts`, `catalog.ts`, `routing.ts`, `city.ts`, `rng.ts`. |
-| `render/map.ts` | Carte vectorielle sur deux canvas Exact (fond statique + couche animée), gestes (glisser, pincer, molette). |
-| `data/city.json` | La ville : graphe routier, bâtiments, eau, parcs, bases. |
-| `tools/` | Générateur de ville démo, extracteur OSM, build GitHub Pages, tests du moteur. |
+| `app.contract` | racine : état de session, carte, placement des panneaux |
+| `ui/` | interface en Contract, le langage d'Exact : `model` (formes partagées), `theme`, `icons` (généré), `parts`, `topbar`, `calls`, `call-sheet`, `fleet`, `build`, `career`, `city-picker` |
+| `app.ts` | point d'entrée du module de données (autorisations, sources, dessin) |
+| `src/` | `sources` (requêtes de l'interface), `snapshot` (modèle de vue), `game` (carrière en cours), `persistence` (sauvegarde), `city-loader` (téléchargement OSM) |
+| `sim/` | moteur pur et déterministe, sans dépendance à l'interface. `catalog/` (véhicules, bâtiments, interventions, niveaux, icônes), puis `world`, `calls`, `units`, `economy`, `progression`, `buildings`, `routing`, `traffic`, `osm/` |
+| `render/` | carte sur deux canvas : `layers` (fond), `live` (appels, véhicules, itinéraires), `sprites` (icônes), `camera`, `gestures`, `theme` |
+| `assets/fonts/` | IBM Plex Sans et Mono (licence OFL), réduites aux caractères latins |
+
+Données cartographiques © contributeurs OpenStreetMap (ODbL).

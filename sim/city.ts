@@ -89,17 +89,8 @@ export function loadCity(file: CityFile): City {
   const gBuild: number[][] = Array.from({ length: cols * rows }, () => []);
   file.buildings.forEach((p, i) => gBuild[cellOf(p[0], p[1])].push(i));
 
-  const nearestNode = (x: number, y: number) => {
-    let best = 0, bd = Infinity;
-    for (let i = 0; i < n; i++) {
-      if (adj[i].length === 0) continue;
-      const d = (nx[i] - x) ** 2 + (ny[i] - y) ** 2;
-      if (d < bd) { bd = d; best = i; }
-    }
-    return best;
-  };
   const pois: Poi[] = file.pois.map((p) => {
-    const node = nearestNode(p.x, p.y);
+    const node = nearest(nx, ny, adj, p.x, p.y);
     return { kind: p.kind, name: p.name, node, x: nx[node], y: ny[node] };
   });
   const callEdges = edges.map((_, i) => i).filter((i) => edges[i].cls >= 1 && edges[i].len > 40);
@@ -109,3 +100,16 @@ export function loadCity(file: CityFile): City {
     grid: { size: CELL, cols, rows, edges: gEdges, buildings: gBuild },
   };
 }
+
+function nearest(nx: Float64Array, ny: Float64Array, adj: number[][], x: number, y: number): number {
+  let best = 0, bd = Infinity;
+  for (let i = 0; i < nx.length; i++) {
+    if (adj[i].length === 0) continue;
+    const d = (nx[i] - x) ** 2 + (ny[i] - y) ** 2;
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+
+/** The road node closest to a point (only nodes on the road network). */
+export const nearestNode = (city: City, x: number, y: number) => nearest(city.nx, city.ny, city.adj, x, y);

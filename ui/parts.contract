@@ -1,0 +1,66 @@
+// Small building blocks shared by every screen.
+use Icon from "./icons.contract"
+use Mono, Caps, Row from "./theme.contract"
+
+// A status pill: a square dot and a word.
+component Tag
+  props
+    text: string
+    color: string
+  view
+    row align-items="center" gap=6 padding="2px 7px" border-radius=3 background-color="#0b0e12" border-width=1 border-style="solid" border-color=color flex-shrink=0
+      view width=6 height=6 background-color=color
+      text text class=Mono font-size="0.7rem" font-weight=600 color=color white-space="nowrap"
+
+// A vehicle's call sign on its service colour.
+component CallSign
+  props
+    label: string
+    service: string
+    color: string
+  view
+    view min-width="3rem" padding="3px 6px" border-radius=3 background-color=color display="flex" align-items="center" justify-content="center" flex-shrink=0
+      text label class=Mono font-size="0.7rem" font-weight=600 color="#0b0e12" letter-spacing="0.02em"
+
+// A labelled figure (top bar, report).
+component Figure
+  props
+    icon: string
+    label: string
+    value: string
+    color: string
+  view
+    row gap=8 align-items="center"
+      Icon(name=icon, size=16, color=color)
+      column gap=0
+        text label class=Caps font-size="0.6rem"
+        text value class=Mono font-size="0.95rem" font-weight=600 color=color white-space="nowrap"
+
+// A thin horizontal meter.
+component Meter
+  props
+    fraction: number
+    color: string
+  view
+    view height=3 background-color="#252c36" overflow="hidden"
+      view height="100%" width=`${max(0, min(1, fraction)) * 100}%` background-color=color
+
+// A section heading in the console's small capitals, with an optional count.
+component Heading
+  props
+    text: string
+    detail: string
+  view
+    row align-items="baseline" gap=8 padding="2px 0"
+      text text class=Caps flex=1
+      text detail class=Caps color="#9aa4b2"
+
+// An empty list's message.
+component Empty
+  props
+    icon: string
+    text: string
+  view
+    column align-items="center" gap=10 padding="28px 12px" class=Row border-style="dashed"
+      Icon(name=icon, size=22, color="#6b7686")
+      text text color="#9aa4b2" text-align="center" font-size="0.88rem"

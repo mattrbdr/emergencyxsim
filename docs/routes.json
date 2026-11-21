@@ -2,14 +2,16 @@
   "base": "/emergencyxsim/",
   "routes": [],
   "files": {
-    "style.css": "style-3WaZlU45.css",
-    "app.js": "app-DlizEob2.js",
-    "canvas-capture-CKgDnk0h.js": "canvas-capture-CKgDnk0h.js",
-    "canvas2d-SZ-rtjCH.js": "canvas2d-SZ-rtjCH.js",
-    "input-glue-CUc3r9N8.js": "input-glue-CUc3r9N8.js",
-    "presence-glue-D8IDTvKN.js": "presence-glue-D8IDTvKN.js",
-    "shared-lOSpIRNE.js": "shared-lOSpIRNE.js",
+    "picker-glue.js": "picker-glue-G84MwMu6.js",
+    "storage-request.js": "storage-request-eyEzATra.js",
+    "style.css": "style-XWKnv66Q.css",
+    "app.js": "app-BlJsyyxI.js",
+    "canvas-capture-sb9YcpPV.js": "canvas-capture-sb9YcpPV.js",
+    "canvas2d-eNO9W0we.js": "canvas2d-eNO9W0we.js",
+    "input-glue-DkSVuYz-.js": "input-glue-DkSVuYz-.js",
+    "rt-link-CsozwH6k.js": "rt-link-CsozwH6k.js",
     "storage-environment-B4EaMxRs.js": "storage-environment-B4EaMxRs.js",
-    "symbol-roles-BkACUQZh.js": "symbol-roles-BkACUQZh.js"
+    "ts-body-from-DcN-dDxF.js": "ts-body-from-DcN-dDxF.js",
+    "ts-sqlite-B7Een1v3.js": "ts-sqlite-B7Een1v3.js"
   }
 }

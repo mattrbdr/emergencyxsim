@@ -1,0 +1,183 @@
+// The shapes app.ts answers with (src/snapshot.ts builds them). Shared by every screen.
+
+shape Ack
+  seq: number
+  cam: number
+  picked: string
+
+shape Boot
+  ready: bool
+  city: string
+
+shape Match
+  insee: string
+  name: string
+  department: string
+  population: number
+
+shape CityStatus
+  phase: string
+  message: string
+  busy: bool
+  matches: Match[]
+
+shape Need
+  type: string
+  label: string
+  service: string
+  state: string
+
+shape Engaged
+  id: string
+  name: string
+  service: string
+  status: string
+  eta: string
+
+shape CallRow
+  id: string
+  title: string
+  family: string
+  familyLabel: string
+  priority: number
+  address: string
+  caller: string
+  state: string
+  stateLabel: string
+  outcome: string
+  qualified: bool
+  escalated: bool
+  at: string
+  timeText: string
+  fraction: number
+  reward: string
+  needs: Need[]
+  units: Engaged[]
+
+shape UnitRow
+  id: string
+  name: string
+  type: string
+  long: string
+  service: string
+  status: string
+  statusLabel: string
+  building: string
+  buildingName: string
+  callTitle: string
+  eta: string
+  missions: number
+  canSell: bool
+  resale: string
+
+shape BuildingRow
+  id: string
+  name: string
+  kind: string
+  label: string
+  service: string
+  slots: number
+  used: number
+  maxSlots: number
+  home: number
+  canExpand: bool
+  expandPrice: string
+  upkeep: string
+  patients: number
+
+shape SiteRow
+  index: number
+  name: string
+  kind: string
+  label: string
+  service: string
+  price: string
+  open: bool
+  level: number
+
+shape BuildOption
+  kind: string
+  label: string
+  service: string
+  price: string
+  buyPrice: string
+  open: bool
+  level: number
+
+shape ShopItem
+  type: string
+  label: string
+  long: string
+  service: string
+  price: string
+  upkeep: string
+  level: number
+  why: string
+  owned: number
+
+shape Unlock
+  level: number
+  vehicles: ShopItem[]
+  buildings: string[]
+  calls: string[]
+
+shape LogLine
+  id: number
+  at: string
+  text: string
+  tone: string
+
+shape Stats
+  calls: number
+  saved: number
+  lost: number
+  failed: number
+  avgResponse: string
+  accuracy: number
+  earned: string
+  spent: string
+
+shape Snap
+  seq: number
+  city: string
+  attribution: string
+  day: number
+  clock: string
+  speed: number
+  paused: bool
+  money: number
+  moneyText: string
+  upkeepText: string
+  level: number
+  maxLevel: number
+  xp: number
+  xpText: string
+  levelProgress: number
+  reputation: number
+  unlock: Unlock
+  showUnlock: bool
+  newCalls: number
+  placing: string
+  firstBuilding: bool
+  calls: CallRow[]
+  closed: CallRow[]
+  units: UnitRow[]
+  free: number
+  buildings: BuildingRow[]
+  sites: SiteRow[]
+  build: BuildOption[]
+  log: LogLine[]
+  toast: LogLine
+  stats: Stats
+
+shape Option
+  id: string
+  name: string
+  type: string
+  long: string
+  service: string
+  station: string
+  eta: string
+  suggested: bool
+  needed: bool
+  returning: bool

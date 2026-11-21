@@ -1,0 +1,125 @@
+// The call sheet: what the caller says, the qualification, what the scene needs,
+// who is engaged, and the vehicles to send.
+use CallRow, Option, Ack from "./model.contract"
+use Icon from "./icons.contract"
+use Tag, CallSign, Heading from "./parts.contract"
+use Mono, Caps, Primary, Secondary, Quiet, priorityColor, familyColor, familyIcon, needColor, serviceColor, callStateColor, plural, money from "./theme.contract"
+
+component CallSheet
+  props
+    c: CallRow
+    seq: number
+    close: action
+    pickUnit: action
+  state picks: string[] = []
+  state showAll = false
+  resource opts = dispatchOptions(c.id, seq) as shape Option[] else empty() transient
+  mutation ordered as shape Ack queue
+  derive suggested = opts.filter(o => o.suggested).map(o => o.id)
+  derive shown = opts.filter(o => showAll or o.needed or picks.includes(o.id)).slice(0, 14)
+  derive open = c.state != "traitement" and c.state != "clos"
+
+  action qualify(family: string)
+    send ordered = qualifyCall(c.id, family)
+    haptic("selection")
+  action toggle(id: string)
+    picks = picks.includes(id) ? picks.filter(x => x != id) : picks.concat([id])
+  action useSuggestion
+    picks = suggested
+  action engage
+    send ordered = send(c.id, picks.isEmpty() ? suggested : picks)
+    picks = []
+    haptic("success")
+  action recall(id: string)
+    send ordered = recallUnit(id)
+  action toggleAll
+    showAll = not showAll
+
+  view
+    column gap=16 testId="sheet"
+      // Header.
+      row align-items="flex-start" gap=10
+        column flex=1 min-width=0 gap=6
+          row gap=8 align-items="center"
+            text `P${c.priority}` class=Mono font-size="0.72rem" font-weight=600 padding="2px 7px" border-radius=3 background-color=priorityColor(c.priority) color="#0b0e12"
+            Icon(name=familyIcon(c.family), size=15, color=familyColor(c.family))
+            text c.familyLabel.toUpperCase() class=Caps color=familyColor(c.family)
+          text c.title font-size="1.3rem" font-weight=600 line-height=1.2 role="heading" aria-level=2 testId="sheet-title"
+          text c.address class=Mono font-size="0.78rem" color="#9aa4b2"
+        button press=close aria-label="Fermer la fiche" class=Quiet testId="sheet-close"
+          Icon(name="close", size=18, color="#9aa4b2")
+
+      row gap=8 align-items="center" padding="8px 0" border-top="1px solid #252c36" border-bottom="1px solid #252c36"
+        Tag(text=c.stateLabel, color=callStateColor(c.state))
+        view flex=1
+        Icon(name="clock", size=14, color="#9aa4b2")
+        text c.timeText class=Mono font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#e6edf3")
+        Icon(name="money", size=14, color=money())
+        text c.reward class=Mono font-size="0.82rem" color=money()
+
+      // The caller, as a transcript line.
+      column gap=6 padding="12px 14px" background-color="#0b0e12" border-left-width=2 border-left-style="solid" border-left-color=priorityColor(c.priority)
+        row gap=6 align-items="center"
+          Icon(name="phone", size=12, color="#6b7686")
+          text `APPELANT · ${c.at}` class=Caps
+        text `« ${c.caller} »` font-size="0.95rem" line-height=1.5 testId="caller"
+
+      if not c.qualified
+        column gap=8 testId="qualify"
+          Heading(text="Qualifier l'appel", detail="")
+          column gap=6
+            for f in ["sap", "feu", "route", "police", "technique"] key=f
+              button press=qualify(f) class=Secondary justify-content="flex-start" border-left-width=3 border-left-style="solid" border-left-color=familyColor(f) testId=`q-${f}`
+                Icon(name=familyIcon(f), size=16, color=familyColor(f))
+                text (f == "sap" ? "Secours à personne" : f == "feu" ? "Incendie" : f == "route" ? "Accident" : f == "police" ? "Police" : "Opération diverse") font-weight=500
+      else
+        column gap=8
+          Heading(text="Moyens nécessaires", detail="")
+          row gap=6 flex-wrap="wrap"
+            for n, i in c.needs key=i
+              row gap=6 align-items="center" padding="5px 8px" border-radius=3 background-color="#171c24" border-width=1 border-style="solid" border-color=needColor(n.state) aria-label=`${n.label} : ${n.state == "surplace" ? "sur place" : n.state == "engage" ? "engagé" : "manquant"}`
+                Icon(name=(n.state == "surplace" ? "check" : n.state == "engage" ? "flag" : "alert"), size=12, color=needColor(n.state))
+                text n.type class=Mono font-size="0.75rem" font-weight=600 color=needColor(n.state)
+
+        if c.units.length > 0
+          column gap=4
+            Heading(text="Engagés", detail=`${c.units.length}`)
+            for u in c.units key=u.id
+              row gap=10 align-items="center" padding="7px 10px" border-bottom="1px solid #1f2630"
+                view width=6 height=6 background-color=serviceColor(u.service)
+                button press=pickUnit(u.id) appearance="none" flex=1 text-align="left"
+                  text u.name class=Mono font-size="0.82rem" font-weight=600
+                text (u.eta != "" ? `${u.status} · ${u.eta}` : u.status) class=Mono font-size="0.72rem" color="#9aa4b2"
+                if u.eta != ""
+                  button press=recall(u.id) aria-label=`Désengager ${u.name}` class=Quiet padding=4 testId=`recall-${u.id}`
+                    Icon(name="close", size=12, color="#6b7686")
+
+        if open
+          column gap=6 testId="dispatch"
+            row align-items="center" gap=8
+              Heading(text="Engager", detail=`${plural(opts.length, "véhicule libre", "véhicules libres")}`)
+            if shown.length == 0
+              text (opts.length == 0 ? "Aucun véhicule libre. Achetez-en dans une caserne." : "Aucun véhicule du type demandé n'est libre.") font-size="0.85rem" color="#9aa4b2"
+            for o in shown key=o.id
+              row press=toggle(o.id) role="checkbox" aria-checked=picks.includes(o.id) aria-label=`${o.name}, ${o.long}, arrivée ${o.eta}` gap=10 align-items="center" padding="7px 10px" border-radius=4 background-color=(picks.includes(o.id) ? "#1c2a36" : "#171c24") border-width=1 border-style="solid" border-color=(picks.includes(o.id) ? "#56c2e6" : "#1f2630") opacity=(o.needed ? 1 : 0.6) testId=`opt-${o.id}`
+                view width=16 height=16 border-radius=2 border-width=1 border-style="solid" border-color=(picks.includes(o.id) ? "#56c2e6" : "#4b5668") background-color=(picks.includes(o.id) ? "#56c2e6" : "transparent") display="flex" align-items="center" justify-content="center" flex-shrink=0
+                  if picks.includes(o.id)
+                    Icon(name="check", size=12, color="#0b0e12")
+                CallSign(label=o.type, service=o.service, color=serviceColor(o.service))
+                column flex=1 min-width=0
+                  row gap=6 align-items="center"
+                    text o.name class=Mono font-size="0.82rem" font-weight=600
+                    if o.suggested
+                      text "SUGGÉRÉ" class=Caps font-size="0.58rem" color="#3fb950"
+                  text (o.returning ? `${o.station} · en retour` : o.station) font-size="0.72rem" color="#6b7686" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+                text o.eta class=Mono font-size="0.8rem" font-weight=600
+            if opts.filter(o => not o.needed).length > 0
+              button press=toggleAll class=Quiet testId="toggle-all"
+                text (showAll ? "Masquer les autres véhicules" : `Voir tous les véhicules (${opts.length})`) font-size="0.8rem"
+            row gap=8
+              if picks.isEmpty() and suggested.length > 0
+                button press=useSuggestion class=Secondary flex=1 testId="use-suggestion"
+                  text "Choisir"
+              button press=engage class=Primary flex=2 disabled=(picks.isEmpty() and suggested.isEmpty()) opacity=(picks.isEmpty() and suggested.isEmpty() ? 0.4 : 1) testId="engage"
+                Icon(name="flag", size=16, color="#0b0e12")
+                text (picks.isEmpty() ? "Engager la suggestion" : `Engager ${plural(picks.length, "véhicule", "véhicules")}`) font-weight=600

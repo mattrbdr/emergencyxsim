@@ -1,0 +1,75 @@
+// The fleet: each station with its vehicles; a vehicle's card.
+use BuildingRow, UnitRow, Ack from "./model.contract"
+use Icon from "./icons.contract"
+use Tag, CallSign, Heading, Empty from "./parts.contract"
+use Mono, Caps, Secondary, Quiet, serviceColor, kindColor, statusColor, plural from "./theme.contract"
+
+component Fleet
+  props
+    buildings: BuildingRow[]
+    units: UnitRow[]
+    pickBuilding: action
+    pickUnit: action
+  view
+    column role="tabpanel" id="panel-flotte" gap=12
+      if buildings.length == 0
+        Empty(icon="build", text="Pas encore de bâtiment. Construisez votre première caserne : elle est offerte avec son VSAV.")
+      for b in buildings key=b.id
+        column gap=4
+          button press=pickBuilding(b.id) appearance="none" display="flex" align-items="center" gap=10 padding="8px 4px" border-bottom="1px solid #252c36" testId=`building-${b.id}`
+            Icon(name=b.kind, size=18, color=kindColor(b.kind))
+            column flex=1 min-width=0 align-items="flex-start"
+              text b.name font-weight=600 font-size="0.9rem" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+              text `${b.label} · ${b.used}/${plural(b.slots, "place", "places")}` class=Caps
+            text `${b.home} dispo` class=Mono font-size="0.72rem" color="#3fb950"
+            Icon(name="list", size=14, color="#6b7686")
+          for u in units.filter(x => x.building == b.id) key=u.id
+            row press=pickUnit(u.id) role="button" aria-label=`${u.name}, ${u.statusLabel}` gap=10 align-items="center" padding="6px 8px" border-radius=4 background-color="#171c24" testId=`unit-${u.id}`
+              CallSign(label=u.type, service=u.service, color=serviceColor(u.service))
+              column flex=1 min-width=0
+                text u.name class=Mono font-size="0.8rem" font-weight=600
+                if u.callTitle != ""
+                  text u.callTitle font-size="0.72rem" color="#9aa4b2" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+              column align-items="flex-end" gap=2
+                Tag(text=u.statusLabel, color=statusColor(u.status))
+                if u.eta != ""
+                  text u.eta class=Mono font-size="0.66rem" color="#6b7686"
+
+component UnitCard
+  props
+    u: UnitRow
+    dismiss: action
+    focus: action
+  mutation done as shape Ack queue
+  action recall
+    send done = recallUnit(u.id)
+  action sell
+    send done = sellVehicle(u.id)
+    dismiss()
+  view
+    column gap=10 testId="unit-card"
+      row align-items="center" gap=10
+        CallSign(label=u.type, service=u.service, color=serviceColor(u.service))
+        column flex=1 min-width=0
+          text u.name class=Mono font-weight=600
+          text u.long font-size="0.75rem" color="#9aa4b2"
+        button press=dismiss aria-label="Fermer" class=Quiet testId="unit-close"
+          Icon(name="close", size=16, color="#9aa4b2")
+      row gap=8 align-items="center" flex-wrap="wrap"
+        Tag(text=u.statusLabel, color=statusColor(u.status))
+        if u.eta != ""
+          text `arrivée ${u.eta}` class=Mono font-size="0.75rem" color="#9aa4b2"
+      if u.callTitle != ""
+        text `Mission : ${u.callTitle}` font-size="0.85rem"
+      text `${u.buildingName} · ${plural(u.missions, "mission", "missions")}` class=Caps
+      row gap=8
+        button press=focus class=Secondary flex=1 testId="unit-focus"
+          Icon(name="target", size=14, color="#e6edf3")
+          text "Voir"
+        if u.status == "route"
+          button press=recall class=Secondary flex=1 testId="unit-recall"
+            text "Désengager"
+        if u.canSell
+          button press=sell class=Secondary flex=1 testId="unit-sell"
+            Icon(name="sell", size=14, color="#e6edf3")
+            text `Vendre ${u.resale}`

@@ -1,0 +1,116 @@
+// Building: the build menu, the placement banner, a station's sheet with its
+// garage and vehicle shop, a real site's sheet.
+use BuildingRow, SiteRow, BuildOption, ShopItem, Ack from "./model.contract"
+use Icon from "./icons.contract"
+use Tag, CallSign, Heading, Meter from "./parts.contract"
+use Mono, Caps, Primary, Secondary, Quiet, Row, serviceColor, kindColor, money, plural from "./theme.contract"
+
+component BuildMenu
+  props
+    options: BuildOption[]
+    first: bool
+    place: action
+    close: action
+  view
+    column gap=12 testId="build-menu"
+      row align-items="center"
+        text "Construire" font-size="1.15rem" font-weight=600 flex=1 role="heading" aria-level=2
+        button press=close aria-label="Fermer" class=Quiet testId="build-close"
+          Icon(name="close", size=16, color="#9aa4b2")
+      text (first ? "Votre première caserne est offerte et arrive avec un VSAV. Posez-la sur une route, ou touchez un site réel (carré pointillé) pour le reprendre." : "Touchez ensuite une route de la carte pour construire, ou un site réel (carré pointillé) pour le racheter moins cher.") font-size="0.85rem" color="#9aa4b2" line-height=1.45
+      for o in options key=o.kind
+        button press=place(o.kind) disabled=(not o.open) class=Secondary justify-content="flex-start" padding="12px" opacity=(o.open ? 1 : 0.5) border-left-width=3 border-left-style="solid" border-left-color=(o.open ? kindColor(o.kind) : "#30394a") testId=`build-${o.kind}`
+          Icon(name=(o.open ? o.kind : "lock"), size=22, color=(o.open ? kindColor(o.kind) : "#6b7686"))
+          column flex=1 align-items="flex-start" gap=2
+            text o.label font-weight=600
+            text (o.open ? `Construire ${o.price} · reprendre un site ${o.buyPrice}` : `Débloqué au niveau ${o.level}`) class=Mono font-size="0.7rem" color="#9aa4b2"
+
+component PlacingBanner
+  props
+    label: string
+    cancel: action
+  view
+    row align-items="center" gap=10 padding="10px 12px" background-color="#e6edf3" border-radius=4 testId="placing"
+      Icon(name="target", size=18, color="#0b0e12")
+      text `Touchez une route pour poser : ${label}` font-weight=600 color="#0b0e12" flex=1 font-size="0.88rem"
+      button press=cancel appearance="none" padding="4px 8px" border="1px solid #0b0e12" border-radius=3 testId="placing-cancel"
+        text "Annuler" class=Mono font-size="0.75rem" color="#0b0e12"
+
+component BuildingSheet
+  props
+    b: BuildingRow
+    seq: number
+    close: action
+  resource items = shop(b.id, seq) as shape ShopItem[] else empty() transient
+  mutation bought as shape Ack queue refreshes items
+  action buy(type: string)
+    send bought = buyVehicle(b.id, type)
+    haptic("success")
+  action grow
+    send bought = expandBuilding(b.id)
+  view
+    column gap=14 testId="building-sheet"
+      row align-items="flex-start" gap=10
+        view width="2.75rem" height="2.75rem" border-radius=4 border-width=1 border-style="solid" border-color=kindColor(b.kind) display="flex" align-items="center" justify-content="center"
+          Icon(name=b.kind, size=24, color=kindColor(b.kind))
+        column flex=1 min-width=0 gap=2
+          text b.label.toUpperCase() class=Caps color=kindColor(b.kind)
+          text b.name font-size="1.15rem" font-weight=600 role="heading" aria-level=2
+          text `Entretien ${b.upkeep}` class=Mono font-size="0.72rem" color="#9aa4b2"
+        button press=close aria-label="Fermer" class=Quiet testId="building-close"
+          Icon(name="close", size=16, color="#9aa4b2")
+      column gap=6
+        row align-items="baseline"
+          text "Garage" class=Caps flex=1
+          text `${b.used} / ${plural(b.slots, "place", "places")}` class=Mono font-size="0.78rem"
+        Meter(fraction=(b.slots > 0 ? b.used / b.slots : 0), color=kindColor(b.kind))
+        if b.canExpand
+          button press=grow class=Secondary testId="expand"
+            Icon(name="expand", size=14, color="#e6edf3")
+            text `Agrandir : +2 places · ${b.expandPrice}`
+        else
+          text "Taille maximale atteinte." font-size="0.78rem" color="#6b7686"
+      if b.kind == "hopital"
+        text `${b.patients} patient${b.patients == 1 ? "" : "s"} hospitalisé${b.patients == 1 ? "" : "s"} : chaque victime amenée ici rapporte 600 €.` font-size="0.8rem" color="#9aa4b2"
+      column gap=6
+        Heading(text="Acheter un véhicule", detail="")
+        for it in items key=it.type
+          row gap=10 align-items="center" padding="8px 10px" class=Row opacity=(it.why == "" ? 1 : 0.55) testId=`shop-${it.type}`
+            CallSign(label=it.label, service=it.service, color=(it.level > 0 and it.why.startsWith("Niveau") ? "#4b5668" : serviceColor(it.service)))
+            column flex=1 min-width=0 gap=1
+              text it.long font-size="0.8rem" font-weight=500
+              text (it.owned > 0 ? `${it.upkeep} · ${it.owned} en service` : it.upkeep) class=Mono font-size="0.66rem" color="#6b7686"
+            if it.why == ""
+              button press=buy(it.type) class=Primary padding="6px 10px" testId=`buy-${it.type}`
+                text it.price class=Mono font-size="0.75rem" font-weight=600 color="#0b0e12"
+            else
+              row gap=4 align-items="center"
+                if it.why.startsWith("Niveau")
+                  Icon(name="lock", size=12, color="#6b7686")
+                text it.why class=Mono font-size="0.68rem" color="#9aa4b2" text-align="right"
+
+component SiteSheet
+  props
+    s: SiteRow
+    dismiss: action
+  mutation bought as shape Ack queue
+  action buy
+    send bought = buySite(s.index)
+    haptic("success")
+    dismiss()
+  view
+    column gap=12 testId="site-sheet"
+      row align-items="flex-start" gap=10
+        Icon(name=(s.open ? s.kind : "lock"), size=24, color=(s.open ? kindColor(s.kind) : "#6b7686"))
+        column flex=1 min-width=0 gap=2
+          text `${s.label.toUpperCase()} · SITE RÉEL` class=Caps color=kindColor(s.kind)
+          text s.name font-size="1.15rem" font-weight=600 role="heading" aria-level=2
+        button press=dismiss aria-label="Fermer" class=Quiet testId="site-close"
+          Icon(name="close", size=16, color="#9aa4b2")
+      if s.open
+        text "Reprenez ce bâtiment existant : moins cher que construire, déjà bien placé." font-size="0.85rem" color="#9aa4b2" line-height=1.45
+        button press=buy class=Primary testId="buy-site"
+          Icon(name="money", size=16, color="#0b0e12")
+          text `Reprendre pour ${s.price}` font-weight=600
+      else
+        text `Disponible au niveau ${s.level}.` font-size="0.85rem" color="#9aa4b2"

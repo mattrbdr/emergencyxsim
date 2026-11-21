@@ -1,0 +1,117 @@
+// What the view can ask (resources) and order (mutations). Each answer is one
+// line into the simulation; the reply is an Ack the view uses to refresh.
+import type { Result, Sources } from '../app.contract.d.ts';
+import type { BuildingKind } from '../sim/catalog/buildings.ts';
+import type { Family } from '../sim/catalog/calls.ts';
+import { UNITS, type UnitType } from '../sim/catalog/units.ts';
+import { buySite, buyUnit, expand, sellUnit } from '../sim/buildings.ts';
+import { dispatch, options, qualify, recall } from '../sim/calls.ts';
+import { minutesText } from '../sim/clock.ts';
+import { buildingUnlocked } from '../sim/progression.ts';
+import { tick } from '../sim/world.ts';
+import { focus, overview, zoomBy } from '../render/camera.ts';
+import { pointer, wheel } from '../render/gestures.ts';
+import { downloadCommune, searchCommune, status } from './city-loader.ts';
+import { autosave, boot, demoCity, game, resetCareer, save, startCareer } from './game.ts';
+import { shopItems, snapshot } from './snapshot.ts';
+
+const ack = (picked = ''): Result<'tick'> => ({ seq: game.world.seq, cam: game.world.cam.seq, picked });
+
+export const sources: Sources = {
+  // ------------------------------------------------ reads
+  boot: async (_args, _store, storage) => {
+    await boot(storage);
+    return { ready: game.ready, city: game.world.city.name };
+  },
+  snapshot: () => snapshot(game.world),
+  dispatchOptions: ([callId]) =>
+    options(game.world, callId).map((o) => ({
+      id: o.unit.id, name: o.unit.name, type: o.unit.type, long: UNITS[o.unit.type].long, service: o.unit.service,
+      station: game.world.buildings.find((b) => b.id === o.unit.building)?.name ?? '',
+      eta: minutesText(o.eta), suggested: o.suggested, needed: o.needed, returning: o.unit.status === 'retour',
+    })),
+  shop: ([buildingId]) => {
+    const b = game.world.buildings.find((x) => x.id === buildingId);
+    return b ? shopItems(game.world, b) : [];
+  },
+  cityStatus: () => ({
+    phase: status.phase, message: status.message, matches: status.matches,
+    busy: ['search', 'roads', 'areas', 'build'].includes(status.phase),
+  }),
+
+  // ------------------------------------------------ the town
+  searchCity: async ([name]) => { await searchCommune(name); return ack(); },
+  chooseCity: async ([insee, name, seed], _store, storage) => {
+    const file = await downloadCommune(insee, name);
+    if (file) startCareer(storage, file, seed, true);
+    return ack(file ? 'ready' : '');
+  },
+  useDemo: ([seed], _store, storage) => { startCareer(storage, demoCity(), seed, false); return ack('ready'); },
+  newCareer: async (_args, _store, storage) => { await resetCareer(storage); return ack(); },
+
+  // ------------------------------------------------ time
+  tick: ([ms], _store, storage) => {
+    if (game.ready) {
+      tick(game.world, ms);
+      autosave(storage);
+    }
+    return ack();
+  },
+  setSpeed: ([speed]) => { game.world.speed = speed; game.world.paused = false; game.world.seq++; return ack(); },
+  setPaused: ([paused]) => { game.world.paused = paused; game.world.seq++; return ack(); },
+
+  // ------------------------------------------------ dispatch
+  qualifyCall: ([id, family]) => { qualify(game.world, id, family as Family); return ack(); },
+  send: ([id, ids]) => { dispatch(game.world, id, ids); return ack(); },
+  recallUnit: ([id]) => { recall(game.world, id); game.world.seq++; return ack(); },
+
+  // ------------------------------------------------ building and buying
+  startPlacing: ([kind]) => {
+    const k = kind as BuildingKind;
+    game.world.placing = buildingUnlocked(game.world, k) ? { kind: k, node: -1 } : null;
+    game.world.seq++;
+    return ack();
+  },
+  cancelPlacing: () => { game.world.placing = null; game.world.seq++; return ack(); },
+  buySite: ([index], _store, storage) => {
+    const b = buySite(game.world, index);
+    if (b) { game.world.placing = null; save(storage); }
+    game.world.seq++;
+    return ack(b ? `building:${b.id}` : '');
+  },
+  expandBuilding: ([id], _store, storage) => { if (expand(game.world, id)) save(storage); game.world.seq++; return ack(); },
+  buyVehicle: ([buildingId, type], _store, storage) => {
+    const u = buyUnit(game.world, buildingId, type as UnitType);
+    if (u) save(storage);
+    game.world.seq++;
+    return ack(u ? `unit:${u.id}` : '');
+  },
+  sellVehicle: ([id], _store, storage) => { if (sellUnit(game.world, id)) save(storage); game.world.seq++; return ack(); },
+  seenLevel: (_args, _store, storage) => {
+    game.world.seenLevel = Math.min(game.world.level, game.world.seenLevel + 1);
+    game.world.dirty = true;
+    save(storage);
+    return ack();
+  },
+
+  // ------------------------------------------------ the map
+  gesture: ([kind, id, x, y], _store, storage) => {
+    const picked = pointer(game.world, kind, id, x, y);
+    if (picked.startsWith('built:')) save(storage);
+    return ack(picked);
+  },
+  wheelZoom: ([dy, x, y]) => { wheel(game.world, dy, x, y); return ack(); },
+  camera: ([cmd, id, left, right, top, bottom]) => {
+    const w = game.world;
+    const inset = [left, right, top, bottom];
+    const at = (x: number, y: number) => focus(w, x, y, inset);
+    if (cmd === 'in') zoomBy(w, 1.6);
+    else if (cmd === 'out') zoomBy(w, 1 / 1.6);
+    else if (cmd === 'fit') overview(w);
+    else if (cmd === 'call') { const c = w.calls.find((x) => x.id === id); if (c) at(c.x, c.y); }
+    else if (cmd === 'unit') { const u = w.units.find((x) => x.id === id); if (u) at(u.x, u.y); }
+    else if (cmd === 'building') { const b = w.buildings.find((x) => x.id === id); if (b) at(b.x, b.y); }
+    else if (cmd === 'site') { const p = w.city.pois[Number(id)]; if (p) at(p.x, p.y); }
+    return ack();
+  },
+};
