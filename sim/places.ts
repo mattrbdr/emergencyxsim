@@ -11,6 +11,8 @@ export function placesAt(city: City, edge: number): Set<Place> {
   const x = (city.nx[e.a] + city.nx[e.b]) / 2, y = (city.ny[e.a] + city.ny[e.b]) / 2;
   const out = new Set<Place>();
   if (e.cls <= 1) out.add('axe');
+  const wet = nearWater(city);
+  if (wet[e.a] || wet[e.b]) out.add('eau');
   for (const h of city.hotspots) if (Math.hypot(h.x - x, h.y - y) < HOTSPOT_RADIUS) out.add(h.kind);
   for (const z of city.zones) if (inside(z.pts, x, y)) out.add(z.kind);
   return out;
@@ -44,4 +46,45 @@ export function landmark(city: City, kind: CallKind, x: number, y: number): stri
     if (d < bd) { bd = d; best = h.name || HOTSPOT_LABEL[h.kind]; }
   }
   return best;
+}
+
+/** Metres from a shore within which a street counts as along the water. */
+const SHORE = 120;
+const shores = new WeakMap<City, Uint8Array>();
+
+/** Per node, 1 when it stands within SHORE of water (worked out once per town). */
+function nearWater(city: City): Uint8Array {
+  let wet = shores.get(city);
+  if (wet) return wet;
+  wet = new Uint8Array(city.nx.length);
+  // Shore points every ~60 m, bucketed in SHORE-sized cells.
+  const cells = new Map<number, number[]>();
+  const key = (cx: number, cy: number) => cx * 100003 + cy;
+  for (const pts of city.file.water) {
+    for (let i = 0; i < pts.length; i += 2) {
+      const j = (i + 2) % pts.length;
+      const steps = Math.max(1, Math.ceil(Math.hypot(pts[j] - pts[i], pts[j + 1] - pts[i + 1]) / 60));
+      for (let s = 0; s < steps; s++) {
+        const x = pts[i] + ((pts[j] - pts[i]) * s) / steps, y = pts[i + 1] + ((pts[j + 1] - pts[i + 1]) * s) / steps;
+        const k = key(Math.floor(x / SHORE), Math.floor(y / SHORE));
+        const list = cells.get(k);
+        if (list) list.push(x, y);
+        else cells.set(k, [x, y]);
+      }
+    }
+  }
+  for (let n = 0; n < city.nx.length; n++) {
+    const cx = Math.floor(city.nx[n] / SHORE), cy = Math.floor(city.ny[n] / SHORE);
+    search: for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const list = cells.get(key(cx + dx, cy + dy));
+        if (!list) continue;
+        for (let i = 0; i < list.length; i += 2) {
+          if (Math.hypot(list[i] - city.nx[n], list[i + 1] - city.ny[n]) < SHORE) { wet[n] = 1; break search; }
+        }
+      }
+    }
+  }
+  shores.set(city, wet);
+  return wet;
 }

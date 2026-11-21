@@ -176,6 +176,7 @@ function unlockCard(w: World): Snap['unlock'] {
     vehicles: unlock.units.map((t) => shopItem(w, t, '')),
     buildings: unlock.buildings.map((k) => BUILDINGS[k].label),
     calls: unlock.calls.map((k) => k.title),
+    majors: unlock.majors.map((k) => k.title),
   };
 }
 

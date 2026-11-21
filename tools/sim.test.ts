@@ -65,9 +65,14 @@ test('every station reaches every other one by road', () => {
 });
 
 test('the catalogue: every level unlocks something, every call is reachable', () => {
-  for (let level = 1; level <= 12; level++) {
-    expect(UNIT_ORDER.some((t) => UNITS[t].level === level)).toBe(true);
-    expect(CALL_KINDS.some((k) => k.level === level)).toBe(true);
+  const { MAJORS } = require('../sim/catalog/majors.ts');
+  const { XP_FOR_LEVEL, MAX_LEVEL } = require('../sim/catalog/levels.ts');
+  expect(MAX_LEVEL).toBe(25);
+  for (let i = 1; i < XP_FOR_LEVEL.length; i++) expect(XP_FOR_LEVEL[i]).toBeGreaterThan(XP_FOR_LEVEL[i - 1]);
+  for (let level = 1; level <= MAX_LEVEL; level++) {
+    const unlocks = UNIT_ORDER.some((t) => UNITS[t].level === level) || MAJORS.some((k: { level: number }) => k.level === level);
+    expect(unlocks ? 'ok' : `level ${level} unlocks nothing`).toBe('ok');
+    if (level <= 20) expect(CALL_KINDS.some((k) => k.level === level)).toBe(true);
   }
   expect(CALL_KINDS.length).toBeGreaterThanOrEqual(30);
   expect(CALL_KINDS.filter((k) => k.level === 1).every((k) => k.needs.every((t) => t === 'VSAV'))).toBe(true);
@@ -362,13 +367,18 @@ test('every major incident runs through all its phases with a full fleet', async
 /** Level 12, every kind of vehicle, no ordinary calls. */
 function fullFleet(seed: number) {
   const w = newWorld(city, seed);
-  w.level = 12;
+  w.level = 25;
   w.money = 1e8;
   const fire1 = buildAt(w, 'caserne', centre.x, centre.y)!;
   const fire2 = buildAt(w, 'caserne', centre.x + 900, centre.y + 400)!;
+  const fire3 = buildAt(w, 'caserne', centre.x - 900, centre.y - 400)!;
   const post = buySite(w, city.pois.findIndex((p) => p.kind === 'police'))!;
+  const post2 = buildAt(w, 'police', centre.x + 400, centre.y - 600)!;
   const hosp = buySite(w, city.pois.findIndex((p) => p.kind === 'hospital'))!;
-  for (const b of [fire1, fire2, post, hosp]) for (let i = 0; i < 3; i++) expand(w, b.id);
+  for (const b of [fire1, fire2, fire3, post, post2, hosp]) for (let i = 0; i < 3; i++) expand(w, b.id);
+  for (const t of ['FMOGP', 'VSN', 'VSN', 'DRONE', 'GRIMP'] as const) buyUnit(w, fire3.id, t);
+  for (const t of ['RAID', 'CYNO', 'MOTO'] as const) buyUnit(w, post2.id, t);
+  buyUnit(w, hosp.id, 'HELI');
   for (const t of ['FPT', 'FPT', 'EPA', 'VSAV', 'VSAV', 'VSAV', 'VTU', 'VTU'] as const) buyUnit(w, fire1.id, t);
   for (const t of ['FPTGP', 'VPC', 'CMIC', 'VSR', 'VPMA', 'FPT'] as const) buyUnit(w, fire2.id, t);
   for (const t of ['PS', 'PS', 'PS', 'BAC', 'BAC', 'BRI'] as const) buyUnit(w, post.id, t);

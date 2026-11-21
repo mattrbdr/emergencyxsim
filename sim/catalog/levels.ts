@@ -1,5 +1,8 @@
 // Experience thresholds: level n starts at XP[n - 1].
-export const XP_FOR_LEVEL = [0, 400, 1100, 2300, 4000, 6500, 10000, 14500, 20000, 27000, 35000, 45000];
+const BASE = [0, 400, 1100, 2300, 4000, 6500, 10000, 14500, 20000, 27000, 35000, 45000];
+/** Past level 12 each step is 8 % longer than the one before (about 290 000 XP at 25). */
+export const XP_FOR_LEVEL = [...BASE];
+for (let step = 11500; XP_FOR_LEVEL.length < 25; step *= 1.08) XP_FOR_LEVEL.push(Math.round((XP_FOR_LEVEL.at(-1)! + step) / 500) * 500);
 export const MAX_LEVEL = XP_FOR_LEVEL.length;
 
 export const levelFor = (xp: number) => {

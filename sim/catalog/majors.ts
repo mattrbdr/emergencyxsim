@@ -24,6 +24,8 @@ export interface MajorPhase {
   /** Missing the deadline ends the incident ('abort') or hurts people and goes on ('injured'). */
   onFail: 'abort' | 'injured';
   injuredOnFail: number;
+  /** Happens at the incident's second site (a twin attack). */
+  site?: 1;
 }
 
 export interface MajorKind {
@@ -40,7 +42,7 @@ export interface MajorKind {
   reward: number;
   xp: number;
   /** A special mechanic: a toxic plume, flooded streets, a vehicle on the run. */
-  effect?: 'plume' | 'flood' | 'pursuit';
+  effect?: 'plume' | 'flood' | 'pursuit' | 'search' | 'twin';
 }
 
 export const MAJORS: MajorKind[] = [
@@ -255,6 +257,133 @@ export const MAJORS: MajorKind[] = [
       {
         id: 'fin', title: 'Interpellation et blessé', brief: 'Le véhicule a percuté un poteau. Le conducteur est interpellé et blessé.',
         needs: ['PS', 'VSAV'], deadline: 12, work: 10, victims: 1, transport: true, onFail: 'injured', injuredOnFail: 1,
+      },
+    ],
+  },
+  {
+    id: 'depot_petrolier', title: 'Feu de dépôt pétrolier', family: 'feu', level: 21, places: ['industriel', 'eau'], perimeter: 700, effect: 'plume',
+    alert: 'Explosion dans un dépôt d\'hydrocarbures : un bac de stockage est en feu, une colonne de fumée noire monte sur la ville.',
+    reward: 60000, xp: 1700,
+    phases: [
+      {
+        id: 'refroidissement', title: 'Refroidissement des bacs voisins', brief: 'Le feu chauffe les bacs voisins. Il faut les arroser avant qu\'ils ne cèdent.',
+        needs: ['FPTGP', 'FPT', 'FPT'], deadline: 12, work: 25, victims: 0, transport: false, onFail: 'injured', injuredOnFail: 3,
+      },
+      {
+        id: 'attaque', title: 'Attaque du feu', brief: 'Les bacs voisins tiennent. Le COS demande comment éteindre le bac en feu.',
+        needs: [], deadline: 15, work: 0, victims: 0, transport: false, onFail: 'injured', injuredOnFail: 3,
+        decision: {
+          report: 'Bac de 20 000 m³ en feu, risque de débordement par ébullition. Comment l\'éteindre ?',
+          options: [
+            { id: 'mousse', label: 'Attaque à la mousse', detail: '90 % de réussite, prime +30 %', needs: ['FMOGP', 'FPTGP'], work: 30, success: 0.9, bonus: 1.3, injuredOnFail: 2 },
+            { id: 'controle', label: 'Laisser brûler sous contrôle', detail: 'Long, 80 % de réussite', needs: ['FPT'], work: 60, success: 0.8, bonus: 1, injuredOnFail: 3 },
+            { id: 'eau', label: 'Attaque à l\'eau', detail: 'Rapide mais 45 % de réussite', needs: ['FPT', 'FPT'], work: 20, success: 0.45, bonus: 1.1, injuredOnFail: 5 },
+          ],
+        },
+      },
+      {
+        id: 'intoxiques', title: 'Personnes intoxiquées', brief: 'Des ouvriers et des riverains ont respiré les fumées.',
+        needs: ['VSAV', 'VSAV', 'SMUR'], deadline: 12, work: 18, victims: 3, transport: true, onFail: 'injured', injuredOnFail: 1,
+      },
+    ],
+  },
+  {
+    id: 'disparition_enfant', title: 'Disparition d\'enfant', family: 'police', level: 22, places: ['parc', 'commercial', 'eau'], perimeter: 350, effect: 'search',
+    alert: 'Une fillette de six ans a disparu depuis quarante minutes. La zone de recherche s\'élargit à chaque minute.',
+    reward: 42000, xp: 1500,
+    phases: [
+      {
+        id: 'bouclage', title: 'Bouclage du secteur', brief: 'Contrôler les sorties du quartier et recueillir les premiers témoignages.',
+        needs: ['PS', 'PS'], deadline: 10, work: 10, victims: 0, transport: false, onFail: 'injured', injuredOnFail: 0,
+      },
+      {
+        id: 'recherche', title: 'Recherche', brief: 'Un témoin l\'a vue partir vers le parc il y a une demi-heure.',
+        needs: [], deadline: 15, work: 0, victims: 0, transport: false, onFail: 'injured', injuredOnFail: 1,
+        decision: {
+          report: 'La nuit tombe dans une heure. Comment chercher ?',
+          options: [
+            { id: 'cyno', label: 'Brigade cynophile', detail: 'Le chien suit la piste : 85 % de réussite', needs: ['CYNO'], work: 25, success: 0.85, bonus: 1.2, injuredOnFail: 1 },
+            { id: 'drone', label: 'Drone à caméra thermique', detail: 'Couvre le parc vite : 80 % de réussite, prime +30 %', needs: ['DRONE'], work: 15, success: 0.8, bonus: 1.3, injuredOnFail: 1 },
+            { id: 'battue', label: 'Battue avec les habitants', detail: 'Lent, 60 % de réussite', needs: ['PS', 'VTU'], work: 45, success: 0.6, bonus: 1, injuredOnFail: 1 },
+          ],
+        },
+      },
+      {
+        id: 'retrouvee', title: 'Enfant retrouvée', brief: 'L\'enfant est retrouvée en hypothermie au bord de l\'étang.',
+        needs: ['VSAV'], deadline: 10, work: 12, victims: 1, transport: true, onFail: 'injured', injuredOnFail: 1,
+      },
+    ],
+  },
+  {
+    id: 'forcene_otages', title: 'Forcené retranché avec otages', family: 'police', level: 23, places: ['commercial', 'bar'], perimeter: 250,
+    alert: 'Un homme armé s\'est retranché dans un bureau de poste avec quatre otages. Il a déjà tiré.',
+    reward: 55000, xp: 1700,
+    phases: [
+      {
+        id: 'perimetre', title: 'Périmètre de sécurité', brief: 'Évacuer la rue et les immeubles en face. Tenir les curieux à distance.',
+        needs: ['PS', 'PS', 'BAC'], deadline: 10, work: 10, victims: 0, transport: false, onFail: 'abort', injuredOnFail: 0,
+      },
+      {
+        id: 'resolution', title: 'Résolution', brief: 'Le négociateur a un premier contact. L\'homme exige une voiture.',
+        needs: [], deadline: 15, work: 0, victims: 0, transport: false, onFail: 'injured', injuredOnFail: 2,
+        decision: {
+          report: 'Quatre otages, une arme longue. Quelle option ?',
+          options: [
+            { id: 'raid', label: 'Assaut de l\'unité d\'élite', detail: '90 % de réussite, prime +40 %', needs: ['RAID'], work: 12, success: 0.9, bonus: 1.4, injuredOnFail: 2 },
+            { id: 'negocier', label: 'Négocier', detail: 'Long : 80 % de réussite', needs: ['PS'], work: 50, success: 0.8, bonus: 1, injuredOnFail: 1 },
+            { id: 'bri', label: 'Assaut de la BRI', detail: '65 % de réussite', needs: ['BRI'], work: 15, success: 0.65, bonus: 1.2, injuredOnFail: 3 },
+          ],
+        },
+      },
+      {
+        id: 'otages', title: 'Prise en charge des otages', brief: 'Les otages sont libérés, choqués, l\'un est blessé.',
+        needs: ['VSAV', 'SMUR'], deadline: 12, work: 15, victims: 2, transport: true, onFail: 'injured', injuredOnFail: 1,
+      },
+    ],
+  },
+  {
+    id: 'crue', title: 'Crue majeure', family: 'technique', level: 24, places: ['eau', 'parc'], perimeter: 700, effect: 'flood',
+    alert: 'La rivière est sortie de son lit : des quartiers entiers sont sous l\'eau, des habitants attendent sur les toits.',
+    reward: 58000, xp: 1800,
+    phases: [
+      {
+        id: 'reconnaissance', title: 'Reconnaissance nautique', brief: 'Parcourir les rues inondées et compter les personnes isolées.',
+        needs: ['VSN', 'VTU'], deadline: 12, work: 15, victims: 0, transport: false, onFail: 'injured', injuredOnFail: 2,
+      },
+      {
+        id: 'evacuation', title: 'Évacuation des sinistrés', brief: 'Une trentaine de personnes sont bloquées dans les étages.',
+        needs: [], deadline: 15, work: 0, victims: 0, transport: false, onFail: 'injured', injuredOnFail: 3,
+        decision: {
+          report: 'Le niveau monte encore de quarante centimètres d\'ici ce soir. Comment évacuer ?',
+          options: [
+            { id: 'bateaux', label: 'Évacuation en bateau', detail: '85 % de réussite, prime +20 %', needs: ['VSN', 'VSN'], work: 40, success: 0.85, bonus: 1.2, injuredOnFail: 2 },
+            { id: 'helico', label: 'Hélitreuillage', detail: 'Rapide : 80 % de réussite, prime +30 %', needs: ['HELI'], work: 25, success: 0.8, bonus: 1.3, injuredOnFail: 2 },
+            { id: 'attendre', label: 'Maintien à domicile', detail: 'Ravitaillement des étages : 60 % de réussite', needs: ['VTU'], work: 30, success: 0.6, bonus: 1, injuredOnFail: 4 },
+          ],
+        },
+      },
+      {
+        id: 'victimes', title: 'Victimes', brief: 'Des personnes en hypothermie et un blessé grave.',
+        needs: ['VSAV', 'VSAV', 'AMB'], deadline: 12, work: 18, victims: 3, transport: true, onFail: 'injured', injuredOnFail: 1,
+      },
+    ],
+  },
+  {
+    id: 'multi_sites', title: 'Attaques sur deux sites', family: 'police', level: 25, places: ['gare', 'stade', 'commercial'], perimeter: 300, effect: 'twin',
+    alert: 'Explosion dans la galerie marchande. Quelques minutes plus tard, des tirs sont signalés à l\'autre bout de la ville.',
+    reward: 90000, xp: 2600,
+    phases: [
+      {
+        id: 'explosion', title: 'Site 1 : explosion', brief: 'Effondrement partiel, de nombreuses victimes dans la galerie.',
+        needs: ['FPT', 'VSAV', 'VSAV', 'SMUR'], deadline: 12, work: 25, victims: 4, transport: true, onFail: 'injured', injuredOnFail: 3,
+      },
+      {
+        id: 'tireurs', title: 'Site 2 : tireurs', brief: 'Deux tireurs retranchés dans un restaurant, des clients sont à terre.',
+        needs: ['RAID', 'PS', 'PS'], deadline: 10, work: 15, victims: 0, transport: false, onFail: 'injured', injuredOnFail: 4, site: 1,
+      },
+      {
+        id: 'blesses', title: 'Site 2 : blessés', brief: 'Les tireurs sont neutralisés. Les blessés doivent partir au plus vite.',
+        needs: ['VSAV', 'AMB', 'SMUR'], deadline: 12, work: 20, victims: 4, transport: true, onFail: 'injured', injuredOnFail: 2, site: 1,
       },
     ],
   },

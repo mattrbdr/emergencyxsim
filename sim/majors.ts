@@ -35,6 +35,8 @@ export interface Major {
   wind: number;
   /** The vehicle on the run (pursuit): it drives the streets until two crews box it in. */
   fugitive: Fugitive | null;
+  /** The second site of a twin attack (null for one site). */
+  spot2: Spot | null;
 }
 
 export interface Fugitive {
@@ -92,6 +94,16 @@ export function updateMajors(w: World, dt: number) {
   startMajor(w, kinds[Math.floor(w.rng() * kinds.length)]);
 }
 
+/** Where the current phase happens. */
+export const siteOf = (m: Major): Spot => (m.kind.phases[m.phase]?.site && m.spot2 ? m.spot2 : m.spot);
+
+/** A second site well across town from the first. */
+function farSpot(w: World, kind: MajorKind, first: Spot): Spot {
+  let best = pickSpot(w, kind);
+  for (let i = 0; i < 6 && Math.hypot(best.x - first.x, best.y - first.y) < 1500; i++) best = pickSpot(w, kind);
+  return best;
+}
+
 /** A street the incident is drawn to (a bank in a shopping district, a station…). */
 function pickSpot(w: World, kind: MajorKind): Spot {
   let best = w.city.callEdges[0], bestScore = -1;
@@ -108,6 +120,7 @@ export function startMajor(w: World, kind: MajorKind, spot = pickSpot(w, kind)):
   const m: Major = {
     id: `m${w.nextId++}`, kind, spot, phase: 0, callId: '', injured: 0, bonus: 1, atRisk: 0,
     startedAt: w.t, state: 'actif', endedAt: 0, earned: 0, wind: w.rng() * Math.PI * 2, fugitive: null,
+    spot2: kind.phases.some((p) => p.site) ? farSpot(w, kind, spot) : null,
   };
   w.majors.push(m);
   say(w, `ALERTE · ${kind.title} · ${spot.street}`, 'alert', true);
@@ -136,7 +149,7 @@ function phaseKind(m: Major): CallKind {
 /** Opens the current phase; crews on scene whose type it may need stay on site. */
 function openPhase(w: World, m: Major, onScene: string[]) {
   const phase = m.kind.phases[m.phase];
-  const call = createCall(w, phaseKind(m), m.spot, m.phase === 0 ? m.kind.alert : phase.brief);
+  const call = createCall(w, phaseKind(m), siteOf(m), m.phase === 0 ? m.kind.alert : phase.brief);
   call.majorId = m.id;
   call.qualified = true;
   call.guessedRight = true;
@@ -235,7 +248,8 @@ export function endPhase(w: World, call: Call, carrier: string | undefined) {
   }
   if (last) { settle(w, m, true); return; }
   m.phase++;
-  const onScene = call.assigned.filter((id) => {
+  const moved = (m.kind.phases[m.phase].site ?? 0) !== (phase.site ?? 0);
+  const onScene = moved ? [] : call.assigned.filter((id) => {
     const u = w.units.find((x) => x.id === id);
     return id !== carrier && u?.callId === call.id && u.status === 'surplace';
   });

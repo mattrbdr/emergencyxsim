@@ -3,7 +3,8 @@
 
 export type ZoneKind = 'industriel' | 'commercial' | 'parc';
 export type HotspotKind = 'bar' | 'ecole' | 'stade' | 'ehpad' | 'gare';
-export type Place = ZoneKind | HotspotKind | 'axe';
+/** 'axe': a main road; 'eau': a street along a river, a lake or the sea. */
+export type Place = ZoneKind | HotspotKind | 'axe' | 'eau';
 
 export const ZONE_LABEL: Record<ZoneKind, string> = {
   industriel: 'Zone industrielle', commercial: 'Zone commerciale', parc: 'Parc',
@@ -31,7 +32,23 @@ export const AFFINITY: Record<string, Partial<Record<Place, number>>> = {
   braquage: { commercial: 4 },
   feu_entrepot: { industriel: 6 },
   feu_industriel: { industriel: 8 },
-  noyade: { parc: 3 },
+  noyade: { eau: 6, parc: 2 },
+  rodeo: { parc: 2, axe: 1 },
+  delit_fuite: { axe: 3 },
+  avp_bouchon: { axe: 5 },
+  grue: { industriel: 3, commercial: 2 },
+  puits: { parc: 2, industriel: 2 },
+  suicidaire: { gare: 2, commercial: 1, eau: 2 },
+  personne_eau: { eau: 8 },
+  voiture_eau: { eau: 8 },
+  bateau: { eau: 10 },
+  disparition: { ehpad: 4, parc: 2 },
+  stups: { gare: 3, bar: 2 },
+  feu_citerne: { axe: 3, industriel: 3 },
+  feu_station: { axe: 2, commercial: 2 },
+  egare: { parc: 6, eau: 2 },
+  forcene: { bar: 1 },
+  nourrisson: { ecole: 1 },
   avp_isole: { axe: 4 },
   accident_car: { axe: 4, ecole: 2 },
   plan_rouge: { stade: 6 },

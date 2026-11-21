@@ -4,6 +4,7 @@ import type { Ctx2D, Frame } from '../app.contract.d.ts';
 import { BUILDINGS, KIND_OF_POI } from '../sim/catalog/buildings.ts';
 import type { IconName } from '../sim/catalog/icons.ts';
 import { UNITS } from '../sim/catalog/units.ts';
+import { siteOf } from '../sim/majors.ts';
 import type { Building, Call, Unit, World } from '../sim/types.ts';
 import { syncView, toScreen } from './camera.ts';
 import { drawIcon } from './sprites.ts';
@@ -35,8 +36,11 @@ export function drawLive(w: World, ctx: Ctx2D, frame: Frame, selected: string): 
 function drawPerimeters(w: World, ctx: Ctx2D, now: number) {
   for (const m of w.majors) {
     if (m.state !== 'actif' || (m.fugitive && !m.fugitive.stopped)) continue;
-    const [x, y] = toScreen(w, m.spot.x, m.spot.y);
-    const r = Math.max(28, m.kind.perimeter * w.cam.zoom);
+    const site = siteOf(m);
+    const [x, y] = toScreen(w, site.x, site.y);
+    // A search area widens with every minute the child is not found (up to 2.5×).
+    const grow = m.kind.effect === 'search' ? 1 + Math.min(1.5, (w.t - m.startedAt) / 3600) : 1;
+    const r = Math.max(28, m.kind.perimeter * grow * w.cam.zoom);
     ctx.save();
     ctx.fillStyle = 'rgba(242,85,90,0.07)';
     ctx.beginPath();
@@ -48,7 +52,7 @@ function drawPerimeters(w: World, ctx: Ctx2D, now: number) {
     ctx.lineDashOffset = -now / 60;
     ctx.stroke();
     ctx.restore();
-    label(ctx, `PÉRIMÈTRE · ${m.kind.title.toUpperCase()}`, x, y - r - 10, SERVICE.pompiers);
+    label(ctx, `${m.kind.effect === 'search' ? 'ZONE DE RECHERCHE' : m.spot2 ? `SITE ${site === m.spot2 ? 2 : 1}` : 'PÉRIMÈTRE'} · ${m.kind.title.toUpperCase()}`, x, y - r - 10, SERVICE.pompiers);
   }
 }
 

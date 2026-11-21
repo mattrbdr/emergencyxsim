@@ -1,7 +1,7 @@
 // Vehicles on the move: driving the road graph (or flying straight), arriving
 // on scene, carrying victims to hospital, going home.
 import { RULES } from './catalog/rules.ts';
-import { UNITS } from './catalog/units.ts';
+import { UNITS, type UnitDef } from './catalog/units.ts';
 import { earn } from './economy.ts';
 import { euros, say } from './log.ts';
 import { edgeBetween, edgeSpeed, pathTo, type Tree } from './routing.ts';
@@ -9,6 +9,8 @@ import { freshTree, trafficAt, treeFromStation } from './traffic.ts';
 import type { Unit, World } from './types.ts';
 
 export const isFree = (u: Unit) => u.status === 'dispo' || u.status === 'retour';
+/** Traffic slowdown for this vehicle: a motorbike weaves through half of it. */
+const jam = (w: World, def: UnitDef, edge: number) => (def.weaves ? 1 + (trafficAt(w, edge) - 1) / 2 : trafficAt(w, edge));
 export const flies = (u: Unit) => UNITS[u.type].flySpeed !== undefined;
 
 /** The node a road unit can be routed from: where it stands, or the end of the street it drives. */
@@ -39,7 +41,7 @@ export function etaOf(w: World, u: Unit): number {
     if (ei < 0) continue;
     const e = w.city.edges[ei];
     const len = i === 0 ? e.len - u.along : e.len;
-    s += (len / (edgeSpeed(e.cls) * def.speed)) * trafficAt(w, ei);
+    s += (len / (edgeSpeed(e.cls) * def.speed)) * jam(w, def, ei);
   }
   return s;
 }
@@ -78,7 +80,7 @@ export function moveUnit(w: World, u: Unit, dt: number) {
     const ei = edgeBetween(w.city, u.path[0], u.path[1]);
     if (ei < 0) { u.path.shift(); u.along = 0; continue; }
     const e = w.city.edges[ei];
-    const v = (edgeSpeed(e.cls) * def.speed) / trafficAt(w, ei);
+    const v = (edgeSpeed(e.cls) * def.speed) / jam(w, def, ei);
     const left = e.len - u.along;
     if (budget * v >= left) {
       budget -= left / v;

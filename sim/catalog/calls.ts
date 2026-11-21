@@ -393,6 +393,167 @@ export const CALL_KINDS: CallKind[] = [
       "Le chapiteau du cirque s'est écroulé avec le vent, il y avait du monde dessous.",
     ],
   }),
+  // ------------------------------------------------ niveau 13 : motards
+  spec({
+    id: 'rodeo', family: 'police', title: 'Rodéo urbain', priority: 3, needs: ['MOTO', 'PS'], deadline: 25, work: 15,
+    victims: 0, transport: false, weight: 4,
+    callers: [
+      "Ça fait une heure que des motos tournent dans le quartier en roue arrière, il y a des enfants qui jouent en bas.",
+      "Des quads font la course sur le parking du supermarché, ils ont failli renverser une dame avec son caddie.",
+      "Gardien de la résidence. Quatre scooters passent et repassent à fond sur le trottoir, les habitants n'osent plus sortir.",
+    ],
+  }),
+  spec({
+    id: 'delit_fuite', family: 'police', title: 'Délit de fuite', priority: 2, needs: ['MOTO'], deadline: 15, work: 12,
+    victims: 0, transport: false, weight: 4,
+    callers: [
+      "Une voiture grise vient d'accrocher un cycliste et elle est repartie sans s'arrêter, j'ai le début de la plaque.",
+      "On m'a percuté à l'arrière au feu rouge et le type a redémarré à fond vers le rond-point.",
+      "Une camionnette blanche a arraché trois rétroviseurs dans la rue et elle file vers la sortie de la ville.",
+    ],
+  }),
+  spec({
+    id: 'avp_bouchon', family: 'route', title: 'Accident dans un bouchon', priority: 1, needs: ['MOTO', 'VSAV'], deadline: 12, work: 18,
+    victims: 1, transport: true, weight: 3,
+    callers: [
+      "Un motard s'est fait coincer entre deux voitures dans les bouchons, il est par terre et il bouge plus beaucoup.",
+      "Carambolage sur la rocade, tout est bloqué, il y a une femme coincée par sa ceinture qui a mal au cou.",
+      "Ça roule plus du tout sur le boulevard, un piéton s'est fait renverser entre les files, les secours vont jamais passer.",
+    ],
+  }),
+  // ------------------------------------------------ niveau 14 : GRIMP
+  spec({
+    id: 'grue', family: 'technique', title: 'Personne bloquée sur une grue', priority: 1, needs: ['GRIMP', 'FPT'], deadline: 18, work: 35,
+    victims: 1, transport: true, weight: 2,
+    callers: [
+      "Chef de chantier. Notre grutier a fait un malaise dans la cabine, à quarante mètres, il répond plus à la radio.",
+      "Il y a un jeune qui a escaladé la grue du chantier, il est tout en haut et il a l'air de plus pouvoir redescendre.",
+      "Un ouvrier est suspendu par son harnais sur la flèche de la grue, il bouge plus.",
+    ],
+  }),
+  spec({
+    id: 'puits', family: 'sap', title: 'Chute dans une fosse', priority: 1, needs: ['GRIMP', 'VSAV'], deadline: 15, work: 30,
+    victims: 1, transport: true, weight: 2,
+    callers: [
+      "Mon fils est tombé dans le vieux puits au fond du jardin, je l'entends pleurer mais je le vois pas.",
+      "Un ouvrier est tombé dans une tranchée de six mètres sur le chantier, il dit qu'il sent plus ses jambes.",
+      "Un promeneur a glissé dans la carrière, il est sur une corniche à mi-hauteur, il peut pas remonter.",
+    ],
+  }),
+  spec({
+    id: 'suicidaire', family: 'sap', title: 'Personne menaçant de sauter', priority: 1, needs: ['GRIMP', 'PS'], deadline: 14, work: 30,
+    victims: 0, transport: false, weight: 2,
+    callers: [
+      "Il y a un homme assis sur le parapet du pont, il dit qu'il va sauter, on essaie de lui parler.",
+      "Une jeune femme est sur le toit de l'immeuble d'en face, elle est au bord, elle pleure.",
+      "Un homme s'est enfermé sur le balcon du septième et il a enjambé la rambarde.",
+    ],
+  }),
+  // ------------------------------------------------ niveau 15 : secours nautique
+  spec({
+    id: 'personne_eau', family: 'sap', title: 'Personne à l\'eau', priority: 1, needs: ['VSN', 'VSAV'], deadline: 10, work: 22,
+    victims: 1, transport: true, weight: 3,
+    callers: [
+      "Quelqu'un vient de tomber du quai, le courant l'emporte, il s'accroche à une branche !",
+      "Une femme a sauté dans la rivière pour récupérer son chien, elle arrive plus à remonter sur la berge.",
+      "Un pêcheur est tombé à l'eau, on voit encore sa tête mais il dérive vers le barrage.",
+    ],
+  }),
+  spec({
+    id: 'voiture_eau', family: 'route', title: 'Voiture tombée dans l\'eau', priority: 1, needs: ['VSN', 'VSR', 'VSAV'], deadline: 10, work: 30,
+    victims: 1, transport: true, weight: 2,
+    callers: [
+      "Une voiture a raté le virage le long du canal, elle est dans l'eau, elle coule, il y a quelqu'un dedans !",
+      "Le frein à main a lâché, la voiture a descendu la rampe de mise à l'eau avec la petite dedans.",
+      "Une camionnette a plongé du quai, on voit le conducteur qui tape sur la vitre.",
+    ],
+  }),
+  spec({
+    id: 'bateau', family: 'technique', title: 'Embarcation en difficulté', priority: 2, needs: ['VSN'], deadline: 20, work: 25,
+    victims: 0, transport: false, weight: 2,
+    callers: [
+      "Un canoë s'est retourné au niveau de l'écluse, deux jeunes sont accrochés dessus.",
+      "Un petit bateau de location n'a plus de moteur, il dérive vers le déversoir avec une famille à bord.",
+      "Des paddles ont été emportés par le vent au milieu du lac, les gens n'arrivent plus à revenir.",
+    ],
+  }),
+  // ------------------------------------------------ niveau 16 : brigade cynophile
+  spec({
+    id: 'disparition', family: 'police', title: 'Personne vulnérable disparue', priority: 2, needs: ['CYNO', 'PS'], deadline: 25, work: 40,
+    victims: 0, transport: false, weight: 3,
+    callers: [
+      "Infirmière de l'EHPAD. Une résidente désorientée est sortie il y a deux heures, elle est en chaussons.",
+      "Mon fils autiste a quitté la maison ce matin, il ne répond pas à son prénom, il a onze ans.",
+      "Mon mari est atteint d'Alzheimer, il est parti promener le chien et le chien est revenu seul.",
+    ],
+  }),
+  spec({
+    id: 'stups', family: 'police', title: 'Trafic de stupéfiants', priority: 3, needs: ['CYNO', 'BAC'], deadline: 30, work: 30,
+    victims: 0, transport: false, weight: 3,
+    callers: [
+      "Ça deale tous les soirs dans le hall du bâtiment C, ils guettent avec des talkies, les gens ont peur.",
+      "Agent SNCF. Un sac abandonné en gare, le chien du vigile s'est assis devant, ça sent fort.",
+      "Une voiture fait des allers-retours devant le collège, des jeunes y montent deux minutes et redescendent.",
+    ],
+  }),
+  // ------------------------------------------------ niveau 17 : mousse
+  spec({
+    id: 'feu_citerne', family: 'feu', title: 'Camion-citerne en feu', priority: 1, needs: ['FMOGP', 'FPT'], deadline: 12, work: 40,
+    victims: 0, transport: false, weight: 2, escalate: ['FPT', 'VSAV'],
+    callers: [
+      "Un camion-citerne s'est couché dans le rond-point et il y a des flammes sous la cuve, les gens filment !",
+      "Le poids lourd d'essence a pris feu sur la bretelle, le chauffeur est sorti mais ça brûle de plus en plus.",
+      "Il y a une fuite qui coule sur la route et le feu suit le liquide jusqu'aux égouts.",
+    ],
+  }),
+  spec({
+    id: 'feu_station', family: 'feu', title: 'Feu de station-service', priority: 1, needs: ['FMOGP', 'FPT', 'PS'], deadline: 12, work: 35,
+    victims: 0, transport: false, weight: 2,
+    callers: [
+      "Gérant de la station. Une voiture a pris feu à la pompe numéro trois, j'ai coupé l'alimentation mais ça monte.",
+      "Ça brûle à la station essence du supermarché, il y a encore des clients aux pompes !",
+      "Le camion de livraison de carburant fuit et quelque chose s'est enflammé sous la citerne.",
+    ],
+  }),
+  // ------------------------------------------------ niveau 18 : drone
+  spec({
+    id: 'egare', family: 'sap', title: 'Promeneur égaré de nuit', priority: 2, needs: ['DRONE', 'VSAV'], deadline: 25, work: 30,
+    victims: 1, transport: true, weight: 2,
+    callers: [
+      "Mon père est parti courir dans les bois cet après-midi, il fait nuit et il répond plus, son téléphone sonne dans le vide.",
+      "On était en randonnée avec un ami, il s'est tordu la cheville, je suis allé chercher du réseau et je le retrouve plus.",
+      "Deux ados sont partis faire du VTT dans le parc forestier, il est vingt-deux heures et ils sont pas rentrés.",
+    ],
+  }),
+  // ------------------------------------------------ niveau 19 : unité d'élite
+  spec({
+    id: 'forcene', family: 'police', title: 'Forcené armé', priority: 1, needs: ['RAID', 'PS', 'PS'], deadline: 15, work: 45,
+    victims: 0, transport: false, weight: 2, home: true,
+    callers: [
+      "Mon voisin a tiré deux coups de fusil par la fenêtre, il crie qu'il tuera le premier qui monte.",
+      "Mon ex s'est barricadé dans l'appartement avec un couteau, il menace de s'en prendre à lui et aux enfants.",
+      "Un homme armé s'est retranché dans le pavillon après une dispute, il a tiré sur la voiture des voisins.",
+    ],
+  }),
+  // ------------------------------------------------ niveau 20 : VLM
+  spec({
+    id: 'nourrisson', family: 'sap', title: 'Détresse respiratoire d\'un nourrisson', priority: 1, needs: ['VLM', 'VSAV'], deadline: 9, work: 18,
+    victims: 1, transport: true, weight: 3, home: true,
+    callers: [
+      "Mon bébé de trois mois respire très vite, il creuse sous les côtes et il devient tout gris !",
+      "La petite a avalé quelque chose, elle tousse plus, elle fait un bruit bizarre en respirant.",
+      "Assistante maternelle. Un des petits a fait une convulsion avec de la fièvre, il est tout mou maintenant.",
+    ],
+  }),
+  spec({
+    id: 'douleur_thoracique', family: 'sap', title: 'Douleur thoracique', priority: 1, needs: ['VLM', 'VSAV'], deadline: 10, work: 20,
+    victims: 1, transport: true, weight: 4, home: true,
+    callers: [
+      "Mon mari a une barre dans la poitrine depuis vingt minutes, il transpire, il a mal à la mâchoire.",
+      "J'ai une douleur qui serre au milieu du thorax, ça irradie dans le bras gauche, je suis seul à la maison.",
+      "Notre collègue s'est assis d'un coup, il dit qu'il a un poids sur la poitrine et il est tout pâle.",
+    ],
+  }),
 ];
 
 export const kindsForLevel = (level: number) => CALL_KINDS.filter((k) => k.level <= level);

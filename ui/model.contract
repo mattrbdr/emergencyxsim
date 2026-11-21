@@ -137,6 +137,7 @@ shape Unlock
   vehicles: ShopItem[]
   buildings: string[]
   calls: string[]
+  majors: string[]
 
 shape LogLine
   id: number
