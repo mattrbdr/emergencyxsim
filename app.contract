@@ -10,7 +10,6 @@ use CallSheet from "./ui/call-sheet.contract"
 use UnitCard from "./ui/fleet.contract"
 use BuildMenu, PlacingBanner, BuildingBrief, SiteSheet from "./ui/build.contract"
 use UnlockCard, CareerView from "./ui/career.contract"
-use Nav from "./ui/nav.contract"
 use FleetView from "./ui/fleet-view.contract"
 use JournalView from "./ui/journal.contract"
 use CityPicker from "./ui/city-picker.contract"
@@ -26,6 +25,14 @@ shape Viewport
   width: number
   height: number
 
+// The four tabs; the fleet pushes a station's or a vehicle's page on the phone.
+routes nav
+  tab regulation "/"
+  tab flotte "/flotte"
+    detail "/flotte/:sel"
+  tab carriere "/carriere"
+  tab journal "/journal"
+
 component EmergencySim
   resource time = exactTime() as shape Time
   resource viewport = exactViewport() as shape Viewport
@@ -40,8 +47,6 @@ component EmergencySim
   state bootSeq = 0
   state started = false
   // What the side panel (the phone's drawer) shows: a list tab, or one thing.
-  // The view on screen: the map console, the fleet, the career, the log.
-  state view = "regulation"
   state fleetSel = ""
   state seenAchievements = 0
   state panel = ""
@@ -60,12 +65,12 @@ component EmergencySim
   derive placedReply = match placed { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
   derive sideOpen = panel != ""
   derive navW = wide ? 56 : 0
-  derive navH = wide ? "0px" : "calc(57px + env(safe-area-inset-bottom))"
-  derive insetLeft = wide ? 56 + 384 : 0
+  derive tabName = nav.tab
+  derive insetLeft = wide ? 384 : 0
   derive insetRight = wide and sideOpen ? 424 : 0
   // Where the detail panel will sit once it opens.
   derive detailRight = wide ? 424 : 0
-  derive insetBottom = wide ? 0 : viewport.height * 0.55 + 57
+  derive insetBottom = wide ? 0 : viewport.height * 0.55
   derive barHeight = (wide ? 50 : 48) + (snap.crisis.active ? 34 : 0)
   derive guiding = snap.guide.kind != ""
   derive hint = snap.guide.hint
@@ -104,18 +109,32 @@ component EmergencySim
     panel = kind
     picked = id
     drawerOpen = true
-  action go(v: string)
-    view = v
+  action goTab(v: string)
+    nav = select(nav, v)
     if v == "carriere"
       seenAchievements = snap.achievementsDone
+  action follow(url: string)
+    nav = go(nav, url)
+  action back
+    nav = back(nav)
+  // Desktop shows the fleet's detail beside the list; the phone pushes a page.
   action pickFleet(s: string)
-    fleetSel = s
+    if wide
+      fleetSel = s
+    else if s == ""
+      nav = back(nav)
+    else
+      nav = push(nav, path("detail", s))
   action manageBuilding
-    fleetSel = `b:${picked}`
+    let target = `b-${picked}`
     panel = ""
-    view = "flotte"
+    if wide
+      fleetSel = target
+      nav = select(nav, "flotte")
+    else
+      nav = push(select(nav, "flotte"), path("detail", target))
   action showOnMap(id: string)
-    view = "regulation"
+    nav = select(nav, "regulation")
     pickUnit(id)
   action closePanel
     panel = ""
@@ -136,7 +155,7 @@ component EmergencySim
   action openBuild
     show("build", "")
   action openContracts
-    view = "regulation"
+    nav = select(nav, "regulation")
     show("contracts", "")
   action place(kind: string)
     send commanded = startPlacing(kind)
@@ -152,7 +171,7 @@ component EmergencySim
       show("building", placedReply.picked.slice(6))
       haptic("success")
   action openCrisis
-    view = "regulation"
+    nav = select(nav, "regulation")
     pickCall(snap.crisis.callId)
   action closeReport
     send commanded = closeReport()
@@ -205,86 +224,61 @@ component EmergencySim
     send cammed = camera("fit", "", 0, 0, 0, 0)
 
   view
-    main testId="app" color-scheme="dark" width="100%" height="100%" position="relative" overflow="hidden" background-color="#0b0e12" color="#e6edf3" class=Sans
+    main testId="app" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow viewport-fit="cover" color-scheme="dark" accent-color="#e6edf3" width="100%" height="100%" position="relative" overflow="hidden" display="flex" flex-direction=(wide ? "row-reverse" : "column") background-color="#0b0e12" color="#e6edf3" class=Sans
+      column flex=1 min-width=0 min-height=0 position="relative"
+        for t in nav.tabs key=t.name
+          column role="tabpanel" id=`panel-${t.name}` position="absolute" inset=0
+            for e in t.stack key=e.id
+              column navigationKey=`${e.id}` position="absolute" inset=0 overflow="hidden" background-color="#0b0e12"
+                if e.name == "regulation"
+                  Regulation(snap=snap, wide=wide, barHeight=barHeight, panel=panel, picked=picked, sideOpen=sideOpen, drawerOpen=drawerOpen, guiding=guiding, hint=hint, showToast=showToast, placingLabel=placingLabel, camSeq=camSeq, mapSel=mapSel, down=down, drag=drag, up=up, zoomWheel=zoomWheel, zoomIn=zoomIn, zoomOut=zoomOut, fit=fit, toggleOverlay=toggleOverlay, openBuild=openBuild, confirmPlacing=confirmPlacing, cancelPlacing=cancelPlacing, skipGuide=skipGuide, tipSeen=tipSeen, hideToast=hideToast, pickCall=pickCall, toggleDrawer=toggleDrawer, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding)
+                if e.name == "flotte"
+                  scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-flotte"
+                    FleetView(buildings=snap.buildings, units=snap.units, seq=snap.seq, hint=snap.guide.hint, wide=wide, pushed=false, upkeep=snap.upkeepText, sel=(wide ? fleetSel : ""), pick=pickFleet, showOnMap=showOnMap)
+                if e.name == "detail"
+                  column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0
+                    header display="flex" align-items="center" gap=8 padding="6px 14px" border-bottom="1px solid #252c36"
+                      button id="close" press=back appearance="none" display="flex" align-items="center" gap=4 padding="6px 0" testId="fleet-back"
+                        Icon(name="chevron-left", size=14, color="#9aa4b2")
+                        text "Flotte" font-size="0.84rem" color="#9aa4b2"
+                      text (e.params.sel.startsWith("b-") ? "Base" : "Véhicule") role="heading" aria-level=2 font-size="0.9rem" font-weight=600
+                    scroll flex=1 min-height=0 padding=14
+                      FleetView(buildings=snap.buildings, units=snap.units, seq=snap.seq, hint=snap.guide.hint, wide=false, pushed=true, upkeep=snap.upkeepText, sel=e.params.sel, pick=pickFleet, showOnMap=showOnMap)
+                if e.name == "carriere"
+                  scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-carriere"
+                    CareerView(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, coverage=snap.coverage, stats=snap.stats, city=snap.city, rank=snap.rank, rankIcon=snap.rankIcon, achievements=snap.achievements, achievementsDone=snap.achievementsDone, wide=wide, reset=resetCareer)
+                if e.name == "journal"
+                  scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-journal"
+                    JournalView(seq=snap.seq, date=snap.date, bulletin=snap.weather.bulletin, weatherIcon=snap.weather.icon)
+      // The tabs: a rail drawn by the game on a wide screen; the platform's tab bar on a phone
+      // (UIKit's in the iOS app).
+      row role="tablist" aria-label="Vues" appearance=(wide ? "none" : "auto") display=(ready ? "flex" : "none") flex-direction=(wide ? "column" : "row") flex-shrink=0 width=(wide ? "56px" : "auto") gap=(wide ? 4 : 0) padding-top=(wide ? `calc(env(safe-area-inset-top) + ${barHeight + 8}px)` : "0px") background-color="#0b0e12" border-right=(wide ? "1px solid #252c36" : "none") border-top=(wide ? "none" : "1px solid #252c36") testId="nav"
+        for v in ["regulation", "flotte", "carriere", "journal"] key=v
+          button role="tab" aria-controls=`panel-${v}` aria-selected=(tabName == v) aria-label=tabLabel(v) title=tabLabel(v) press=goTab(v) position="relative" flex=(wide ? "none" : 1) height=(wide ? "48px" : "auto") padding=(wide ? "0px" : "6px 0px 4px") display="flex" flex-direction="column" align-items="center" justify-content="center" gap=2 border-left-width=(wide ? 2 : 0) border-left-style="solid" border-left-color=(wide and tabName == v ? "#e6edf3" : "transparent") box-shadow=(hint == "buy-VSAV" and v == "flotte" and tabName != "flotte" ? "inset 0 0 0 2px #e6edf3" : "none") testId=`nav-${v}`
+            if wide
+              Icon(name=tabIcon(v), size=19, color=(tabName == v ? "#e6edf3" : "#6b7686"))
+            else
+              image tabSymbol(v) width=22 height=22 color=(tabName == v ? "#e6edf3" : "#6b7686")
+              text tabLabel(v) font-size="0.62rem" font-weight=600 color=(tabName == v ? "#e6edf3" : "#6b7686") white-space="nowrap"
+            if v == "regulation" and snap.newCalls > 0
+              row position="absolute" top=(wide ? 6 : 2) right=(wide ? 6 : "calc(50% - 24px)") padding="1px 4px" border-radius=8 background-color="#f2555a" aria-label=`${snap.newCalls} appels à qualifier` testId="badge-calls"
+                text `${snap.newCalls}` class=Mono font-size="0.6rem" font-weight=600 color="#0b0e12"
+            if v == "carriere" and snap.achievementsDone > seenAchievements and tabName != "carriere"
+              row position="absolute" top=(wide ? 9 : 4) right=(wide ? 10 : "calc(50% - 18px)") width=7 height=7 border-radius=4 background-color="#f0a531" aria-label="Nouveau succès"
+      // Overlays over every tab: the top bar, the crisis strip, cards, and the town picker.
+      column position="absolute" top=0 left=navW right=0
+        TopBar(snap=snap, wide=wide, setSpeed=setSpeed, togglePause=togglePause, openContracts=openContracts)
+        if snap.crisis.active
+          view margin-top=`calc(env(safe-area-inset-top) + ${wide ? 50 : 48}px)`
+            CrisisBar(c=snap.crisis, open=openCrisis)
+      if snap.showUnlock and ready
+        UnlockCard(unlock=snap.unlock, done=levelSeen)
+      if snap.report.show and not snap.showUnlock and ready
+        CrisisReportCard(r=snap.report, done=closeReport)
       // exact-accept lower-screen-by-state
       if not ready
-        CityPicker(seed=time.seed, epoch=time.epochAtZero, ready=onReady)
-      else
-        canvas surface=city(camSeq) position="absolute" left=0 top=0 width="100%" height="100%" aria-hidden=true testId="map-city"
-        canvas surface=live(mapSel) position="absolute" left=0 top=0 width="100%" height="100%" touch-action="none" pointerdown=down pointermove=drag pointerup=up wheel=zoomWheel role="img" aria-label=`Carte de ${snap.city}` testId="map"
-        column position="absolute" top=0 left=0 right=0
-          TopBar(snap=snap, wide=wide, setSpeed=setSpeed, togglePause=togglePause, openContracts=openContracts)
-          if snap.crisis.active
-            view margin-top=`calc(env(safe-area-inset-top) + ${wide ? 50 : 48}px)`
-              CrisisBar(c=snap.crisis, open=openCrisis)
-
-        // Map tools: zoom, overview, build.
-        column position="absolute" right=(wide ? (sideOpen ? 436 : 12) : 10) top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` gap=6
-          button press=zoomIn aria-label="Zoomer" class=IconButton testId="zoom-in"
-            Icon(name="plus", size=16, color="#e6edf3")
-          button press=zoomOut aria-label="Dézoomer" class=IconButton testId="zoom-out"
-            Icon(name="minus", size=16, color="#e6edf3")
-          button press=fit aria-label="Vue d'ensemble" class=IconButton testId="fit"
-            Icon(name="target", size=16, color="#e6edf3")
-          button press=toggleOverlay aria-label=(snap.overlay ? "Masquer la couverture" : "Afficher la couverture") aria-pressed=snap.overlay class=IconButton background-color=(snap.overlay ? "#1f3a26" : "#11151b") border-color=(snap.overlay ? "#3fb950" : "#252c36") testId="overlay"
-            Icon(name="layers", size=16, color=(snap.overlay ? "#3fb950" : "#e6edf3"))
-          button press=openBuild aria-label="Construire" class=IconButton background-color="#e6edf3" box-shadow=(hint == "open-build" ? "0 0 0 2px #e6edf3" : "none") testId="open-build"
-            Icon(name="build", size=18, color="#0b0e12")
-
-        if snap.placing != ""
-          view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 452 : 10) right=(wide ? 64 : 60)
-            PlacingBanner(label=placingLabel, aimed=snap.aimed, aimText=snap.aimText, price=snap.placingPrice, confirm=confirmPlacing, cancel=cancelPlacing)
-
-        if guiding and snap.placing == "" and not snap.showUnlock
-          view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 452 : 10) right=(wide ? (sideOpen ? 488 : 64) : 60) display="flex" justify-content="center" pointer-events="none"
-            view pointer-events="auto" max-width="30rem" width="100%"
-              GuideCard(g=snap.guide, skip=skipGuide, ok=tipSeen)
-
-        if showToast and snap.placing == ""
-          view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 452 : 10) right=(wide ? (sideOpen ? 488 : 64) : 60) display="flex" justify-content="center" pointer-events="none"
-            row press=hideToast pointer-events="auto" gap=10 align-items="center" padding="9px 12px" max-width="34rem" background-color="#11151b" border="1px solid #252c36" border-left-width=3 border-left-style="solid" border-left-color=toneColor(snap.toast.tone) border-radius=4 animation="drop 260ms cubic-bezier(0.2, 0.8, 0.2, 1)" testId="toast"
-              text snap.toast.at class=Mono font-size="0.7rem" color="#6b7686"
-              text snap.toast.text font-size="0.86rem"
-
-        if wide
-          // Left: the calls.
-          column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=56 bottom=0 width="24rem" background-color="#0e1217" border-right="1px solid #252c36" testId="rail"
-            CallsHeader(calls=snap.calls.length, fresh=snap.newCalls)
-            scroll flex=1 min-height=0 padding=12
-              CallQueue(calls=snap.calls, closed=snap.closed, selected=(panel == "call" ? picked : ""), pick=pickCall, firstBuilding=snap.firstBuilding, hint=snap.guide.hint)
-          // Right: the one thing open.
-          if sideOpen
-            column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` right=0 bottom=0 width="26.5rem" background-color="#0e1217" border-left="1px solid #252c36" animation="slide 220ms cubic-bezier(0.2, 0.8, 0.2, 1)" testId="side"
-              scroll flex=1 min-height=0 padding=16
-                Detail(panel=panel, picked=picked, snap=snap, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding)
-        else
-          // Phone: one drawer for lists and details.
-          column position="absolute" left=0 right=0 bottom=navH max-height=(drawerOpen ? "55%" : "auto") background-color="#0e1217" border-top="1px solid #30394a" testId="drawer"
-            button press=toggleDrawer appearance="none" display="flex" justify-content="center" padding-top=8 padding-bottom=4 aria-label=(drawerOpen ? "Réduire le panneau" : "Ouvrir le panneau") aria-expanded=drawerOpen testId="drawer-handle"
-              view width=36 height=4 border-radius=2 background-color="#4b5668"
-            if sideOpen and drawerOpen
-              scroll flex=1 min-height=0 padding="6px 14px 14px"
-                Detail(panel=panel, picked=picked, snap=snap, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding)
-            else
-              CallsHeader(calls=snap.calls.length, fresh=snap.newCalls)
-              if drawerOpen
-                scroll flex=1 min-height=0 padding="8px 12px 12px"
-                  CallQueue(calls=snap.calls, closed=snap.closed, selected=(panel == "call" ? picked : ""), pick=pickCall, firstBuilding=snap.firstBuilding, hint=snap.guide.hint)
-
-        if view != "regulation"
-          scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=navW right=0 bottom=navH padding=(wide ? 24 : 14) background-color="#0b0e12" testId=`view-${view}`
-            if view == "flotte"
-              FleetView(buildings=snap.buildings, units=snap.units, seq=snap.seq, hint=snap.guide.hint, wide=wide, upkeep=snap.upkeepText, sel=fleetSel, pick=pickFleet, showOnMap=showOnMap)
-            if view == "carriere"
-              CareerView(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, coverage=snap.coverage, stats=snap.stats, city=snap.city, rank=snap.rank, rankIcon=snap.rankIcon, achievements=snap.achievements, achievementsDone=snap.achievementsDone, wide=wide, reset=resetCareer)
-            if view == "journal"
-              JournalView(seq=snap.seq, date=snap.date, bulletin=snap.weather.bulletin, weatherIcon=snap.weather.icon)
-        Nav(view=view, wide=wide, fresh=snap.newCalls, free=snap.free, news=(snap.achievementsDone > seenAchievements and view != "carriere"), hint=hint, top=`calc(env(safe-area-inset-top) + ${barHeight}px)`, go=go)
-
-        if snap.showUnlock
-          UnlockCard(unlock=snap.unlock, done=levelSeen)
-        if snap.report.show and not snap.showUnlock
-          CrisisReportCard(r=snap.report, done=closeReport)
+        column position="absolute" inset=0 background-color="#0b0e12"
+          CityPicker(seed=time.seed, epoch=time.epochAtZero, ready=onReady)
 
 keyframes drop
   from opacity=0 translate="0px -8px"
@@ -292,6 +286,100 @@ keyframes slide
   from opacity=0 translate="16px 0px"
 
 // ---------------------------------------------------------------- assembly
+
+fn tabLabel(v: string): string = v == "regulation" ? "Régulation" : v == "flotte" ? "Flotte" : v == "carriere" ? "Carrière" : "Main courante"
+fn tabIcon(v: string): string = v == "regulation" ? "calls" : v == "flotte" ? "fleet" : v == "carriere" ? "level" : "log"
+fn tabSymbol(v: string): string = v == "regulation" ? "symbol:phone" : v == "flotte" ? "symbol:people" : v == "carriere" ? "symbol:star" : "symbol:list"
+
+// The regulation tab: the map, its tools, the call queue and the one thing open.
+component Regulation
+  props
+    snap: Snap
+    wide: bool
+    barHeight: number
+    panel: string
+    picked: string
+    sideOpen: bool
+    drawerOpen: bool
+    guiding: bool
+    hint: string
+    showToast: bool
+    placingLabel: string
+    camSeq: number
+    mapSel: string
+    down: action
+    drag: action
+    up: action
+    zoomWheel: action
+    zoomIn: action
+    zoomOut: action
+    fit: action
+    toggleOverlay: action
+    openBuild: action
+    confirmPlacing: action
+    cancelPlacing: action
+    skipGuide: action
+    tipSeen: action
+    hideToast: action
+    pickCall: action
+    toggleDrawer: action
+    closePanel: action
+    pickUnit: action
+    focusUnit: action
+    place: action
+    manageBuilding: action
+  view
+    view position="absolute" inset=0
+      canvas surface=city(camSeq) position="absolute" left=0 top=0 width="100%" height="100%" aria-hidden=true testId="map-city"
+      canvas surface=live(mapSel) position="absolute" left=0 top=0 width="100%" height="100%" touch-action="none" pointerdown=down pointermove=drag pointerup=up wheel=zoomWheel role="img" aria-label=`Carte de ${snap.city}` testId="map"
+      // Map tools: zoom, overview, coverage, build.
+      column position="absolute" right=(wide ? (sideOpen ? 436 : 12) : 10) top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` gap=6
+        button press=zoomIn aria-label="Zoomer" class=IconButton testId="zoom-in"
+          Icon(name="plus", size=16, color="#e6edf3")
+        button press=zoomOut aria-label="Dézoomer" class=IconButton testId="zoom-out"
+          Icon(name="minus", size=16, color="#e6edf3")
+        button press=fit aria-label="Vue d'ensemble" class=IconButton testId="fit"
+          Icon(name="target", size=16, color="#e6edf3")
+        button press=toggleOverlay aria-label=(snap.overlay ? "Masquer la couverture" : "Afficher la couverture") aria-pressed=snap.overlay class=IconButton background-color=(snap.overlay ? "#1f3a26" : "#11151b") border-color=(snap.overlay ? "#3fb950" : "#252c36") testId="overlay"
+          Icon(name="layers", size=16, color=(snap.overlay ? "#3fb950" : "#e6edf3"))
+        button press=openBuild aria-label="Construire" class=IconButton background-color="#e6edf3" box-shadow=(hint == "open-build" ? "0 0 0 2px #e6edf3" : "none") testId="open-build"
+          Icon(name="build", size=18, color="#0b0e12")
+      if snap.placing != ""
+        view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 396 : 10) right=(wide ? 64 : 60)
+          PlacingBanner(label=placingLabel, aimed=snap.aimed, aimText=snap.aimText, price=snap.placingPrice, confirm=confirmPlacing, cancel=cancelPlacing)
+      if guiding and snap.placing == "" and not snap.showUnlock
+        view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 396 : 10) right=(wide ? (sideOpen ? 488 : 64) : 60) display="flex" justify-content="center" pointer-events="none"
+          view pointer-events="auto" max-width="30rem" width="100%"
+            GuideCard(g=snap.guide, skip=skipGuide, ok=tipSeen)
+      if showToast and snap.placing == ""
+        view position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` left=(wide ? 396 : 10) right=(wide ? (sideOpen ? 488 : 64) : 60) display="flex" justify-content="center" pointer-events="none"
+          row press=hideToast pointer-events="auto" gap=10 align-items="center" padding="9px 12px" max-width="34rem" background-color="#11151b" border="1px solid #252c36" border-left-width=3 border-left-style="solid" border-left-color=toneColor(snap.toast.tone) border-radius=4 animation="drop 260ms cubic-bezier(0.2, 0.8, 0.2, 1)" testId="toast"
+            text snap.toast.at class=Mono font-size="0.7rem" color="#6b7686"
+            text snap.toast.text font-size="0.86rem"
+      if wide
+        // Left: the calls.
+        column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 bottom=0 width="24rem" background-color="#0e1217" border-right="1px solid #252c36" testId="rail"
+          CallsHeader(calls=snap.calls.length, fresh=snap.newCalls)
+          scroll flex=1 min-height=0 padding=12
+            CallQueue(calls=snap.calls, closed=snap.closed, selected=(panel == "call" ? picked : ""), pick=pickCall, firstBuilding=snap.firstBuilding, hint=snap.guide.hint)
+        // Right: the one thing open.
+        if sideOpen
+          column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` right=0 bottom=0 width="26.5rem" background-color="#0e1217" border-left="1px solid #252c36" animation="slide 220ms cubic-bezier(0.2, 0.8, 0.2, 1)" testId="side"
+            scroll flex=1 min-height=0 padding=16
+              Detail(panel=panel, picked=picked, snap=snap, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding)
+      else
+        // Phone: one drawer for the calls and the thing open.
+        column position="absolute" left=0 right=0 bottom=0 max-height=(drawerOpen ? "55%" : "auto") background-color="#0e1217" border-top="1px solid #30394a" testId="drawer"
+          button press=toggleDrawer appearance="none" display="flex" justify-content="center" padding-top=8 padding-bottom=4 aria-label=(drawerOpen ? "Réduire le panneau" : "Ouvrir le panneau") aria-expanded=drawerOpen testId="drawer-handle"
+            view width=36 height=4 border-radius=2 background-color="#4b5668"
+          if sideOpen and drawerOpen
+            scroll flex=1 min-height=0 padding="6px 14px 14px"
+              Detail(panel=panel, picked=picked, snap=snap, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding)
+          else
+            CallsHeader(calls=snap.calls.length, fresh=snap.newCalls)
+            if drawerOpen
+              scroll flex=1 min-height=0 padding="8px 12px 12px"
+                CallQueue(calls=snap.calls, closed=snap.closed, selected=(panel == "call" ? picked : ""), pick=pickCall, firstBuilding=snap.firstBuilding, hint=snap.guide.hint)
 
 component CallsHeader
   props

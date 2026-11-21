@@ -1,17 +1,56 @@
 {
   "base": "/emergencyxsim/",
-  "routes": [],
+  "routes": [
+    {
+      "name": "regulation",
+      "pattern": "/",
+      "render": "client",
+      "notfound": false
+    },
+    {
+      "name": "flotte",
+      "pattern": "/flotte",
+      "render": "client",
+      "notfound": false
+    },
+    {
+      "name": "detail",
+      "pattern": "/flotte/:sel",
+      "render": "client",
+      "notfound": false
+    },
+    {
+      "name": "carriere",
+      "pattern": "/carriere",
+      "render": "client",
+      "notfound": false
+    },
+    {
+      "name": "journal",
+      "pattern": "/journal",
+      "render": "client",
+      "notfound": false
+    },
+    {
+      "name": "notfound",
+      "pattern": "",
+      "render": "client",
+      "notfound": true
+    }
+  ],
   "files": {
     "picker-glue.js": "picker-glue-G84MwMu6.js",
     "storage-request.js": "storage-request-eyEzATra.js",
-    "style.css": "style-bTVjS-od.css",
-    "app.js": "app-DWLtJSqF.js",
+    "style.css": "style-ZqnW_UfQ.css",
+    "app.js": "app-BQudBVib.js",
     "canvas-capture-sb9YcpPV.js": "canvas-capture-sb9YcpPV.js",
-    "canvas2d-BvUMoaaQ.js": "canvas2d-BvUMoaaQ.js",
-    "input-glue-CHtDdp2g.js": "input-glue-CHtDdp2g.js",
+    "canvas2d-BFk0s3Gr.js": "canvas2d-BFk0s3Gr.js",
+    "fragment-CzjQPW1n.js": "fragment-CzjQPW1n.js",
+    "input-glue-BR6YSBTG.js": "input-glue-BR6YSBTG.js",
     "rt-link-CsozwH6k.js": "rt-link-CsozwH6k.js",
     "storage-environment-B4EaMxRs.js": "storage-environment-B4EaMxRs.js",
-    "ts-body-from-BOXv7YaP.js": "ts-body-from-BOXv7YaP.js",
-    "ts-sqlite-DHV12zZv.js": "ts-sqlite-DHV12zZv.js"
+    "symbol-roles-BkACUQZh.js": "symbol-roles-BkACUQZh.js",
+    "ts-body-from-A4UJCxhy.js": "ts-body-from-A4UJCxhy.js",
+    "ts-sqlite-CvYRW8N2.js": "ts-sqlite-CvYRW8N2.js"
   }
 }
