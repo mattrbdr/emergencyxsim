@@ -8,6 +8,7 @@ import type { Call, World } from './types.ts';
 export function trafficAt(w: World, edge: number): number {
   const hour = hourOf(w.t);
   const rush = Math.max(0, 1 - Math.abs(hour - 8.5) / 1.2) + Math.max(0, 1 - Math.abs(hour - 18) / 1.5);
+  if (w.blocked.has(edge)) return 40; // flooded: only as a last resort
   const cls = w.city.edges[edge].cls;
   const noise = ((edge * 2654435761) >>> 0) / 4294967296;
   return 1 + rush * (cls <= 1 ? 0.6 : 0.25) + noise * 0.2;

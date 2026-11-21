@@ -27,7 +27,7 @@ export function createCall(w: World, kind: CallKind, spot: Spot, caller = pick(w
     caller, at: w.t, deadline: w.t + kind.deadline * 60, priority: kind.priority,
     state: 'nouveau', qualified: false, guessedRight: false, needs: [...kind.needs], assigned: [],
     workLeft: kind.work * 60, escalated: false, outcome: '', firstOnScene: -1, closedAt: 0, earned: 0,
-    twistRolled: false, twist: null, decisionLeft: 0, risk: 1, bonus: 1, majorId: '', prompt: null,
+    twistRolled: false, twist: null, decisionLeft: 0, risk: 1, bonus: 1, hold: false, majorId: '', prompt: null,
   };
   const near = landmark(w.city, kind, spot.x, spot.y);
   call.address = near ? `${near}, ${spot.street}` : spot.street;

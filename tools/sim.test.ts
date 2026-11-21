@@ -5,7 +5,7 @@ import { BUILDINGS, KIND_OF_POI } from '../sim/catalog/buildings.ts';
 import { CALL_KINDS } from '../sim/catalog/calls.ts';
 import { START_MONEY } from '../sim/catalog/levels.ts';
 import { UNIT_ORDER, UNITS } from '../sim/catalog/units.ts';
-import { loadCity, type CityFile } from '../sim/city.ts';
+import { loadCity, nearestNode, type CityFile } from '../sim/city.ts';
 import { buildAt, buySite, buyUnit, expand, unitsOf } from '../sim/buildings.ts';
 import { dispatch, options, qualify } from '../sim/calls.ts';
 import { pathTo, search } from '../sim/routing.ts';
@@ -337,19 +337,7 @@ test('every major incident runs through all its phases with a full fleet', async
   const { MAJORS } = await import('../sim/catalog/majors.ts');
   const { startMajor, decideMajor, majorChoices } = await import('../sim/majors.ts');
   for (const kind of MAJORS) {
-    const w = newWorld(city, 77);
-    w.level = 12;
-    w.money = 1e8;
-    const fire1 = buildAt(w, 'caserne', centre.x, centre.y)!;
-    const fire2 = buildAt(w, 'caserne', centre.x + 900, centre.y + 400)!;
-    const post = buySite(w, city.pois.findIndex((p) => p.kind === 'police'))!;
-    const hosp = buySite(w, city.pois.findIndex((p) => p.kind === 'hospital'))!;
-    for (const b of [fire1, fire2, post, hosp]) for (let i = 0; i < 3; i++) expand(w, b.id);
-    for (const t of ['FPT', 'FPT', 'EPA', 'VSAV', 'VSAV', 'VSAV', 'VTU', 'VTU'] as const) buyUnit(w, fire1.id, t);
-    for (const t of ['FPTGP', 'VPC', 'CMIC', 'VSR', 'VPMA', 'FPT'] as const) buyUnit(w, fire2.id, t);
-    for (const t of ['PS', 'PS', 'PS', 'BAC', 'BAC', 'BRI'] as const) buyUnit(w, post.id, t);
-    for (const t of ['SMUR', 'AMB', 'AMB'] as const) buyUnit(w, hosp.id, t);
-    w.nextCallAt = Infinity;
+    const w = fullFleet(77);
     const m = startMajor(w, kind);
     let lastPhase = 0;
     for (let i = 0; i < 4 * 60 * 120 && m.state === 'actif'; i++) {
@@ -369,4 +357,77 @@ test('every major incident runs through all its phases with a full fleet', async
     expect(m.state === 'actif' ? `${kind.id} stuck in phase ${m.phase}` : 'ended').toBe('ended');
     expect(lastPhase === kind.phases.length - 1 || m.state === 'echec').toBe(true);
   }
+});
+
+/** Level 12, every kind of vehicle, no ordinary calls. */
+function fullFleet(seed: number) {
+  const w = newWorld(city, seed);
+  w.level = 12;
+  w.money = 1e8;
+  const fire1 = buildAt(w, 'caserne', centre.x, centre.y)!;
+  const fire2 = buildAt(w, 'caserne', centre.x + 900, centre.y + 400)!;
+  const post = buySite(w, city.pois.findIndex((p) => p.kind === 'police'))!;
+  const hosp = buySite(w, city.pois.findIndex((p) => p.kind === 'hospital'))!;
+  for (const b of [fire1, fire2, post, hosp]) for (let i = 0; i < 3; i++) expand(w, b.id);
+  for (const t of ['FPT', 'FPT', 'EPA', 'VSAV', 'VSAV', 'VSAV', 'VTU', 'VTU'] as const) buyUnit(w, fire1.id, t);
+  for (const t of ['FPTGP', 'VPC', 'CMIC', 'VSR', 'VPMA', 'FPT'] as const) buyUnit(w, fire2.id, t);
+  for (const t of ['PS', 'PS', 'PS', 'BAC', 'BAC', 'BRI'] as const) buyUnit(w, post.id, t);
+  for (const t of ['SMUR', 'AMB', 'AMB'] as const) buyUnit(w, hosp.id, t);
+  w.nextCallAt = Infinity;
+  return w;
+}
+
+test('flash flood: side streets are cut, routes go round them, they reopen at the end', async () => {
+  const { MAJORS } = await import('../sim/catalog/majors.ts');
+  const { startMajor } = await import('../sim/majors.ts');
+  const { freshTree } = await import('../sim/traffic.ts');
+  const w = fullFleet(5);
+  const m = startMajor(w, MAJORS.find((k) => k.id === 'inondation_eclair')!);
+  expect(w.blocked.size).toBeGreaterThan(3);
+  for (const i of w.blocked) expect(city.edges[i].cls).toBeGreaterThan(1);
+  // A route from the site to the far corner never uses a flooded street when another way exists.
+  const tree = freshTree(w, m.spot.node);
+  const far = nearestNode(city, 0, 0);
+  const way = pathTo(tree, far);
+  let flooded = 0;
+  for (let i = 1; i < way.length; i++) {
+    const e = city.adj[way[i]].find((x) => city.edges[x].a === way[i - 1] || city.edges[x].b === way[i - 1]);
+    if (e !== undefined && w.blocked.has(e)) flooded++;
+  }
+  expect(flooded).toBeLessThanOrEqual(1);
+  for (let i = 0; i < 4 * 60 * 180 && m.state === 'actif'; i++) tick(w, 250);
+  expect(m.state).not.toBe('actif');
+  expect(w.blocked.size).toBe(0);
+});
+
+test('factory fire: the plume follows a wind direction', async () => {
+  const { MAJORS } = await import('../sim/catalog/majors.ts');
+  const { startMajor } = await import('../sim/majors.ts');
+  const w = fullFleet(6);
+  const m = startMajor(w, MAJORS.find((k) => k.effect === 'plume')!);
+  expect(m.wind).toBeGreaterThanOrEqual(0);
+  expect(m.wind).toBeLessThan(Math.PI * 2);
+});
+
+test('pursuit: the vehicle drives away, two crews box it in, the call follows it', async () => {
+  const { MAJORS } = await import('../sim/catalog/majors.ts');
+  const { startMajor } = await import('../sim/majors.ts');
+  const w = fullFleet(7);
+  const m = startMajor(w, MAJORS.find((k) => k.id === 'poursuite')!);
+  const start = { x: m.fugitive!.x, y: m.fugitive!.y };
+  const call = w.calls.find((c) => c.id === m.callId)!;
+  expect(call.hold).toBe(true);
+  for (let i = 0; i < 40; i++) tick(w, 250);
+  expect(Math.hypot(m.fugitive!.x - start.x, m.fugitive!.y - start.y)).toBeGreaterThan(20);
+  expect(call.x).toBeCloseTo(m.fugitive!.x, 5);
+  for (let i = 0; i < 4 * 60 * 60 && !m.fugitive!.stopped && m.state === 'actif'; i++) {
+    tick(w, 250);
+    for (const c of w.calls) {
+      if (c.state === 'clos' || c.assigned.length) continue;
+      const picks = options(w, c.id).filter((o) => o.suggested).map((o) => o.unit.id);
+      if (picks.length) dispatch(w, c.id, picks);
+    }
+  }
+  expect(m.fugitive!.stopped).toBe(true);
+  expect(call.hold).toBe(false);
 });

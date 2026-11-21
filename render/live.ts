@@ -20,6 +20,7 @@ export function drawLive(w: World, ctx: Ctx2D, frame: Frame, selected: string): 
   const now = frame.time;
   ctx.clearRect(0, 0, frame.width, frame.height);
 
+  drawMajorEffects(w, ctx, now, alpha);
   drawPerimeters(w, ctx, now);
   drawSites(w, ctx, now);
   for (const u of w.units) drawRoute(w, ctx, u, alpha, now, selected === `unit:${u.id}`);
@@ -33,7 +34,7 @@ export function drawLive(w: World, ctx: Ctx2D, frame: Frame, selected: string): 
 /** Major incidents: the cordon around the site, with its name. */
 function drawPerimeters(w: World, ctx: Ctx2D, now: number) {
   for (const m of w.majors) {
-    if (m.state !== 'actif') continue;
+    if (m.state !== 'actif' || (m.fugitive && !m.fugitive.stopped)) continue;
     const [x, y] = toScreen(w, m.spot.x, m.spot.y);
     const r = Math.max(28, m.kind.perimeter * w.cam.zoom);
     ctx.save();
@@ -48,6 +49,79 @@ function drawPerimeters(w: World, ctx: Ctx2D, now: number) {
     ctx.stroke();
     ctx.restore();
     label(ctx, `PÉRIMÈTRE · ${m.kind.title.toUpperCase()}`, x, y - r - 10, SERVICE.pompiers);
+  }
+}
+
+/** Special effects of a major: flooded streets, the toxic plume, the vehicle on the run. */
+function drawMajorEffects(w: World, ctx: Ctx2D, now: number, alpha: number) {
+  const m = w.majors.find((x) => x.state === 'actif');
+  if (!m) return;
+  const { city } = w;
+  if (w.blocked.size) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(88,166,255,0.85)';
+    ctx.lineWidth = Math.max(3, 9 * w.cam.zoom);
+    ctx.lineCap = 'round';
+    ctx.setLineDash([2, 5]);
+    ctx.lineDashOffset = -now / 90;
+    ctx.beginPath();
+    for (const i of w.blocked) {
+      const e = city.edges[i];
+      const [ax, ay] = toScreen(w, city.nx[e.a], city.ny[e.a]);
+      const [bx, by] = toScreen(w, city.nx[e.b], city.ny[e.b]);
+      ctx.moveTo(ax, ay);
+      ctx.lineTo(bx, by);
+    }
+    ctx.stroke();
+    ctx.restore();
+    const [x, y] = toScreen(w, m.spot.x, m.spot.y);
+    label(ctx, 'RUES INONDÉES', x, y + Math.max(40, 380 * w.cam.zoom), '#58a6ff');
+  }
+  if (m.kind.effect === 'plume') {
+    const [x, y] = toScreen(w, m.spot.x, m.spot.y);
+    const reach = Math.max(90, 900 * w.cam.zoom);
+    const spread = 0.42 + 0.03 * Math.sin(now / 700);
+    ctx.save();
+    const g = ctx.createRadialGradient(x, y, 0, x, y, reach);
+    g.addColorStop(0, 'rgba(210,153,34,0.38)');
+    g.addColorStop(1, 'rgba(210,153,34,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.arc(x, y, reach, m.wind - spread, m.wind + spread);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    label(ctx, 'PANACHE TOXIQUE · VENT', x + Math.cos(m.wind) * reach * 0.6, y + Math.sin(m.wind) * reach * 0.6, '#d29922');
+  }
+  const f = m.fugitive;
+  if (f) {
+    const [x, y] = toScreen(w, f.px + (f.x - f.px) * alpha, f.py + (f.y - f.py) * alpha);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(f.heading);
+    ctx.beginPath();
+    ctx.moveTo(10, 0);
+    ctx.lineTo(-7, -7);
+    ctx.lineTo(-4, 0);
+    ctx.lineTo(-7, 7);
+    ctx.closePath();
+    ctx.fillStyle = f.stopped ? MAP.muted : '#f0f6fc';
+    ctx.fill();
+    ctx.strokeStyle = SERVICE.police;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+    if (!f.stopped) {
+      ctx.save();
+      ctx.strokeStyle = SERVICE.police;
+      ctx.globalAlpha = 0.5 + 0.5 * Math.sin(now / 150);
+      ctx.beginPath();
+      ctx.arc(x, y, 18, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    label(ctx, f.stopped ? 'FUYARD INTERCEPTÉ' : 'FUYARD', x, y - 24, f.stopped ? MAP.muted : '#f0f6fc');
   }
 }
 

@@ -12,7 +12,8 @@ import { euros, say } from './log.ts';
 import { placesAt } from './places.ts';
 import { gainXp } from './progression.ts';
 import type { Call, MajorChoice, World } from './types.ts';
-import { goHome } from './units.ts';
+import { freshTree } from './traffic.ts';
+import { goHome, routeTo } from './units.ts';
 
 export interface Major {
   id: string;
@@ -30,7 +31,28 @@ export interface Major {
   state: 'actif' | 'reussi' | 'echec';
   endedAt: number;
   earned: number;
+  /** Direction the wind blows the plume to (radians, screen axes). */
+  wind: number;
+  /** The vehicle on the run (pursuit): it drives the streets until two crews box it in. */
+  fugitive: Fugitive | null;
 }
+
+export interface Fugitive {
+  path: [number, number];
+  along: number;
+  x: number;
+  y: number;
+  px: number;
+  py: number;
+  heading: number;
+  stopped: boolean;
+  rerouteIn: number;
+}
+
+/** Metres per second of the vehicle on the run, and how close two crews must get. */
+const FUGITIVE_SPEED = 11;
+const INTERCEPT_RADIUS = 70;
+const FLOOD_RADIUS = 380;
 
 export interface MajorReport {
   id: string;
@@ -56,8 +78,10 @@ function eligible(w: World): MajorKind[] {
 }
 
 /** Called every step: starts an incident when one is due and none is running. */
-export function updateMajors(w: World) {
-  if (w.t < w.nextMajorAt || activeMajor(w)) return;
+export function updateMajors(w: World, dt: number) {
+  const m = activeMajor(w);
+  if (m?.fugitive && !m.fugitive.stopped && m.phase === 0) chase(w, m, dt);
+  if (w.t < w.nextMajorAt || m) return;
   w.nextMajorAt = w.t + nextDelay(w);
   const kinds = eligible(w);
   if (kinds.length === 0) return;
@@ -79,11 +103,18 @@ function pickSpot(w: World, kind: MajorKind): Spot {
 export function startMajor(w: World, kind: MajorKind, spot = pickSpot(w, kind)): Major {
   const m: Major = {
     id: `m${w.nextId++}`, kind, spot, phase: 0, callId: '', injured: 0, bonus: 1, atRisk: 0,
-    startedAt: w.t, state: 'actif', endedAt: 0, earned: 0,
+    startedAt: w.t, state: 'actif', endedAt: 0, earned: 0, wind: w.rng() * Math.PI * 2, fugitive: null,
   };
   w.majors.push(m);
   say(w, `ALERTE · ${kind.title} · ${spot.street}`, 'alert', true);
+  if (kind.effect === 'flood') flood(w, m);
   openPhase(w, m, []);
+  if (kind.effect === 'pursuit') {
+    const next = w.city.adj[spot.node].map((e) => (w.city.edges[e].a === spot.node ? w.city.edges[e].b : w.city.edges[e].a))[0] ?? spot.node;
+    m.fugitive = { path: [spot.node, next], along: 0, x: spot.x, y: spot.y, px: spot.x, py: spot.y, heading: 0, stopped: false, rerouteIn: 0 };
+    const call = w.calls.find((c) => c.id === m.callId);
+    if (call) call.hold = true;
+  }
   return m;
 }
 
@@ -210,6 +241,11 @@ export function endPhase(w: World, call: Call, carrier: string | undefined) {
 function settle(w: World, m: Major, success: boolean) {
   m.state = success ? 'reussi' : 'echec';
   m.endedAt = w.t;
+  if (w.blocked.size) {
+    w.blocked.clear();
+    w.stationTrees.clear();
+    w.callTrees.clear();
+  }
   if (success) {
     const gross = m.kind.reward * m.bonus * reputationFactor(w);
     m.earned = Math.round(Math.max(gross * 0.3, gross - m.injured * 1500) / 10) * 10;
@@ -226,4 +262,74 @@ function settle(w: World, m: Major, success: boolean) {
     minutes: Math.round((w.t - m.startedAt) / 60),
   };
   w.dirty = true;
+}
+
+// ---------------------------------------------------------------- special mechanics
+
+/** Flash flood: the side streets around the site are cut; main roads stay passable. */
+function flood(w: World, m: Major) {
+  const { city } = w;
+  city.edges.forEach((e, i) => {
+    if (e.cls <= 1 || e.a === m.spot.node || e.b === m.spot.node) return;
+    const x = (city.nx[e.a] + city.nx[e.b]) / 2, y = (city.ny[e.a] + city.ny[e.b]) / 2;
+    if (Math.hypot(x - m.spot.x, y - m.spot.y) < FLOOD_RADIUS) w.blocked.add(i);
+  });
+  w.stationTrees.clear();
+  w.callTrees.clear();
+}
+
+/** Pursuit: the vehicle drives on; crews are routed to where it goes; two close crews stop it. */
+function chase(w: World, m: Major, dt: number) {
+  const f = m.fugitive!;
+  const { city } = w;
+  const call = w.calls.find((c) => c.id === m.callId);
+  f.px = f.x;
+  f.py = f.y;
+  let budget = FUGITIVE_SPEED * dt;
+  while (budget > 0) {
+    const [a, b] = f.path;
+    const len = Math.hypot(city.nx[b] - city.nx[a], city.ny[b] - city.ny[a]) || 1;
+    if (f.along + budget < len) { f.along += budget; budget = 0; break; }
+    budget -= len - f.along;
+    // At a crossing: carry on, preferring big roads, never straight back.
+    const ways = city.adj[b].map((ei) => city.edges[ei]).filter((e) => (e.a === b ? e.b : e.a) !== a);
+    const pick = ways.length ? ways.sort((p, q) => p.cls - q.cls + (w.rng() - 0.5) * 2)[0] : null;
+    f.path = [b, pick ? (pick.a === b ? pick.b : pick.a) : a];
+    f.along = 0;
+  }
+  const [a, b] = f.path;
+  const len = Math.hypot(city.nx[b] - city.nx[a], city.ny[b] - city.ny[a]) || 1;
+  f.x = city.nx[a] + ((city.nx[b] - city.nx[a]) * f.along) / len;
+  f.y = city.ny[a] + ((city.ny[b] - city.ny[a]) * f.along) / len;
+  f.heading = Math.atan2(city.ny[b] - city.ny[a], city.nx[b] - city.nx[a]);
+  if (!call) return;
+  call.x = f.x;
+  call.y = f.y;
+  call.node = b;
+  const crews = w.units.filter((u) => u.callId === call.id && (u.status === 'route' || u.status === 'surplace'));
+  const close = crews.filter((u) => Math.hypot(u.x - f.x, u.y - f.y) < INTERCEPT_RADIUS);
+  if (close.length >= 2) {
+    f.stopped = true;
+    call.hold = false;
+    m.spot = { ...m.spot, x: f.x, y: f.y, node: b }; // the next phase happens where it stopped
+    for (const u of close) {
+      u.status = 'surplace';
+      u.path = [u.path[u.path.length - 1]];
+      u.along = 0;
+      u.x = f.x;
+      u.y = f.y;
+    }
+    if (call.firstOnScene < 0) call.firstOnScene = w.t;
+    say(w, `Véhicule intercepté · ${close.map((u) => u.name).join(', ')}`, 'good', true);
+    return;
+  }
+  f.rerouteIn -= dt;
+  if (f.rerouteIn > 0) return;
+  f.rerouteIn = 15;
+  w.callTrees.delete(call.id);
+  const tree = freshTree(w, b);
+  for (const u of crews) {
+    u.status = 'route';
+    routeTo(u, tree);
+  }
 }

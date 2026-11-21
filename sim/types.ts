@@ -83,6 +83,8 @@ export interface Call {
   risk: number;
   /** Reward multiplier earned by the decision. */
   bonus: number;
+  /** Work may not start yet (a vehicle on the run is not stopped). */
+  hold: boolean;
   /** The major incident this call is a phase of ('' for an everyday call). */
   majorId: string;
   /** A command decision asked by a major incident's phase. */
@@ -177,4 +179,6 @@ export interface World {
   nextMajorAt: number;
   /** The last incident's summary, until the player closes it. */
   majorReport: MajorReport | null;
+  /** Streets cut (flooded): routing goes around them. */
+  blocked: Set<number>;
 }

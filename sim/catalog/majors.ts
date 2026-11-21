@@ -39,6 +39,8 @@ export interface MajorKind {
   phases: MajorPhase[];
   reward: number;
   xp: number;
+  /** A special mechanic: a toxic plume, flooded streets, a vehicle on the run. */
+  effect?: 'plume' | 'flood' | 'pursuit';
 }
 
 export const MAJORS: MajorKind[] = [
@@ -151,7 +153,7 @@ export const MAJORS: MajorKind[] = [
     ],
   },
   {
-    id: 'inondation_eclair', title: 'Inondation éclair', family: 'technique', level: 9, places: ['parc'], perimeter: 450,
+    id: 'inondation_eclair', title: 'Inondation éclair', family: 'technique', level: 9, places: ['parc'], perimeter: 450, effect: 'flood',
     alert: 'Orage violent : la rivière déborde, des rues entières sont sous l\'eau, des véhicules sont emportés.',
     reward: 14000, xp: 480,
     phases: [
@@ -170,7 +172,7 @@ export const MAJORS: MajorKind[] = [
     ],
   },
   {
-    id: 'seveso', title: 'Feu d\'usine à risque', family: 'feu', level: 10, places: ['industriel'], perimeter: 600,
+    id: 'seveso', title: 'Feu d\'usine à risque', family: 'feu', level: 10, places: ['industriel'], perimeter: 600, effect: 'plume',
     alert: 'Incendie dans une usine classée à risque. Un panache de fumée épaisse se dirige vers les habitations.',
     reward: 26000, xp: 800,
     phases: [
@@ -238,6 +240,21 @@ export const MAJORS: MajorKind[] = [
       {
         id: 'evacuation', title: 'Évacuation des victimes', brief: 'Victimes triées au poste médical avancé.',
         needs: ['VSAV', 'VSAV', 'SMUR', 'AMB'], deadline: 15, work: 25, victims: 8, transport: true, onFail: 'injured', injuredOnFail: 3,
+      },
+    ],
+  },
+  {
+    id: 'poursuite', title: 'Course-poursuite', family: 'police', level: 8, places: ['axe'], perimeter: 0, effect: 'pursuit',
+    alert: 'Un véhicule a forcé un contrôle et prend la fuite à grande vitesse dans le centre.',
+    reward: 12000, xp: 420,
+    phases: [
+      {
+        id: 'interception', title: 'Interception', brief: 'Le véhicule roule à contresens. Placez deux équipages sur sa route pour l\'arrêter.',
+        needs: ['PS', 'BAC'], deadline: 15, work: 4, victims: 0, transport: false, onFail: 'abort', injuredOnFail: 0,
+      },
+      {
+        id: 'fin', title: 'Interpellation et blessé', brief: 'Le véhicule a percuté un poteau. Le conducteur est interpellé et blessé.',
+        needs: ['PS', 'VSAV'], deadline: 12, work: 10, victims: 1, transport: true, onFail: 'injured', injuredOnFail: 1,
       },
     ],
   },

@@ -188,7 +188,7 @@ export function updateCall(w: World, call: Call, dt: number) {
     const k = missing.indexOf(type);
     if (k >= 0) missing.splice(k, 1);
   }
-  if (missing.length === 0) {
+  if (missing.length === 0 && !call.hold) {
     call.state = 'traitement';
     say(w, `${call.street} · moyens au complet`, 'info');
     return;
