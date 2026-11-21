@@ -1,0 +1,9 @@
+{
+  "name": "Emergency Sim",
+  "short_name": "Emergency Sim",
+  "id": "/emergencyxsim/com.emergencyxsim.app",
+  "start_url": "/emergencyxsim/",
+  "display": "standalone",
+  "scope": "/emergencyxsim/",
+  "lang": "en"
+}

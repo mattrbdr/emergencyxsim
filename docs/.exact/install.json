@@ -1,0 +1,32 @@
+{
+  "exactInstall": 1,
+  "app": {
+    "name": "Emergency Sim"
+  },
+  "build": {
+    "id": "baad1c3e0dbab72c2fe86345525ec7668e97f10070bbe79eaadcada03de7d5d5",
+    "source": null,
+    "dirty": null,
+    "builtAt": null,
+    "mode": "Release build"
+  },
+  "platforms": {
+    "web": {
+      "methods": [
+        {
+          "kind": "browser",
+          "url": "/emergencyxsim/",
+          "recommended": false,
+          "label": "Open in browser"
+        }
+      ]
+    },
+    "ios": {
+      "methods": []
+    },
+    "macos": {
+      "methods": []
+    }
+  },
+  "reach": null
+}

@@ -31,7 +31,7 @@ export const fitZoom = (w: World) =>
 
 /** Keeps the city on screen: a zoomed-in view never shows much beyond its edge. */
 const clampAxis = (v: number, size: number, half: number) =>
-  size > half * 2 ? Math.min(size - half + 120, Math.max(half - 120, v)) : size / 2;
+  size > half * 2 ? Math.min(size - half * 0.3, Math.max(half * 0.3, v)) : Math.min(half, Math.max(size - half, v));
 const clampCam = (w: World) => {
   const c = w.cam;
   const fit = fitZoom(w);
@@ -59,9 +59,12 @@ function setView(w: World, frame: Frame) {
     w.view.w = frame.width;
     w.view.h = frame.height;
     if (first) {
-      w.cam.zoom = w.cam.tz = fitZoom(w);
+      // Portrait (a phone): fill the band between the shift bar and the drawer.
+      const portrait = w.view.h > w.view.w;
+      const z = portrait ? Math.max(w.view.w / w.city.width, (w.view.h * 0.36) / w.city.height) * 1.15 : fitZoom(w);
+      w.cam.zoom = w.cam.tz = z;
       w.cam.cx = w.cam.tx = w.city.width / 2;
-      w.cam.cy = w.cam.ty = w.city.height / 2;
+      w.cam.cy = w.cam.ty = w.city.height / 2 + (portrait ? (w.view.h * 0.21 - 40) / z : 0);
     }
     clampCam(w);
   }
@@ -118,7 +121,7 @@ export function drawCity(w: World, ctx: Ctx2D, frame: Frame): boolean {
   const c0 = Math.max(0, Math.floor(wx0 / g.size) - 1), c1 = Math.min(g.cols - 1, Math.floor(wx1 / g.size) + 1);
   const r0 = Math.max(0, Math.floor(wy0 / g.size) - 1), r1 = Math.min(g.rows - 1, Math.floor(wy1 / g.size) + 1);
 
-  if (z > 0.09) {
+  if (z > 0.14) {
     ctx.fillStyle = COLORS.building;
     ctx.strokeStyle = COLORS.buildingEdge;
     ctx.lineWidth = 1;
@@ -148,6 +151,7 @@ export function drawCity(w: World, ctx: Ctx2D, frame: Frame): boolean {
   // Casing, then fill, by class from the smallest road up.
   for (const pass of [0, 1]) {
     for (let cls = 3; cls >= 0; cls--) {
+      if (cls === 3 && z < 0.05) continue; // a whole commune at a glance: main roads only
       const width = Math.max(cls === 0 ? 2.2 : 1.2, ROAD_WIDTH[cls] * z);
       ctx.lineWidth = pass === 0 ? width + Math.max(1.5, width * 0.35) : width;
       ctx.strokeStyle = pass === 0 ? COLORS.casing : COLORS.roads[cls];

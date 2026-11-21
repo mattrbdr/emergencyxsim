@@ -1,0 +1,15 @@
+{
+  "base": "/emergencyxsim/",
+  "routes": [],
+  "files": {
+    "style.css": "style-3WaZlU45.css",
+    "app.js": "app-DlizEob2.js",
+    "canvas-capture-CKgDnk0h.js": "canvas-capture-CKgDnk0h.js",
+    "canvas2d-SZ-rtjCH.js": "canvas2d-SZ-rtjCH.js",
+    "input-glue-CUc3r9N8.js": "input-glue-CUc3r9N8.js",
+    "presence-glue-D8IDTvKN.js": "presence-glue-D8IDTvKN.js",
+    "shared-lOSpIRNE.js": "shared-lOSpIRNE.js",
+    "storage-environment-B4EaMxRs.js": "storage-environment-B4EaMxRs.js",
+    "symbol-roles-BkACUQZh.js": "symbol-roles-BkACUQZh.js"
+  }
+}
