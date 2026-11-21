@@ -1,0 +1,20 @@
+{
+  "$schema": ".exact/checkout/scripts/app.schema.json",
+  "name": "Emergency Sim",
+  "short_name": "Emergency Sim",
+  "id": "com.emergencyxsim.app",
+  "start_url": "/",
+  "display": "standalone",
+  "app": {
+    "id": "com.emergencyxsim.app",
+    "name": "Emergency Sim"
+  },
+  "host": {
+    "web": {}
+  },
+  "deploy": {
+    "store": {
+      "web": "0"
+    }
+  }
+}
