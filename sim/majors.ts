@@ -260,6 +260,7 @@ export function endPhase(w: World, call: Call, carrier: string | undefined) {
 function settle(w: World, m: Major, success: boolean) {
   m.state = success ? 'reussi' : 'echec';
   m.endedAt = w.t;
+  if (success && !w.records.crisesWon.includes(m.kind.id)) w.records.crisesWon.push(m.kind.id);
   if (w.blocked.size) {
     w.blocked.clear();
     w.stationTrees.clear();

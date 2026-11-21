@@ -2,6 +2,8 @@
 import type { Result } from '../app.contract.d.ts';
 import { CREW, isTired, servicePrice } from '../sim/crews.ts';
 import { cannotUpgrade, has, maxSlots, upgradesFor, upgradesUpkeep } from '../sim/upgrades.ts';
+import { ACHIEVEMENTS } from '../sim/catalog/achievements.ts';
+import { promotedAt, rankOf } from '../sim/catalog/ranks.ts';
 import { bulletin, dateText, eventHours, shiftHour, today } from '../sim/weather.ts';
 import { BUILDING_ORDER, BUILDINGS, KIND_OF_POI } from '../sim/catalog/buildings.ts';
 import { FAMILY_LABEL } from '../sim/catalog/calls.ts';
@@ -192,7 +194,23 @@ function unlockCard(w: World): Snap['unlock'] {
     calls: unlock.calls.map((k) => k.title),
     majors: unlock.majors.map((k) => k.title),
     upgrades: [...new Set(unlock.upgrades.map((u) => u.label))],
+    promoted: promotedAt(level), rank: rankOf(level).title, rankIcon: rankOf(level).icon,
   };
+}
+
+/** Won first (latest first), then the closest to being won. */
+function achievementRows(w: World): Snap['achievements'] {
+  return ACHIEVEMENTS.map((a) => {
+    const done = w.achievements.includes(a.id);
+    const [value, target] = a.goal(w);
+    const fraction = done ? 1 : Math.max(0, Math.min(1, value / target));
+    return {
+      id: a.id, title: a.title, detail: a.detail, done, fraction,
+      progressText: done ? 'Obtenu' : target > 1 ? `${Math.min(value, target).toLocaleString('fr-FR')} / ${target.toLocaleString('fr-FR')}` : '',
+      reward: [a.money ? euros(a.money) : '', a.xp ? `${a.xp} XP` : ''].filter(Boolean).join(' · '),
+      order: done ? -1 - w.achievements.indexOf(a.id) * 0.001 : 1 - fraction,
+    };
+  }).sort((a, b) => a.order - b.order).map(({ order: _, ...row }) => row);
 }
 
 function weatherRow(w: World): Snap['weather'] {
@@ -219,6 +237,10 @@ export function snapshot(w: World): Snap {
     day: shiftDay(w),
     date: dateText(today(w).date),
     weather: weatherRow(w),
+    rank: rankOf(w.level).title,
+    rankIcon: rankOf(w.level).icon,
+    achievements: achievementRows(w),
+    achievementsDone: w.achievements.length,
     clock: clockText(w.t),
     speed: w.speed,
     paused: w.paused,

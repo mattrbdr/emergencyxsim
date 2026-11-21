@@ -1,5 +1,5 @@
 // Progress: the card a new level shows, and the career panel (stats, settings).
-use Unlock, Stats, ShopItem from "./model.contract"
+use Unlock, Stats, ShopItem, AchievementRow from "./model.contract"
 use Icon from "./icons.contract"
 use CallSign, Heading, Meter from "./parts.contract"
 use Mono, Caps, Primary, Secondary, Quiet, money from "./theme.contract"
@@ -18,6 +18,12 @@ component UnlockCard
           column gap=2
             text "NIVEAU ATTEINT" class=Caps color="#e6edf3"
             text (unlock.level == 1 ? "Prise de poste" : unlock.vehicles.length + unlock.buildings.length + unlock.upgrades.length > 0 ? "Nouveaux moyens disponibles" : "Nouvelles missions") font-size="1.2rem" font-weight=600 role="heading" aria-level=2
+        if unlock.promoted
+          row gap=12 align-items="center" padding="10px 12px" background-color="#1a212b" border-left-width=3 border-left-style="solid" border-left-color="#f0a531" testId="promotion"
+            Icon(name=unlock.rankIcon, size=30, color="#f0a531")
+            column gap=2
+              text "PROMOTION" class=Caps color="#f0a531"
+              text unlock.rank font-size="1.1rem" font-weight=600
         if unlock.buildings.length > 0
           column gap=6
             Heading(text="Bâtiment", detail="")
@@ -66,19 +72,59 @@ component CareerPanel
     reputation: number
     stats: Stats
     city: string
+    rank: string
+    rankIcon: string
+    achievements: AchievementRow[]
+    achievementsDone: number
     close: action
     reset: action
+  state section = "bilan"
+  action pick(s: string)
+    section = s
   view
     column gap=14 testId="career"
       row align-items="center"
         text "Carrière" font-size="1.15rem" font-weight=600 flex=1 role="heading" aria-level=2
         button press=close aria-label="Fermer" class=Quiet testId="career-close"
           Icon(name="close", size=16, color="#9aa4b2")
-      column gap=6
-        row align-items="baseline"
-          text `Niveau ${level} / ${maxLevel}` font-weight=600 flex=1
-          text xpText class=Mono font-size="0.75rem" color="#9aa4b2"
-        Meter(fraction=progress, color="#e6edf3")
+      row gap=12 align-items="center"
+        view width="3rem" height="3rem" border="1px solid #f0a531" border-radius=4 display="flex" align-items="center" justify-content="center" flex-shrink=0
+          Icon(name=rankIcon, size=26, color="#f0a531")
+        column gap=6 flex=1 min-width=0
+          row align-items="baseline" gap=8
+            text rank font-weight=600 flex=1 testId="rank"
+            text `Niveau ${level} / ${maxLevel}` class=Mono font-size="0.75rem" color="#9aa4b2"
+          Meter(fraction=progress, color="#e6edf3")
+          text xpText class=Mono font-size="0.68rem" color="#6b7686"
+      row role="tablist" border-bottom="1px solid #252c36"
+        for t in ["bilan", "succes"] key=t
+          button role="tab" aria-selected=(section == t) press=pick(t) appearance="none" flex=1 padding="8px 4px" border-bottom-width=2 border-bottom-style="solid" border-bottom-color=(section == t ? "#e6edf3" : "transparent") testId=`career-${t}`
+            text (t == "bilan" ? "Bilan" : `Succès ${achievementsDone} / ${achievements.length}`) font-size="0.82rem" font-weight=600 color=(section == t ? "#e6edf3" : "#9aa4b2")
+      if section == "succes"
+        column gap=6 testId="achievements"
+          for a in achievements key=a.id
+            row gap=10 align-items="center" padding="8px 10px" background-color="#171c24" border-radius=4 opacity=(a.done ? 1 : 0.7) testId=`achievement-${a.id}`
+              view width="1.6rem" height="1.6rem" border-radius=4 border-width=1 border-style="solid" border-color=(a.done ? "#f0a531" : "#30394a") display="flex" align-items="center" justify-content="center" flex-shrink=0
+                Icon(name=(a.done ? "check" : "lock"), size=13, color=(a.done ? "#f0a531" : "#6b7686"))
+              column flex=1 min-width=0 gap=3
+                text a.title font-size="0.84rem" font-weight=600 color=(a.done ? "#e6edf3" : "#c9d1d9")
+                text a.detail font-size="0.72rem" color="#9aa4b2" line-height=1.35
+                if not a.done and a.fraction > 0
+                  Meter(fraction=a.fraction, color="#9aa4b2")
+              column align-items="flex-end" gap=2 flex-shrink=0
+                text a.progressText class=Mono font-size="0.66rem" color=(a.done ? "#f0a531" : "#9aa4b2")
+                text a.reward class=Mono font-size="0.62rem" color="#6b7686"
+      if section == "bilan"
+        CareerStats(stats=stats, reputation=reputation, city=city, reset=reset)
+
+component CareerStats
+  props
+    stats: Stats
+    reputation: number
+    city: string
+    reset: action
+  view
+    column gap=14
       row flex-wrap="wrap" gap=8
         Cell(label="Appels", value=`${stats.calls}`, color="#e6edf3")
         Cell(label="Victimes sauvées", value=`${stats.saved}`, color="#3fb950")

@@ -146,6 +146,9 @@ shape Unlock
   calls: string[]
   majors: string[]
   upgrades: string[]
+  promoted: bool
+  rank: string
+  rankIcon: string
 
 shape UpgradeRow
   id: string
@@ -213,6 +216,15 @@ shape Weather
   event: string
   eventIcon: string
 
+shape AchievementRow
+  id: string
+  title: string
+  detail: string
+  done: bool
+  fraction: number
+  progressText: string
+  reward: string
+
 shape Snap
   seq: number
   city: string
@@ -220,6 +232,10 @@ shape Snap
   day: number
   date: string
   weather: Weather
+  rank: string
+  rankIcon: string
+  achievements: AchievementRow[]
+  achievementsDone: number
   clock: string
   speed: number
   paused: bool

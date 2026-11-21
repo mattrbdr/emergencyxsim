@@ -1,4 +1,5 @@
 // The game state. Every module of sim/ reads and writes this one shape.
+import type { Records } from './achievements.ts';
 import type { BuildingKind } from './catalog/buildings.ts';
 import type { CallKind } from './catalog/calls.ts';
 import type { Service, UnitType } from './catalog/units.ts';
@@ -189,6 +190,9 @@ export interface World {
   majorReport: MajorReport | null;
   /** Streets cut (flooded): routing goes around them. */
   blocked: Set<number>;
+  /** Achievements won (sim/catalog/achievements.ts), and the records they follow. */
+  achievements: string[];
+  records: Records;
   /** Midnight (UTC) of the career's first day, for the calendar. */
   startDate: number;
   /** The day's weather and events (worked out from the seed, not saved). */

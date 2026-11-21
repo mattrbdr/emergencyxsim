@@ -32,6 +32,12 @@ export const dateText = (d: Date) => `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} $
 export function today(w: World): Today {
   const day = dayOfShift(w);
   if (w.today?.day === day) return w.today;
+  w.today = conditionsOn(w, day);
+  return w.today;
+}
+
+/** Weather and events of any day of the career. */
+export function conditionsOn(w: World, day: number): Today {
   const rng = mulberry(((w.seed * 7919) ^ (day * 104729)) % 2147483646 || 1);
   const date = dateOf(w, day);
   let r = rng();
@@ -48,8 +54,7 @@ export function today(w: World): Today {
     if (def.slows && def.slows !== 'axes' && edges.length === 0) continue; // no stadium, no market in this town
     events.push({ def, edges });
   }
-  w.today = { day, date, weather, events };
-  return w.today;
+  return { day, date, weather, events };
 }
 
 function streetsFor(w: World, def: EventDef, rng: () => number): number[] {

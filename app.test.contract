@@ -108,3 +108,12 @@ test "the career survives a reload"
   expect tree missing "city-picker"
   expect state snap.units.length == 2
   expect state snap.money == 12000
+  // The career panel: rank and the achievements list.
+  tap "level"
+  clock data
+  clock +300
+  expect text "rank" == "Sapeur"
+  tap "career-succes"
+  clock data
+  clock +300
+  expect tree has "achievements"

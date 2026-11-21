@@ -1,5 +1,6 @@
 // The career: creates the world and advances it. Every rule lives in its own
 // module (calls, units, economy, progression, buildings); this file only orders them.
+import { checkAchievements, emptyRecords } from './achievements.ts';
 import { START_MONEY, START_REPUTATION } from './catalog/levels.ts';
 import { RULES } from './catalog/rules.ts';
 import type { City } from './city.ts';
@@ -28,6 +29,7 @@ export function newWorld(city: City, seed: number): World {
     view: { w: 0, h: 0 }, pointers: new Map(), pinch: null, placing: null, overlay: false,
     contracts: [], dayStats: emptyDay(1), streak: 0, tutorial: 0, tip: '', tipsSeen: [],
     majors: [], nextMajorAt: firstMajorAt, majorReport: null, blocked: new Set(),
+    achievements: [], records: emptyRecords(),
     startDate: DEFAULT_START, today: null, conditionsKey: '', trafficMul: 1, slowEdges: new Map(),
   };
   say(w, `Prise de garde à ${city.name}. Aucune caserne pour l'instant, la première est offerte.`, 'info', true);
@@ -60,6 +62,7 @@ function advance(w: World, dt: number) {
   chargeUpkeep(w, before);
   updateContracts(w);
   updateTutorial(w);
+  if (Math.floor(before / 60) !== Math.floor(w.t / 60)) checkAchievements(w);
   // Hospitals discharge a patient every RULES.dischargeEvery.
   if (Math.floor(before / RULES.dischargeEvery) !== Math.floor(w.t / RULES.dischargeEvery)) for (const b of w.buildings) b.patients = Math.max(0, b.patients - 1);
   if (w.calls.length > 60) w.calls = w.calls.filter((c) => c.state !== 'clos' || w.t - c.closedAt < 3600);

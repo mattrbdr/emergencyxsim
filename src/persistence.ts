@@ -10,7 +10,7 @@ export const CITY_FILE = 'app:/data/city.json';
 export const SAVE_FILE = 'app:/data/save.json';
 export const GRANTS = ['fs.read app:/data', 'fs.write app:/data'];
 
-const VERSION = 3;
+const VERSION = 4;
 
 export interface Save {
   version: number;
@@ -41,6 +41,9 @@ export interface Save {
   major?: Omit<Major, 'kind'> & { kind: string; fugitive: Fugitive | null };
   blocked?: number[];
   startDate?: number;
+  // Since v4.
+  achievements?: string[];
+  records?: World['records'];
 }
 
 const encode = (v: unknown) => new TextEncoder().encode(JSON.stringify(v));
@@ -80,6 +83,7 @@ export function snapshotSave(w: World): Save {
     major: majorToSave(w),
     blocked: [...w.blocked],
     startDate: w.startDate,
+    achievements: w.achievements, records: w.records,
   };
 }
 

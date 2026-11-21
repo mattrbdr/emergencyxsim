@@ -86,7 +86,9 @@ export function restore(city: City, s: Save, epoch = 0): World {
     tutorial: s.tutorial ?? STEPS.length,
   });
   if (s.nextMajorAt !== undefined) w.nextMajorAt = s.nextMajorAt;
-  if (s.dayStats) w.dayStats = s.dayStats;
+  if (s.dayStats) w.dayStats = { ...w.dayStats, ...s.dayStats };
+  if (s.achievements) w.achievements = s.achievements;
+  if (s.records) w.records = { ...w.records, ...s.records };
   // A career saved before the calendar starts on the day it is resumed.
   if (s.startDate) w.startDate = s.startDate;
   else if (epoch > 0) w.startDate = midnight(epoch) - Math.floor(s.t / 86400) * 86400000;

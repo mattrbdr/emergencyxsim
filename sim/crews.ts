@@ -84,6 +84,7 @@ export function checkBreakdown(w: World, u: Unit) {
   w.money -= cost;
   w.stats.spent += cost;
   w.stats.breakdowns++;
+  w.records.lastBreakdownDay = 1 + Math.floor(w.t / 86400);
   u.status = 'atelier';
   u.wait = CREW.repairHours * 3600 * repairTimeFactor(w, u);
   u.wear = 20;

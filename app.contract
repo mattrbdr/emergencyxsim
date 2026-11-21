@@ -349,7 +349,7 @@ component Detail
       if panel == "contracts"
         ContractsPanel(contracts=snap.contracts, streak=snap.streak, day=snap.day, date=snap.date, bulletin=snap.weather.bulletin, close=closePanel)
       if panel == "career"
-        CareerPanel(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, stats=snap.stats, city=snap.city, close=closePanel, reset=resetCareer)
+        CareerPanel(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, stats=snap.stats, city=snap.city, rank=snap.rank, rankIcon=snap.rankIcon, achievements=snap.achievements, achievementsDone=snap.achievementsDone, close=closePanel, reset=resetCareer)
 
 // What a closed panel's target leaves behind (a call that ended, a vehicle sold).
 component CallGone

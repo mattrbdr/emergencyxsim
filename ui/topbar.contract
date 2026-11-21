@@ -14,14 +14,14 @@ component TopBar
     openContracts: action
   view
     row position="absolute" top=0 left=0 right=0 padding-top="env(safe-area-inset-top)" background-color="#0e1217" border-bottom="1px solid #252c36" testId="bar"
-      row flex=1 align-items="center" gap=(wide ? 20 : 8) padding=(wide ? "8px 16px" : "8px 8px") min-width=0
+      row flex=1 align-items="center" gap=(wide ? 14 : 8) padding=(wide ? "8px 16px" : "8px 8px") min-width=0
         if wide
           row gap=10 align-items="center" min-width=0
             view width=30 height=30 border-radius=4 background-color="#f2555a" display="flex" align-items="center" justify-content="center" flex-shrink=0
               Icon(name="caserne", size=18, color="#0b0e12")
             column gap=0 min-width=0
-              text "EMERGENCY SIM" class=Mono font-size="0.72rem" font-weight=600 letter-spacing="0.14em"
-              text snap.city.toUpperCase() class=Caps white-space="nowrap" overflow="hidden" text-overflow="ellipsis" max-width="14rem"
+              text "EMERGENCY SIM" class=Mono font-size="0.72rem" font-weight=600 letter-spacing="0.14em" white-space="nowrap"
+              text snap.city.toUpperCase() class=Caps white-space="nowrap" overflow="hidden" text-overflow="ellipsis" max-width="9rem"
         row gap=8 align-items="baseline"
           if wide
             text snap.date.toUpperCase() class=Caps color="#9aa4b2" white-space="nowrap" testId="date"
@@ -56,7 +56,9 @@ component TopBar
           Icon(name="flag", size=15, color=(snap.contractsDone == snap.contracts.length and snap.contracts.length > 0 ? "#3fb950" : "#e6edf3"))
           text `${snap.contractsDone}/${snap.contracts.length}` class=Mono font-size="0.8rem" font-weight=600
         // Level: a badge and the XP bar; opens the career panel.
-        button press=openCareer appearance="none" aria-label=`Niveau ${snap.level}, ${snap.xpText}` display="flex" align-items="center" gap=8 padding=(wide ? "4px 6px" : "0") border-radius=4 flex-shrink=0 testId="level"
+        button press=openCareer appearance="none" aria-label=`${snap.rank}, niveau ${snap.level}, ${snap.xpText}` display="flex" align-items="center" gap=8 padding=(wide ? "4px 6px" : "0") border-radius=4 flex-shrink=0 testId="level"
+          if wide
+            Icon(name=snap.rankIcon, size=18, color="#f0a531")
           view width="2rem" height="2rem" border="1px solid #4b5668" border-radius=4 display="flex" align-items="center" justify-content="center"
             text `${snap.level}` class=Mono font-weight=600 color="#e6edf3"
           if wide

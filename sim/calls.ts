@@ -1,5 +1,6 @@
 // The life of a call: it comes in, the player qualifies it, dispatches, the
 // scene is worked, and it closes saved, lost or failed.
+import { noteQualification } from './achievements.ts';
 import { CALL_KINDS, type Family } from './catalog/calls.ts';
 import { RULES } from './catalog/rules.ts';
 import { UNITS, type UnitType } from './catalog/units.ts';
@@ -66,6 +67,7 @@ export function qualify(w: World, callId: string, family: Family): boolean {
   call.qualified = true;
   call.guessedRight = call.kind.family === family;
   if (call.state === 'nouveau') call.state = 'attente';
+  noteQualification(w, call.guessedRight);
   if (call.guessedRight) {
     w.stats.qualifyRight++;
     w.dayStats.qualifyRight++;

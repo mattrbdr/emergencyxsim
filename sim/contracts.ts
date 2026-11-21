@@ -1,5 +1,6 @@
 // Daily contracts: three goals each game day (from 07:00 to 07:00), with a bonus,
 // and a streak of perfect days that raises every contract's reward.
+import { closeDay } from './achievements.ts';
 import type { Family } from './catalog/calls.ts';
 import { FAMILY_LABEL } from './catalog/calls.ts';
 import { RULES } from './catalog/rules.ts';
@@ -36,9 +37,10 @@ export interface DayStats {
   qualifyRight: number;
   earned: number;
   done: Partial<Record<Family, number>>;
+  failed: number;
 }
 
-export const emptyDay = (day: number): DayStats => ({ day, responses: [], saved: 0, lost: 0, qualifyRight: 0, earned: 0, done: {} });
+export const emptyDay = (day: number): DayStats => ({ day, responses: [], saved: 0, lost: 0, qualifyRight: 0, earned: 0, done: {}, failed: 0 });
 
 /** Families the fleet can actually answer. */
 function families(w: World): Family[] {
@@ -95,6 +97,7 @@ export function newDay(w: World) {
   const day = shiftDay(w);
   const finished = w.contracts.filter((c) => c.state === 'done').length;
   if (w.contracts.length > 0) {
+    closeDay(w, w.dayStats);
     if (finished === w.contracts.length) w.streak++;
     else w.streak = 0;
   }
@@ -119,6 +122,8 @@ export function recordCall(w: World, call: Call) {
     d.saved += call.kind.victims;
   } else if (call.outcome === 'perdu') {
     d.lost += call.kind.victims;
+  } else if (call.outcome === 'echec') {
+    d.failed++;
   }
 }
 
