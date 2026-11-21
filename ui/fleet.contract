@@ -1,11 +1,13 @@
 // The fleet: each station with its vehicles; a vehicle's card.
 use BuildingRow, UnitRow, Ack from "./model.contract"
 use Icon from "./icons.contract"
-use Tag, CallSign, Heading, Empty from "./parts.contract"
+use Tag, CallSign, Heading, Empty, Meter from "./parts.contract"
 use Mono, Caps, Secondary, Quiet, statusColor, plural from "./theme.contract"
 use serviceColor, kindColor from "./palette.contract"
 
-fn statusTone(code: number): string = code == 1 ? "#3fb950" : code == 3 ? "#f2555a" : code == 2 ? "#f0a531" : code == 6 ? "#9aa4b2" : "#b48ef0"
+fn statusTone(code: number): string = code == 1 ? "#3fb950" : code == 3 ? "#f2555a" : code == 2 ? "#f0a531" : code == 6 ? "#9aa4b2" : code == 7 ? "#58a6ff" : code == 8 ? "#6b7686" : "#b48ef0"
+
+fn gaugeColor(v: number): string = v > 90 ? "#f2555a" : v > 70 ? "#f0a531" : "#9aa4b2"
 
 // A radio status as the console shows it: the number on its colour.
 component StatusCode
@@ -41,6 +43,9 @@ component Fleet
               text (u.callTitle != "" ? u.callTitle : "") font-size="0.72rem" color="#6b7686" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
               if u.eta != ""
                 text u.eta class=Mono font-size="0.68rem" color="#9aa4b2"
+              // Crew fatigue at a glance.
+              view width="2rem" flex-shrink=0 aria-label=`Fatigue ${u.fatigue} %`
+                Meter(fraction=u.fatigue / 100, color=gaugeColor(u.fatigue))
 
 component UnitCard
   props
@@ -53,6 +58,10 @@ component UnitCard
   action sell
     send done = sellVehicle(u.id)
     dismiss()
+  action rest
+    send done = restUnit(u.id)
+  action service
+    send done = serviceUnit(u.id)
   view
     column gap=10 testId="unit-card"
       row align-items="center" gap=10
@@ -66,17 +75,39 @@ component UnitCard
         StatusCode(code=u.statusCode, label=u.statusLabel)
         if u.eta != ""
           text `arrivée ${u.eta}` class=Mono font-size="0.75rem" color="#9aa4b2"
+        if u.waitText != ""
+          text u.waitText class=Mono font-size="0.75rem" color="#9aa4b2"
       if u.callTitle != ""
         text `Mission : ${u.callTitle}` font-size="0.85rem"
+      // Crew and vehicle condition.
+      column gap=6 testId="unit-condition"
+        row gap=8 align-items="center"
+          text "Fatigue" class=Caps width="4.5rem"
+          view flex=1
+            Meter(fraction=u.fatigue / 100, color=gaugeColor(u.fatigue))
+          text `${u.fatigue} %` class=Mono font-size="0.72rem" width="2.6rem" text-align="right" color=gaugeColor(u.fatigue)
+        row gap=8 align-items="center"
+          text "Usure" class=Caps width="4.5rem"
+          view flex=1
+            Meter(fraction=u.wear / 100, color=gaugeColor(u.wear))
+          text `${u.wear} %` class=Mono font-size="0.72rem" width="2.6rem" text-align="right" color=gaugeColor(u.wear)
+        if u.tired
+          text (u.fatigue > 90 ? "Équipage épuisé : il roule et travaille moins vite. Mettez-le au repos." : "Équipage fatigué : il roule et travaille moins vite.") font-size="0.78rem" color="#f0a531" line-height=1.4
       text `${u.buildingName} · ${plural(u.missions, "mission", "missions")}` class=Caps
-      row gap=8
-        button press=focus class=Secondary flex=1 testId="unit-focus"
+      row gap=8 flex-wrap="wrap"
+        button press=focus class=Secondary flex="1 1 40%" testId="unit-focus"
           Icon(name="target", size=14, color="#e6edf3")
           text "Voir"
         if u.status == "route"
-          button press=recall class=Secondary flex=1 testId="unit-recall"
+          button press=recall class=Secondary flex="1 1 40%" white-space="nowrap" testId="unit-recall"
             text "Désengager"
+        if u.canRest
+          button press=rest class=Secondary flex="1 1 40%" white-space="nowrap" testId="unit-rest"
+            text "Au repos"
+        if u.canService
+          button press=service class=Secondary flex="1 1 40%" white-space="nowrap" testId="unit-service"
+            text `Réviser ${u.servicePrice}`
         if u.canSell
-          button press=sell class=Secondary flex=1 testId="unit-sell"
+          button press=sell class=Secondary flex="1 1 40%" white-space="nowrap" testId="unit-sell"
             Icon(name="sell", size=14, color="#e6edf3")
             text `Vendre ${u.resale}`

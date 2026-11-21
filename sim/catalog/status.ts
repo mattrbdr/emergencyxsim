@@ -8,4 +8,6 @@ export const STATUS: Record<UnitStatus, { code: number; label: string }> = {
   transport: { code: 4, label: 'Transport' },
   hopital: { code: 5, label: 'À l\'hôpital' },
   retour: { code: 6, label: 'Retour' },
+  repos: { code: 7, label: 'Repos' },
+  atelier: { code: 8, label: 'Atelier' },
 };

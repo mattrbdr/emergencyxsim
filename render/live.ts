@@ -342,7 +342,7 @@ function drawRoute(w: World, ctx: Ctx2D, u: Unit, alpha: number, now: number, se
 function drawUnits(w: World, ctx: Ctx2D, alpha: number, now: number, selected: string) {
   const scene = new Map<string, number>();
   for (const u of w.units) {
-    if (u.status === 'dispo' || u.status === 'hopital') continue;
+    if (u.status === 'dispo' || u.status === 'hopital' || u.status === 'repos' || u.status === 'atelier') continue;
     let [wx, wy] = position(u, alpha);
     let [x, y] = toScreen(w, wx, wy);
     let heading = u.heading;

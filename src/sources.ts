@@ -6,6 +6,7 @@ import type { Family } from '../sim/catalog/calls.ts';
 import { UNITS, type UnitType } from '../sim/catalog/units.ts';
 import { buildAt, buySite, buyUnit, expand, sellUnit } from '../sim/buildings.ts';
 import { dispatch, findCall, options, qualify, recall } from '../sim/calls.ts';
+import { rest, service } from '../sim/crews.ts';
 import { decide, type ChoiceId } from '../sim/scenes.ts';
 import { decideMajor } from '../sim/majors.ts';
 import { dismissTip, skipTutorial } from '../sim/tutorial.ts';
@@ -31,7 +32,7 @@ export const sources: Sources = {
     options(game.world, callId).map((o) => ({
       id: o.unit.id, name: o.unit.name, type: o.unit.type, long: UNITS[o.unit.type].long, service: o.unit.service,
       station: o.diverted ? `Réquisition · en route ${o.diverted}` : game.world.buildings.find((b) => b.id === o.unit.building)?.name ?? '',
-      eta: minutesText(o.eta), suggested: o.suggested, needed: o.needed, returning: o.unit.status === 'retour',
+      eta: minutesText(o.eta), suggested: o.suggested, needed: o.needed, returning: o.unit.status === 'retour', tired: o.tired,
     })),
   shop: ([buildingId]) => {
     const b = game.world.buildings.find((x) => x.id === buildingId);
@@ -69,6 +70,8 @@ export const sources: Sources = {
   qualifyCall: ([id, family]) => { qualify(game.world, id, family as Family); return ack(); },
   send: ([id, ids]) => { dispatch(game.world, id, ids); return ack(); },
   recallUnit: ([id]) => { recall(game.world, id); game.world.seq++; return ack(); },
+  restUnit: ([id], _store, storage) => { if (rest(game.world, id)) save(storage); game.world.seq++; return ack(); },
+  serviceUnit: ([id], _store, storage) => { if (service(game.world, id)) save(storage); game.world.seq++; return ack(); },
   decide: ([callId, choice]) => {
     const call = findCall(game.world, callId);
     if (call?.prompt) decideMajor(game.world, call, choice);

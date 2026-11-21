@@ -8,6 +8,7 @@ import { adjustReputation, earn, reward } from './economy.ts';
 import { euros, say } from './log.ts';
 import { gainXp } from './progression.ts';
 import { createCall, spotOn } from './callfactory.ts';
+import { isTired } from './crews.ts';
 import { pickStreet } from './places.ts';
 import { callWeight, draws, rateFactor } from './weather.ts';
 import { decisionTimeout, rollTwist } from './scenes.ts';
@@ -150,13 +151,15 @@ export function options(w: World, callId: string) {
   const missing = missingTypes(w, call);
   const free = w.units
     .filter((u) => available(w, u, call))
-    .map((u) => ({ unit: u, eta: etaFrom(u, tree, call.x, call.y), diverted: divertedFrom(w, u, call)?.street ?? '' }))
+    .map((u) => ({ unit: u, eta: etaFrom(u, tree, call.x, call.y), diverted: divertedFrom(w, u, call)?.street ?? '', tired: isTired(u) }))
     .filter((o) => Number.isFinite(o.eta))
     .sort((a, b) => a.eta - b.eta);
   const want = [...missing];
   const suggested = new Set<string>();
   // Free crews first; a crew is taken off another call only when none is left.
-  for (const o of [...free].sort((a, b) => Number(a.diverted !== '') - Number(b.diverted !== ''))) {
+  // Rested crews before tired ones, when the type is the same.
+  const rank = (o: (typeof free)[number]) => (o.diverted !== '' ? 2 : 0) + (o.tired ? 1 : 0);
+  for (const o of [...free].sort((a, b) => rank(a) - rank(b))) {
     const k = want.indexOf(o.unit.type);
     if (k >= 0) { want.splice(k, 1); suggested.add(o.unit.id); }
   }
@@ -190,7 +193,9 @@ export function needState(w: World, call: Call) {
 
 export function updateCall(w: World, call: Call, dt: number) {
   if (call.state === 'traitement') {
-    call.workLeft -= dt;
+    // A tired crew on scene works slower.
+    const slow = call.assigned.some((id) => { const u = w.units.find((x) => x.id === id); return u?.status === 'surplace' && isTired(u); });
+    call.workLeft -= slow ? dt / 1.2 : dt;
     if (call.workLeft <= 0) finish(w, call);
     return;
   }

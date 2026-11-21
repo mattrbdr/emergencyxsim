@@ -83,7 +83,7 @@ function addUnit(w: World, b: Building, type: UnitType): Unit {
   const u: Unit = {
     id: `u${w.nextId++}`, type, service: UNITS[type].service, name: `${UNITS[type].label} ${n}`,
     building: b.id, home: b.node, path: [b.node], along: 0, flight: null,
-    x: b.x, y: b.y, px: b.x, py: b.y, heading: 0, status: 'dispo', callId: '', wait: 0, missions: 0,
+    x: b.x, y: b.y, px: b.x, py: b.y, heading: 0, status: 'dispo', fatigue: 0, wear: 0, callId: '', wait: 0, missions: 0,
   };
   w.units.push(u);
   w.dirty = true;

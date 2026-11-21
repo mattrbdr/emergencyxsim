@@ -9,7 +9,7 @@ import type { Contract, DayStats } from './contracts.ts';
 import type { Major, MajorReport } from './majors.ts';
 import type { Today } from './weather.ts';
 
-export type UnitStatus = 'dispo' | 'route' | 'surplace' | 'transport' | 'hopital' | 'retour';
+export type UnitStatus = 'dispo' | 'route' | 'surplace' | 'transport' | 'hopital' | 'retour' | 'repos' | 'atelier';
 
 export interface Building {
   id: string;
@@ -42,6 +42,10 @@ export interface Unit {
   py: number;
   heading: number;
   status: UnitStatus;
+  /** 0 fresh – 100 exhausted (sim/crews.ts). */
+  fatigue: number;
+  /** 0 new – 100 worn out: the more worn, the likelier a breakdown. */
+  wear: number;
   callId: string;
   wait: number;
   missions: number;
@@ -121,6 +125,7 @@ export interface Stats {
   responses: number;
   qualifyRight: number;
   qualifyWrong: number;
+  breakdowns: number;
 }
 
 export interface Pointer { x: number; y: number; sx: number; sy: number; moved: boolean }

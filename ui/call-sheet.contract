@@ -126,6 +126,8 @@ component CallSheet
                     text o.name class=Mono font-size="0.82rem" font-weight=600
                     if o.suggested
                       text "RÉFLEXE" class=Caps font-size="0.58rem" color="#9aa4b2"
+                    if o.tired
+                      text "FATIGUÉ" class=Caps font-size="0.58rem" color="#f0a531"
                   text (o.returning ? `${o.station} · en retour` : o.station) font-size="0.72rem" color="#6b7686" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
                 text o.eta class=Mono font-size="0.8rem" font-weight=600
             if opts.filter(o => not o.needed).length > 0

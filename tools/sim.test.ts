@@ -30,6 +30,17 @@ function regulate(w: World) {
   }
 }
 
+/** A careful chief: rests a tired crew when another of its kind is free, services worn vehicles. */
+async function care(w: World) {
+  const { rest, service } = await import('../sim/crews.ts');
+  for (const u of w.units) {
+    if (u.status !== 'dispo') continue;
+    const spare = w.units.some((x) => x !== u && x.type === u.type && x.status === 'dispo' && x.fatigue < 50);
+    if (u.fatigue > 70 && spare) rest(w, u.id);
+    else if (u.wear > 50 && w.money > 15000) service(w, u.id);
+  }
+}
+
 /** A thrifty manager: keeps 10 000 € aside, buys sites then the rarest unlocked vehicle. */
 function manage(w: World) {
   const reserve = 10000;
@@ -119,7 +130,7 @@ test('level 1 only brings calls a VSAV can handle; a call pays money and XP', ()
   expect(w.stats.earned).toBeGreaterThan(0);
 });
 
-test('a managed career levels up over three game days and stays solvent', () => {
+test('a managed career levels up over three game days and stays solvent', async () => {
   const w = newWorld(city, 42);
   buildAt(w, 'caserne', centre.x, centre.y);
   w.speed = 4;
@@ -128,7 +139,7 @@ test('a managed career levels up over three game days and stays solvent', () => 
   while (w.t < days) {
     tick(w, 250);
     regulate(w);
-    if (Math.floor(w.t) % 600 < 60) manage(w);
+    if (Math.floor(w.t) % 600 < 60) { manage(w); await care(w); }
     lowest = Math.min(lowest, w.money);
   }
   const s = w.stats;
@@ -508,6 +519,7 @@ test('five days at level 12 with a medium fleet: crises come, end, and the servi
       if (best) decideMajor(w, c, best.id);
     }
     regulate(w);
+    if (Math.floor(w.t) % 600 < 60) await care(w);
     lowest = Math.min(lowest, w.money);
   }
   const done = w.majors.filter((m) => m.state !== 'actif');
@@ -607,4 +619,48 @@ test('calendar: the 14th of July brings its fireworks evening', async () => {
   w.today = null;
   w.t = 86400 + 15 * 3600; // the 15th
   expect(today(w).events.map((e) => e.def.id)).not.toContain('quatorze');
+});
+
+test('crews tire on missions and recover at base; a resting crew is never proposed', async () => {
+  const { rest, updateCrews, TIRED } = await import('../sim/crews.ts');
+  const w = newWorld(city, 31);
+  buildAt(w, 'caserne', centre.x, centre.y);
+  const u = w.units[0];
+  u.status = 'surplace';
+  updateCrews(w, 10 * 3600);
+  expect(u.fatigue).toBeGreaterThan(TIRED);
+  u.status = 'dispo';
+  const tired = u.fatigue;
+  updateCrews(w, 2 * 3600);
+  expect(u.fatigue).toBeLessThan(tired);
+  expect(rest(w, u.id)).toBe(true);
+  expect(u.status).toBe('repos');
+  const { createCall, spotOn } = await import('../sim/callfactory.ts');
+  const call = createCall(w, CALL_KINDS[0], spotOn(w, city.callEdges[5]), 'x');
+  w.calls.push(call);
+  expect(options(w, call.id).some((o) => o.unit.id === u.id)).toBe(false);
+  updateCrews(w, 12 * 3600);
+  expect(u.status).toBe('dispo');
+});
+
+test('worn vehicles break down; regular services keep them on the road', async () => {
+  const { service } = await import('../sim/crews.ts');
+  const career = (serviced: boolean) => {
+    const w = newWorld(city, 42);
+    buildAt(w, 'caserne', centre.x, centre.y);
+    w.speed = 4;
+    while (w.t < 3 * 86400) {
+      tick(w, 250);
+      regulate(w);
+      if (Math.floor(w.t) % 600 < 60) {
+        manage(w);
+        if (serviced) for (const u of w.units) if (u.wear > 35 && w.money > 20000) service(w, u.id);
+      }
+    }
+    return { breakdowns: w.stats.breakdowns, money: w.money, wear: Math.max(...w.units.map((u) => u.wear)) };
+  };
+  const plain = career(false), kept = career(true);
+  console.log('breakdowns without service', plain.breakdowns, 'with', kept.breakdowns);
+  expect(plain.breakdowns).toBeGreaterThan(0);
+  expect(kept.breakdowns).toBeLessThan(plain.breakdowns);
 });

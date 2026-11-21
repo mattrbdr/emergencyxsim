@@ -78,7 +78,7 @@ export function restore(city: City, s: Save, epoch = 0): World {
   const w = newWorld(city, s.seed);
   Object.assign(w, {
     t: s.t, speed: s.speed, money: s.money, xp: s.xp, level: s.level, seenLevel: s.seenLevel,
-    reputation: s.reputation, nextId: s.nextId, nextCallAt: s.nextCallAt, stats: s.stats,
+    reputation: s.reputation, nextId: s.nextId, nextCallAt: s.nextCallAt, stats: { ...w.stats, ...s.stats },
     buildings: s.buildings.filter((b) => BUILDINGS[b.kind] && b.node < city.nx.length),
     log: s.log, dirty: false,
     contracts: s.contracts ?? [], streak: s.streak ?? 0, tipsSeen: s.tipsSeen ?? [],
@@ -99,7 +99,9 @@ export function restore(city: City, s: Save, epoch = 0): World {
       return {
         id: u.id, type: u.type, service: UNITS[u.type].service, name: u.name, building: b.id, home: b.node,
         path: [b.node], along: 0, flight: null, x: b.x, y: b.y, px: b.x, py: b.y, heading: 0,
-        status: 'dispo', callId: '', wait: 0, missions: u.missions,
+        // Resting crews and vehicles in the workshop stay so; the others are back at base.
+        status: u.status === 'repos' || u.status === 'atelier' ? u.status : 'dispo',
+        fatigue: u.fatigue ?? 0, wear: u.wear ?? 0, callId: '', wait: u.status === 'atelier' ? u.wait ?? 0 : 0, missions: u.missions,
       };
     })
     .filter((u): u is Unit => u !== null);

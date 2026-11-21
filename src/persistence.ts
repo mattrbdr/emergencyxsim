@@ -27,7 +27,7 @@ export interface Save {
   nextCallAt: number;
   stats: World['stats'];
   buildings: Building[];
-  units: Pick<Unit, 'id' | 'type' | 'name' | 'building' | 'missions'>[];
+  units: (Pick<Unit, 'id' | 'type' | 'name' | 'building' | 'missions'> & Partial<Pick<Unit, 'fatigue' | 'wear' | 'status' | 'wait'>>)[];
   log: World['log'];
   // Since v2.
   contracts?: World['contracts'];
@@ -70,7 +70,10 @@ export function snapshotSave(w: World): Save {
     version: VERSION, city: w.city.name, seed: w.seed, t: w.t, speed: w.speed,
     money: w.money, xp: w.xp, level: w.level, seenLevel: w.seenLevel, reputation: w.reputation,
     nextId: w.nextId, nextCallAt: w.nextCallAt, stats: w.stats, buildings: w.buildings,
-    units: w.units.map((u) => ({ id: u.id, type: u.type, name: u.name, building: u.building, missions: u.missions })),
+    units: w.units.map((u) => ({
+      id: u.id, type: u.type, name: u.name, building: u.building, missions: u.missions,
+      fatigue: Math.round(u.fatigue), wear: Math.round(u.wear), status: u.status, wait: Math.round(u.wait),
+    })),
     log: w.log.slice(0, 30),
     contracts: w.contracts, dayStats: w.dayStats, streak: w.streak, tutorial: w.tutorial, tipsSeen: w.tipsSeen, nextMajorAt: w.nextMajorAt,
     calls: w.calls.filter((c) => c.state !== 'clos').map(({ assigned: _, ...c }) => c),

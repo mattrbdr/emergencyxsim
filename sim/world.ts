@@ -13,6 +13,7 @@ import { say } from './log.ts';
 import { mulberry } from './rng.ts';
 import type { World } from './types.ts';
 import { moveUnit } from './units.ts';
+import { updateCrews } from './crews.ts';
 import { DEFAULT_START, updateConditions } from './weather.ts';
 
 export function newWorld(city: City, seed: number): World {
@@ -20,7 +21,7 @@ export function newWorld(city: City, seed: number): World {
     city, seed, rng: mulberry(seed || 1), t: 0, speed: 1, paused: false, seq: 0,
     money: START_MONEY, xp: 0, level: 1, seenLevel: 1, reputation: START_REPUTATION,
     buildings: [], units: [], calls: [], nextCallAt: 40, nextId: 1,
-    stats: { calls: 0, saved: 0, lost: 0, failed: 0, earned: 0, spent: 0, responseSum: 0, responses: 0, qualifyRight: 0, qualifyWrong: 0 },
+    stats: { calls: 0, saved: 0, lost: 0, failed: 0, earned: 0, spent: 0, responseSum: 0, responses: 0, qualifyRight: 0, qualifyWrong: 0, breakdowns: 0 },
     log: [], toast: { id: 0, t: 0, text: '', tone: 'info' }, logId: 0, dirty: true,
     stationTrees: new Map(), callTrees: new Map(),
     cam: { cx: city.width / 2, cy: city.height / 2, zoom: 0.2, tx: city.width / 2, ty: city.height / 2, tz: 0.2, seq: 1, touched: false },
@@ -54,6 +55,7 @@ function advance(w: World, dt: number) {
   if (w.t >= w.nextCallAt) spawnCall(w);
   updateMajors(w, dt);
   for (const u of w.units) moveUnit(w, u, dt);
+  updateCrews(w, dt);
   for (const call of w.calls) if (call.state !== 'clos') updateCall(w, call, dt);
   chargeUpkeep(w, before);
   updateContracts(w);

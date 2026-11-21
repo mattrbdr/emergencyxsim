@@ -1,5 +1,6 @@
 // The first steps, guided: each step reads the world and moves on by itself
 // when the player has done it. Afterwards, one-off tips at key moments.
+import { isTired } from './crews.ts';
 import type { World } from './types.ts';
 
 export interface Step {
@@ -49,6 +50,8 @@ export const TIPS: Record<string, { title: string; text: string }> = {
   debt: { title: 'Caisse dans le rouge', text: 'L\'entretien horaire dépasse vos recettes. Revendez un véhicule inutile ou enchaînez les interventions avant d\'acheter.' },
   level: { title: 'Nouveau niveau', text: 'Un nouveau véhicule est disponible. Achetez-le dans un bâtiment : ses interventions n\'arrivent qu\'une fois qu\'il est dans votre flotte.' },
   contracts: { title: 'Contrats du jour', text: 'Trois objectifs par jour (bouton drapeau en haut). Remplissez-les pour des primes et une série qui augmente vos gains.' },
+  fatigue: { title: 'Équipage fatigué', text: 'Un équipage enchaîne les interventions : au-delà de 70 % de fatigue, il roule et travaille moins vite. Ouvrez sa fiche dans Flotte et mettez-le au repos quand le calme revient.' },
+  breakdown: { title: 'Véhicule en panne', text: 'Plus un véhicule roule, plus il s\'use et risque la panne. Une révision depuis sa fiche coûte moins cher qu\'une réparation.' },
   coverage: { title: 'Couverture', text: 'Le bouton calques colore les rues selon le temps d\'arrivée depuis vos bases. Placez les suivantes là où c\'est rouge.' },
 };
 
@@ -64,6 +67,8 @@ export function updateTutorial(w: World) {
   want('debt', w.money < 0);
   want('level', w.level >= 2);
   want('coverage', w.buildings.length >= 1 && w.level >= 3);
+  want('fatigue', w.units.some(isTired));
+  want('breakdown', w.units.some((u) => u.status === 'atelier') || w.units.some((u) => u.wear > 60));
 }
 
 export function dismissTip(w: World) {

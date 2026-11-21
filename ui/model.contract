@@ -86,6 +86,13 @@ shape UnitRow
   missions: number
   canSell: bool
   resale: string
+  fatigue: number
+  wear: number
+  tired: bool
+  canRest: bool
+  canService: bool
+  servicePrice: string
+  waitText: string
 
 shape BuildingRow
   id: string
@@ -253,3 +260,4 @@ shape Option
   suggested: bool
   needed: bool
   returning: bool
+  tired: bool

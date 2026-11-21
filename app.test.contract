@@ -66,6 +66,23 @@ test "a call is qualified, dispatched and paid"
   clock data
   expect state snap.stats.saved == 1
   expect state snap.money >= 30001
+  // Back at base, the VSAV has worn a little: a preventive service sends it to the workshop.
+  clock +30000
+  clock data
+  expect state snap.units.0 .status == "dispo"
+  tap "gone-close"
+  clock data
+  tap "drawer-handle"
+  clock data
+  tap "tab-flotte"
+  clock data
+  tap "unit-u2"
+  clock data
+  expect tree has "unit-condition"
+  tap "unit-service"
+  clock data
+  clock +300
+  expect state snap.units.0 .statusCode == 8
 
 test "the career survives a reload"
   tap "city-demo"

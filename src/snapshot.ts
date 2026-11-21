@@ -1,5 +1,6 @@
 // The view model: turns the world into the shapes ui/model.contract declares.
 import type { Result } from '../app.contract.d.ts';
+import { CREW, isTired, servicePrice } from '../sim/crews.ts';
 import { bulletin, dateText, eventHours, shiftHour, today } from '../sim/weather.ts';
 import { BUILDING_ORDER, BUILDINGS, KIND_OF_POI } from '../sim/catalog/buildings.ts';
 import { FAMILY_LABEL } from '../sim/catalog/calls.ts';
@@ -121,6 +122,10 @@ function unitRow(w: World, u: World['units'][number]): Row<'units'> {
     callTitle: w.calls.find((c) => c.id === u.callId)?.kind.title ?? '',
     eta: moving ? minutesText(etaOf(w, u)) : '',
     missions: u.missions, canSell: u.status === 'dispo', resale: euros(UNITS[u.type].price / 2),
+    fatigue: Math.round(u.fatigue), wear: Math.round(u.wear), tired: isTired(u),
+    canRest: u.status === 'dispo' && u.fatigue > CREW.backAt, canService: u.status === 'dispo' && u.wear > 0,
+    servicePrice: euros(servicePrice(w, u)),
+    waitText: u.status === 'atelier' ? `encore ${minutesText(u.wait)}` : u.status === 'repos' ? `reprise à ${CREW.backAt} % de fatigue` : '',
   };
 }
 

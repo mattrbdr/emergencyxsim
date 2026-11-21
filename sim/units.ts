@@ -2,6 +2,7 @@
 // on scene, carrying victims to hospital, going home.
 import { RULES } from './catalog/rules.ts';
 import { UNITS, type UnitDef } from './catalog/units.ts';
+import { checkBreakdown, pace, wearOut } from './crews.ts';
 import { earn } from './economy.ts';
 import { euros, say } from './log.ts';
 import { edgeBetween, edgeSpeed, pathTo, type Tree } from './routing.ts';
@@ -28,7 +29,7 @@ export function routeTo(u: Unit, tree: Tree) {
 export function etaFrom(u: Unit, tree: Tree, x: number, y: number): number {
   const def = UNITS[u.type];
   if (def.flySpeed) return Math.hypot(u.x - x, u.y - y) / def.flySpeed + 60; // take-off
-  return tree.time[startNode(u)] / def.speed + (u.along > 0 ? 10 : 0);
+  return tree.time[startNode(u)] / (def.speed * pace(u)) + (u.along > 0 ? 10 : 0);
 }
 
 /** Seconds to finish the current trip. */
@@ -52,6 +53,12 @@ export function sendTo(u: Unit, tree: Tree, x: number, y: number) {
 }
 
 export function moveUnit(w: World, u: Unit, dt: number) {
+  const x0 = u.x, y0 = u.y;
+  step(w, u, dt);
+  if (u.x !== x0 || u.y !== y0) wearOut(u, Math.hypot(u.x - x0, u.y - y0));
+}
+
+function step(w: World, u: Unit, dt: number) {
   if (u.status === 'hopital') {
     u.wait -= dt;
     if (u.wait <= 0) goHome(w, u);
@@ -80,7 +87,7 @@ export function moveUnit(w: World, u: Unit, dt: number) {
     const ei = edgeBetween(w.city, u.path[0], u.path[1]);
     if (ei < 0) { u.path.shift(); u.along = 0; continue; }
     const e = w.city.edges[ei];
-    const v = (edgeSpeed(e.cls) * def.speed) / jam(w, def, ei);
+    const v = (edgeSpeed(e.cls) * def.speed * pace(u)) / jam(w, def, ei);
     const left = e.len - u.along;
     if (budget * v >= left) {
       budget -= left / v;
@@ -132,6 +139,7 @@ export function arrive(w: World, u: Unit) {
   } else if (u.status === 'retour') {
     u.status = 'dispo';
     u.callId = '';
+    checkBreakdown(w, u);
   }
 }
 
@@ -147,6 +155,7 @@ export function goHome(w: World, u: Unit) {
   if (startNode(u) === u.home && u.along === 0) {
     u.status = 'dispo';
     u.path = [u.home];
+    checkBreakdown(w, u);
     return;
   }
   routeTo(u, treeFromStation(w, u.home));
