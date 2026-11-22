@@ -10,7 +10,7 @@ use BuildingSheet from "./build.contract"
 
 fn gauge(v: number): string = v > 90 ? "#f2555a" : v > 70 ? "#f0a531" : "#4b5668"
 fn keep(u: UnitRow, f: string): bool = f == "tous" ? true : f == "dispo" ? u.status == "dispo" : f == "fatigues" ? u.tired : u.status == "atelier" or u.status == "repos"
-fn filterLabel(f: string): string = f == "tous" ? "Tous" : f == "dispo" ? "Disponibles" : f == "fatigues" ? "Fatigués" : "Repos et atelier"
+fn filterLabel(f: string): string = f == "tous" ? "Tous" : f == "dispo" ? "Dispo" : f == "fatigues" ? "Fatigués" : "Indispo"
 
 component FleetView
   props
@@ -35,46 +35,50 @@ component FleetView
   action seeOnMap
     showOnMap(selId)
   view
-    row gap=20 align-items="flex-start" max-width="72rem" width="100%" margin="0 auto" height="100%" testId="fleet-view"
+    row gap=20 align-items="stretch" max-width="72rem" width="100%" margin="0 auto" height="100%" testId="fleet-view"
       if (wide or sel == "") and not pushed
-        column flex=(wide ? "1 1 0" : 1) min-width=0 gap=14
-          column gap=2
-            text "FLOTTE ET BASES" class=Caps
-            text plural(units.length, "véhicule", "véhicules") font-size="1.15rem" font-weight=600 role="heading" aria-level=2
-          row gap=8 flex-wrap="wrap"
-            Count(label="Disponibles", n=units.filter(u => u.status == "dispo").length, color="#3fb950")
-            Count(label="En intervention", n=units.filter(u => u.status == "route" or u.status == "surplace" or u.status == "transport" or u.status == "hopital").length, color="#f0a531")
-            Count(label="Repos", n=units.filter(u => u.status == "repos").length, color="#58a6ff")
-            Count(label="Atelier", n=units.filter(u => u.status == "atelier").length, color="#808b9c")
-          text `Entretien total ${upkeep}` class=Mono font-size="0.72rem" color="#9aa4b2"
-          row role="radiogroup" aria-label="Filtrer les véhicules" align-self="stretch"
-            for f in ["tous", "dispo", "fatigues", "repos"] key=f
-              button role="radio" aria-checked=(filter == f) press=setFilter(f) testId=`fleet-${f}`
-                text filterLabel(f)
+        // A native grouped list (UIKit's on iOS): the totals, then one section per station.
+        list id="fleet" appearance="auto" listStyle="inset-grouped" flex=(wide ? "1 1 0" : 1) min-width=0 min-height=0
+          section background-color="transparent"
+            column gap=10
+              text plural(units.length, "véhicule", "véhicules") font-size="1.15rem" font-weight=600 role="heading" aria-level=2
+              row gap=8 flex-wrap="wrap"
+                Count(label="Disponibles", n=units.filter(u => u.status == "dispo").length, color="#3fb950")
+                Count(label="En intervention", n=units.filter(u => u.status == "route" or u.status == "surplace" or u.status == "transport" or u.status == "hopital").length, color="#f0a531")
+                Count(label="Repos", n=units.filter(u => u.status == "repos").length, color="#58a6ff")
+                Count(label="Atelier", n=units.filter(u => u.status == "atelier").length, color="#808b9c")
+              text (upkeep.startsWith("Entretien") ? upkeep : `Entretien total ${upkeep}`) class=Mono font-size="0.72rem" color="#9aa4b2"
+              row role="radiogroup" aria-label="Filtrer les véhicules" align-self="stretch"
+                for f in ["tous", "dispo", "fatigues", "repos"] key=f
+                  button role="radio" aria-checked=(filter == f) press=setFilter(f) testId=`fleet-${f}`
+                    text filterLabel(f)
           if buildings.length == 0
-            Empty(icon="build", text="Aucune base. Construisez la première caserne depuis la régulation.")
+            section background-color="transparent"
+              Empty(icon="build", text="Aucune base. Construisez la première caserne depuis la régulation.")
           for b in buildings key=b.id
-            column class=Row padding=0 border-left-width=3 border-left-style="solid" border-left-color=kindColor(b.kind) background-color=(sel == `b-${b.id}` ? "#1a212b" : "#11151b")
-              button press=pick(`b-${b.id}`) appearance="none" display="flex" align-items="center" gap=10 padding="10px 12px" text-align="left" testId=`base-${b.id}`
-                Icon(name=b.kind, size=18, color=kindColor(b.kind))
+            section
+              header
+                text b.label
+              row press=pick(`b-${b.id}`) role="button" gap=10 align-items="center" background-color=(sel == `b-${b.id}` ? "#1a212b" : "transparent") testId=`base-${b.id}`
+                Icon(name=b.kind, size=20, color=kindColor(b.kind))
                 column flex=1 min-width=0 gap=4
-                  text b.name font-weight=600 font-size="0.88rem" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+                  text b.name font-weight=600 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
                   row gap=10 align-items="center" flex-wrap="wrap" row-gap=4
                     view width="4rem"
                       Meter(fraction=(b.slots > 0 ? b.used / b.slots : 0), color=kindColor(b.kind))
-                    text `${b.used}/${b.slots} places` class=Mono font-size="0.66rem" color="#9aa4b2" white-space="nowrap"
-                    text `améliorations ${b.upgradesText}` class=Mono font-size="0.66rem" color="#808b9c" white-space="nowrap"
-                text b.upkeep class=Mono font-size="0.68rem" color="#9aa4b2" white-space="nowrap" align-self="flex-start"
+                    text `${b.used}/${b.slots} places` class=Mono font-size="0.68rem" color="#9aa4b2" white-space="nowrap"
+                    text `améliorations ${b.upgradesText}` class=Mono font-size="0.68rem" color="#808b9c" white-space="nowrap"
+                text b.upkeep class=Mono font-size="0.7rem" color="#9aa4b2" white-space="nowrap"
               for u in units.filter(x => x.building == b.id and keep(x, filter)) key=u.id
-                row press=pick(`u-${u.id}`) role="button" aria-label=`${u.name}, ${u.statusLabel}, fatigue ${u.fatigue} %` gap=8 align-items="center" padding="7px 12px" border-top="1px solid #1a2029" background-color=(sel == `u-${u.id}` ? "#1a212b" : "transparent") testId=`fleet-unit-${u.id}`
-                  text u.name class=Mono font-size="0.78rem" font-weight=600 width="4.8rem" color=serviceColor(u.service)
+                row press=pick(`u-${u.id}`) role="button" aria-label=`${u.name}, ${u.statusLabel}, fatigue ${u.fatigue} %` gap=8 align-items="center" background-color=(sel == `u-${u.id}` ? "#1a212b" : "transparent") testId=`fleet-unit-${u.id}`
+                  text u.name class=Mono font-size="0.82rem" font-weight=600 width="4.8rem" color=serviceColor(u.service)
                   StatusCode(code=u.statusCode, label=u.statusLabel)
                   view flex=1
                   view width="3rem" aria-hidden=true
                     Meter(fraction=u.fatigue / 100, color=gauge(u.fatigue))
-                  text `${u.fatigue} %` class=Mono font-size="0.64rem" width="2.4rem" text-align="right" color="#808b9c"
+                  text `${u.fatigue} %` class=Mono font-size="0.66rem" width="2.4rem" text-align="right" color="#808b9c"
       if sel != ""
-        column flex=(wide ? "0 0 26rem" : 1) min-width=0 gap=10 padding=(wide ? 16 : 0) background-color=(wide ? "#0e1217" : "transparent") border=(wide ? "1px solid #252c36" : "none") border-radius=4 testId="fleet-detail"
+        scroll flex=(wide ? "0 0 26rem" : 1) min-width=0 min-height=0 padding=(wide ? 16 : 0) background-color=(wide ? "#0e1217" : "transparent") border=(wide ? "1px solid #252c36" : "none") border-radius=4 testId="fleet-detail"
           if not wide and not pushed
             button press=back appearance="none" align-self="flex-start" display="flex" align-items="center" gap=6 padding="4px 0" testId="fleet-back"
               Icon(name="chevron-left", size=14, color="#9aa4b2")
@@ -88,7 +92,7 @@ component FleetView
           if selKind == "unit"
             match first(units.filter(u => u.id == selId))
               case some(u)
-                UnitCard(u=u, dismiss=back, see=seeOnMap, posted=toMap)
+                UnitCard(u=u, bar=pushed, dismiss=back, see=seeOnMap, posted=toMap)
               case none
                 text "Ce véhicule n'est plus en service." color="#9aa4b2"
       else if wide

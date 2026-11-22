@@ -8,6 +8,7 @@ fn contractColor(state: string): string = state == "done" ? "#3fb950" : state ==
 
 component ContractsPanel
   props
+    bar: bool
     contracts: ContractRow[]
     streak: number
     day: number
@@ -19,9 +20,11 @@ component ContractsPanel
       row align-items="center"
         column flex=1 gap=2
           text `CONTRATS · JOUR ${day} · ${date.toUpperCase()}` class=Caps
-          text "Objectifs du jour" font-size="1.15rem" font-weight=600 role="heading" aria-level=2
-        button press=close aria-label="Fermer" class=Quiet testId="contracts-close"
-          Icon(name="close", size=16, color="#9aa4b2")
+          if not bar
+            text "Objectifs du jour" font-size="1.15rem" font-weight=600 role="heading" aria-level=2
+        if not bar
+          button press=close aria-label="Fermer" class=Quiet testId="contracts-close"
+            Icon(name="close", size=16, color="#9aa4b2")
       row gap=8 align-items="flex-start" padding="8px 10px" class=Row testId="bulletin"
         Icon(name="calls", size=16, color="#9aa4b2")
         text bulletin font-size="0.82rem" color="#c9d1d9" line-height=1.45 flex=1

@@ -8,6 +8,7 @@ use serviceColor, kindColor from "./palette.contract"
 
 component BuildMenu
   props
+    bar: bool
     options: BuildOption[]
     first: bool
     place: action
@@ -15,9 +16,11 @@ component BuildMenu
   view
     column gap=12 testId="build-menu"
       row align-items="center"
-        text "Construire" font-size="1.15rem" font-weight=600 flex=1 role="heading" aria-level=2
-        button press=close aria-label="Fermer" class=Quiet testId="build-close"
-          Icon(name="close", size=16, color="#9aa4b2")
+        if not bar
+          text "Construire" font-size="1.15rem" font-weight=600 flex=1 role="heading" aria-level=2
+        if not bar
+          button press=close aria-label="Fermer" class=Quiet testId="build-close"
+            Icon(name="close", size=16, color="#9aa4b2")
       text (first ? "Votre première caserne est offerte et arrive avec un VSAV. Posez-la sur une route, ou touchez un site réel (carré pointillé) pour le reprendre." : "Touchez ensuite une route de la carte pour construire, ou un site réel (carré pointillé) pour le racheter moins cher.") font-size="0.85rem" color="#9aa4b2" line-height=1.45
       for o in options key=o.kind
         button press=place(o.kind) disabled=(not o.open) class=Secondary justify-content="flex-start" padding="12px" opacity=(o.open ? 1 : 0.5) border-left-width=3 border-left-style="solid" border-left-color=(o.open ? kindColor(o.kind) : "#30394a") testId=`build-${o.kind}`
@@ -131,6 +134,7 @@ component BuildingSheet
 
 component SiteSheet
   props
+    bar: bool
     s: SiteRow
     dismiss: action
   mutation bought as shape Ack queue
@@ -144,9 +148,11 @@ component SiteSheet
         Icon(name=(s.open ? s.kind : "lock"), size=24, color=(s.open ? kindColor(s.kind) : "#808b9c"))
         column flex=1 min-width=0 gap=2
           text `${s.label.toUpperCase()} · SITE RÉEL` class=Caps color=kindColor(s.kind)
-          text s.name font-size="1.15rem" font-weight=600 role="heading" aria-level=2
-        button press=dismiss aria-label="Fermer" class=Quiet testId="site-close"
-          Icon(name="close", size=16, color="#9aa4b2")
+          if not bar
+            text s.name font-size="1.15rem" font-weight=600 role="heading" aria-level=2
+        if not bar
+          button press=dismiss aria-label="Fermer" class=Quiet testId="site-close"
+            Icon(name="close", size=16, color="#9aa4b2")
       if s.open
         text "Bâtiment existant : moins cher que de construire." font-size="0.85rem" color="#9aa4b2" line-height=1.45
         button press=buy class=Primary testId="buy-site"
@@ -158,6 +164,7 @@ component SiteSheet
 // On the map: a station at a glance, and the way to manage it.
 component BuildingBrief
   props
+    bar: bool
     b: BuildingRow
     close: action
     manage: action
@@ -167,9 +174,11 @@ component BuildingBrief
         Icon(name=b.kind, size=22, color=kindColor(b.kind))
         column flex=1 min-width=0 gap=2
           text b.label.toUpperCase() class=Caps color=kindColor(b.kind)
-          text b.name font-size="1.05rem" font-weight=600 role="heading" aria-level=2
-        button press=close aria-label="Fermer" class=Quiet testId="building-close"
-          Icon(name="close", size=16, color="#9aa4b2")
+          if not bar
+            text b.name font-size="1.05rem" font-weight=600 role="heading" aria-level=2
+        if not bar
+          button press=close aria-label="Fermer" class=Quiet testId="building-close"
+            Icon(name="close", size=16, color="#9aa4b2")
       row gap=8
         column flex=1 gap=4
           text "Garage" class=Caps

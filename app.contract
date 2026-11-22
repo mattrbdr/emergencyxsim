@@ -86,6 +86,9 @@ component EmergencySim
   derive navW = wide ? 56 : 0
   derive tabName = nav.tab
   derive nativeMap = not wide
+  // What the sheet's title bar says.
+  derive sheetTitle = panel == "build" ? "Construire" : panel == "contracts" ? "Contrats du jour" : panel == "call" ? (match first(snap.calls.filter(c => c.id == picked)) { case some(c) => c.title, case none => "Appel terminé" }) : panel == "unit" ? (match first(snap.units.filter(u => u.id == picked)) { case some(u) => u.name, case none => "Véhicule" }) : panel == "building" ? (match first(snap.buildings.filter(b => b.id == picked)) { case some(b) => b.name, case none => "Base" }) : panel == "site" ? (match first(snap.sites.filter(x => `${x.index}` == picked)) { case some(x) => x.name, case none => "Site" }) : ""
+  derive sheetSub = ""
   // Px per metre of the scroll's content: the whole town fits the screen at zoom 1.
   derive z0 = snap.cityW > 0 ? min(viewport.width / snap.cityW, max(200, viewport.height - 100) / snap.cityH) : 0
   derive insetLeft = wide ? 384 : 0
@@ -333,10 +336,17 @@ component EmergencySim
                 if e.name == "regulation" and ready
                   Regulation(snap=snap, wide=wide, nat=nativeMap, sl=sl, st=st, sz=sz, z0=z0, onScroll=onScroll, tapDown=tapDown, tapUp=tapUp, barHeight=barHeight, panel=panel, picked=picked, sideOpen=sideOpen, drawerOpen=drawerOpen, guiding=guiding, hint=hint, showToast=showToast, placingLabel=placingLabel, camSeq=camSeq, mapSel=mapSel, down=down, drag=drag, up=up, zoomWheel=zoomWheel, zoomIn=zoomIn, zoomOut=zoomOut, fit=fit, toggleOverlay=toggleOverlay, cancelPosting=cancelPosting, openBuild=openBuild, confirmPlacing=confirmPlacing, cancelPlacing=cancelPlacing, skipGuide=skipGuide, tipSeen=tipSeen, hideToast=hideToast, pickCall=pickCall, toggleDrawer=toggleDrawer, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding, toMap=toMap)
                 if e.name == "fiche" and ready
-                  scroll position="absolute" inset=0 padding="16px 16px 24px" testId="fiche"
-                    Detail(panel=panel, picked=picked, snap=snap, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding, toMap=toMap)
+                  // The sheet's title bar: UIKit's navigation bar inside the sheet on iOS.
+                  header display="flex" align-items="center" gap=8 padding="10px 16px"
+                    text sheetTitle role="heading" aria-level=2 font-weight=600 flex=1 min-width=0
+                    if sheetSub != ""
+                      text sheetSub
+                    button id="close" press=closePanel aria-label="Fermer" testId="fiche-close"
+                      image "symbol:close"
+                  column flex=1 min-height=0 testId="fiche"
+                    Detail(panel=panel, picked=picked, snap=snap, bar=true, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding, toMap=toMap)
                 if e.name == "flotte" and ready
-                  scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-flotte"
+                  column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 0) testId="view-flotte"
                     FleetView(buildings=snap.buildings, units=snap.units, seq=snap.seq, hint=snap.guide.hint, wide=wide, pushed=false, toMap=toMap, upkeep=snap.upkeepText, sel=(wide ? fleetSel : ""), pick=pickFleet, showOnMap=showOnMap)
                 if e.name == "detail"
                   column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0
@@ -345,13 +355,13 @@ component EmergencySim
                         Icon(name="chevron-left", size=14, color="#9aa4b2")
                         text "Flotte" font-size="0.84rem" color="#9aa4b2"
                       text (e.params.sel.startsWith("b-") ? "Base" : "Véhicule") role="heading" aria-level=2 font-size="0.9rem" font-weight=600
-                    scroll flex=1 min-height=0 padding=14
+                    column flex=1 min-height=0 padding="0px 14px"
                       FleetView(buildings=snap.buildings, units=snap.units, seq=snap.seq, hint=snap.guide.hint, wide=false, pushed=true, toMap=toMap, upkeep=snap.upkeepText, sel=e.params.sel, pick=pickFleet, showOnMap=showOnMap)
                 if e.name == "carriere" and ready
                   scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-carriere"
                     CareerView(level=snap.level, maxLevel=snap.maxLevel, xpText=snap.xpText, progress=snap.levelProgress, reputation=snap.reputation, coverage=snap.coverage, repEffect=snap.repEffect, difficulty=snap.difficulty, stats=snap.stats, city=snap.city, rank=snap.rank, rankIcon=snap.rankIcon, achievements=snap.achievements, achievementsDone=snap.achievementsDone, wide=wide, settings=snap.settings, setSetting=setSetting, reset=resetCareer)
                 if e.name == "journal" and ready
-                  scroll position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 14) testId="view-journal"
+                  column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0 padding=(wide ? 24 : 0) testId="view-journal"
                     JournalView(seq=snap.seq, date=snap.date, bulletin=snap.weather.bulletin, weatherIcon=snap.weather.icon)
       // The tabs: a rail drawn by the game on a wide screen; the platform's tab bar on a phone
       // (UIKit's in the iOS app).
@@ -485,13 +495,13 @@ component Regulation
         // Left: the calls.
         column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 bottom=0 width="24rem" background-color="#0e1217" border-right="1px solid #252c36" testId="rail"
           CallsHeader(calls=snap.calls.length, fresh=snap.newCalls)
-          scroll flex=1 min-height=0 padding=12
+          column flex=1 min-height=0
             CallQueue(calls=snap.calls, closed=snap.closed, selected=(panel == "call" ? picked : ""), pick=pickCall, firstBuilding=snap.firstBuilding, hint=snap.guide.hint)
         // Right: the one thing open.
         if sideOpen
           column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` right=0 bottom=0 width="26.5rem" background-color="#0e1217" border-left="1px solid #252c36" animation="slide 220ms cubic-bezier(0.2, 0.8, 0.2, 1)" testId="side"
-            scroll flex=1 min-height=0 padding=16
-              Detail(panel=panel, picked=picked, snap=snap, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding, toMap=toMap)
+            column flex=1 min-height=0 padding="12px 0px 0px"
+              Detail(panel=panel, picked=picked, snap=snap, bar=false, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding, toMap=toMap)
       else
         // Phone: one drawer for the calls and the thing open.
         column position="absolute" left=0 right=0 bottom=0 max-height=(drawerOpen ? "55%" : "auto") background-color="#0e1217" border-top="1px solid #30394a" testId="drawer"
@@ -499,7 +509,7 @@ component Regulation
             view width=36 height=4 border-radius=2 background-color="#4b5668"
           CallsHeader(calls=snap.calls.length, fresh=snap.newCalls)
           if drawerOpen
-            scroll flex=1 min-height=0 padding="8px 12px 12px"
+            column flex=1 min-height=0 height="40vh"
               CallQueue(calls=snap.calls, closed=snap.closed, selected=(panel == "call" ? picked : ""), pick=pickCall, firstBuilding=snap.firstBuilding, hint=snap.guide.hint)
 
 component CallsHeader
@@ -519,6 +529,7 @@ component Detail
     panel: string
     picked: string
     snap: Snap
+    bar: bool
     closePanel: action
     pickUnit: action
     focusUnit: action
@@ -526,35 +537,37 @@ component Detail
     manageBuilding: action
     toMap: action
   view
-    column
+    column flex=1 min-height=0
       if panel == "call"
         match first(snap.calls.filter(c => c.id == picked))
           case some(c)
-            CallSheet(c=c, seq=snap.seq, close=closePanel, pickUnit=pickUnit, hint=snap.guide.hint)
+            CallSheet(c=c, seq=snap.seq, close=closePanel, pickUnit=pickUnit, hint=snap.guide.hint, bar=bar)
           case none
             CallGone(close=closePanel)
-      if panel == "unit"
-        match first(snap.units.filter(u => u.id == picked))
-          case some(u)
-            UnitCard(u=u, dismiss=closePanel, see=focusUnit, posted=toMap)
-          case none
-            CallGone(close=closePanel)
-      if panel == "building"
-        match first(snap.buildings.filter(b => b.id == picked))
-          case some(b)
-            BuildingBrief(b=b, close=closePanel, manage=manageBuilding)
-          case none
-            CallGone(close=closePanel)
-      if panel == "site"
-        match first(snap.sites.filter(s => `${s.index}` == picked))
-          case some(s)
-            SiteSheet(s=s, dismiss=closePanel)
-          case none
-            CallGone(close=closePanel)
-      if panel == "build"
-        BuildMenu(options=snap.build, first=snap.firstBuilding, place=place, close=closePanel)
-      if panel == "contracts"
-        ContractsPanel(contracts=snap.contracts, streak=snap.streak, day=snap.day, date=snap.date, bulletin=snap.weather.bulletin, close=closePanel)
+      if panel != "call"
+        scroll flex=1 min-height=0 padding="0px 16px 24px"
+          if panel == "unit"
+            match first(snap.units.filter(u => u.id == picked))
+              case some(u)
+                UnitCard(u=u, bar=bar, dismiss=closePanel, see=focusUnit, posted=toMap)
+              case none
+                CallGone(close=closePanel)
+          if panel == "building"
+            match first(snap.buildings.filter(b => b.id == picked))
+              case some(b)
+                BuildingBrief(b=b, bar=bar, close=closePanel, manage=manageBuilding)
+              case none
+                CallGone(close=closePanel)
+          if panel == "site"
+            match first(snap.sites.filter(s => `${s.index}` == picked))
+              case some(s)
+                SiteSheet(s=s, bar=bar, dismiss=closePanel)
+              case none
+                CallGone(close=closePanel)
+          if panel == "build"
+            BuildMenu(options=snap.build, first=snap.firstBuilding, bar=bar, place=place, close=closePanel)
+          if panel == "contracts"
+            ContractsPanel(bar=bar, contracts=snap.contracts, streak=snap.streak, day=snap.day, date=snap.date, bulletin=snap.weather.bulletin, close=closePanel)
 
 // What a closed panel's target leaves behind (a call that ended, a vehicle sold).
 component CallGone

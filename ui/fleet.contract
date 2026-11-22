@@ -49,6 +49,7 @@ component Fleet
 
 component UnitCard
   props
+    bar: bool
     u: UnitRow
     dismiss: action
     see: action
@@ -75,8 +76,9 @@ component UnitCard
         column flex=1 min-width=0
           text u.name class=Mono font-weight=600
           text u.long font-size="0.75rem" color="#9aa4b2"
-        button press=dismiss aria-label="Fermer" class=Quiet testId="unit-close"
-          Icon(name="close", size=16, color="#9aa4b2")
+        if not bar
+          button press=dismiss aria-label="Fermer" class=Quiet testId="unit-close"
+            Icon(name="close", size=16, color="#9aa4b2")
       row gap=8 align-items="center" flex-wrap="wrap"
         StatusCode(code=u.statusCode, label=u.statusLabel)
         if u.eta != ""

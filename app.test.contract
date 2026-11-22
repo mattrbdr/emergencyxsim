@@ -47,7 +47,7 @@ test "a call is qualified, dispatched and paid"
   tap "placing-confirm"
   clock data
   clock +300
-  tap "building-close"
+  tap "fiche-close"
   clock +5000
   clock data
   expect state snap.calls.length == 1
@@ -140,7 +140,7 @@ test "the views: fleet, career progression and the log, with time still running"
   tap "placing-confirm"
   clock data
   clock +300
-  tap "building-close"
+  tap "fiche-close"
   clock data
   clock +300
   tap "nav-journal"
@@ -186,7 +186,7 @@ test "a vehicle is stationed at a crossing from its card"
   tap "placing-confirm"
   clock data
   clock +300
-  tap "building-close"
+  tap "fiche-close"
   clock data
   clock +300
   tap "nav-flotte"
@@ -209,7 +209,7 @@ test "fifteen taps on the balance double it; the map pans"
   tap "city-demo"
   clock data
   clock +500
-  tap "build-close"
+  tap "fiche-close"
   clock data
   clock +300
   expect state snap.money == 30000

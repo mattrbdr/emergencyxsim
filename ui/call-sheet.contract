@@ -13,6 +13,7 @@ component CallSheet
     close: action
     pickUnit: action
     hint: string
+    bar: bool
   state picks: string[] = []
   state showAll = false
   resource opts = dispatchOptions(c.id, seq) as shape Option[] else empty() transient
@@ -44,114 +45,122 @@ component CallSheet
     haptic("selection")
 
   view
-    column gap=16 testId="sheet"
-      // Header.
-      row align-items="flex-start" gap=10
-        column flex=1 min-width=0 gap=6
-          row gap=8 align-items="center"
-            text `P${c.priority}` class=Mono font-size="0.72rem" font-weight=600 padding="2px 7px" border-radius=3 background-color=priorityColor(c.priority) color="#0b0e12"
-            Icon(name=familyIcon(c.family), size=15, color=familyColor(c.family))
-            text c.familyLabel.toUpperCase() class=Caps color=familyColor(c.family)
-          if c.major != ""
-            text c.major class=Mono font-size="0.66rem" font-weight=600 letter-spacing="0.06em" color="#f2555a" testId="sheet-major"
-          text c.title font-size="1.3rem" font-weight=600 line-height=1.2 role="heading" aria-level=2 testId="sheet-title"
-          text c.address class=Mono font-size="0.78rem" color="#9aa4b2"
-        button press=close aria-label="Fermer la fiche" class=Quiet testId="sheet-close"
-          Icon(name="close", size=18, color="#9aa4b2")
-
+    // A grouped list, one section per concern: UIKit's inset-grouped cells on iOS.
+    list id=`call-${c.id}` appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 testId="sheet"
+      // The sheet's own title bar shows title and address on a phone; a wide panel shows them here.
+      section background-color="transparent"
+        row gap=10 align-items="flex-start"
+          column flex=1 min-width=0 gap=6
+            row gap=8 align-items="center"
+              text `P${c.priority}` class=Mono font-size="0.72rem" font-weight=600 padding="2px 7px" border-radius=3 background-color=priorityColor(c.priority) color="#0b0e12"
+              Icon(name=familyIcon(c.family), size=15, color=familyColor(c.family))
+              text c.familyLabel.toUpperCase() class=Caps color=familyColor(c.family)
+            if c.major != ""
+              text c.major class=Mono font-size="0.66rem" font-weight=600 letter-spacing="0.06em" color="#f2555a" testId="sheet-major"
+            if not bar
+              text c.title font-size="1.3rem" font-weight=600 line-height=1.2 role="heading" aria-level=2 testId="sheet-title"
+            text c.address class=Mono font-size="0.8rem" color="#c9d1d9"
+          if not bar
+            button press=close aria-label="Fermer la fiche" class=Quiet testId="sheet-close"
+              Icon(name="close", size=18, color="#9aa4b2")
       if c.decision.pending
-        DecisionCard(d=c.decision, choose=choose)
-
-      row gap=8 align-items="center" padding="8px 0" border-top="1px solid #252c36" border-bottom="1px solid #252c36"
-        text c.stateLabel.toUpperCase() class=Mono font-size="0.7rem" font-weight=600 letter-spacing="0.04em" color=callStateColor(c.state)
-        view flex=1
-        Icon(name="clock", size=14, color="#9aa4b2")
-        text c.timeText class=Mono font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#e6edf3")
+        section background-color="transparent"
+          DecisionCard(d=c.decision, choose=choose)
+      section
+        row gap=8 align-items="center"
+          text c.stateLabel class=Mono font-size="0.78rem" font-weight=600 color=callStateColor(c.state) flex=1
+          Icon(name="clock", size=14, color="#9aa4b2")
+          text c.timeText class=Mono font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#e6edf3")
         if c.reward != ""
-          Icon(name="money", size=14, color=money())
-          text c.reward class=Mono font-size="0.82rem" color=money()
-      if c.risk != ""
-        row gap=6 align-items="center"
-          Icon(name="alert", size=13, color="#f0a531")
-          text c.risk class=Mono font-size="0.75rem" color="#f0a531"
-
-      // The caller, as a transcript line.
-      column gap=6 padding="12px 14px" background-color="#0b0e12" border-left-width=2 border-left-style="solid" border-left-color=priorityColor(c.priority)
-        row gap=6 align-items="center"
-          Icon(name="phone", size=12, color="#808b9c")
-          text `APPELANT · ${c.at}` class=Caps
-        text `« ${c.caller} »` font-size="0.95rem" line-height=1.5 testId="caller"
-
+          row gap=8 align-items="center"
+            text "Prime" flex=1
+            text c.reward class=Mono color=money()
+        if c.risk != ""
+          row gap=8 align-items="center"
+            Icon(name="alert", size=14, color="#f0a531")
+            text c.risk class=Mono font-size="0.8rem" color="#f0a531"
+      section
+        header
+          text `Appelant · ${c.at}`
+        row padding-top=10 padding-bottom=10
+          text `« ${c.caller} »` font-size="0.95rem" line-height=1.5 flex=1 testId="caller"
       if not c.qualified
-        column gap=8 padding=(hint == "call" ? 8 : 0) box-shadow=(hint == "call" ? "0 0 0 2px #e6edf3" : "none") border-radius=4 testId="qualify"
-          Heading(text="Qualifier l'appel", detail="")
-          column gap=6
-            for f in ["sap", "feu", "route", "police", "technique"] key=f
-              button press=qualify(f) class=Secondary justify-content="flex-start" border-left-width=3 border-left-style="solid" border-left-color=familyColor(f) testId=`q-${f}`
-                Icon(name=familyIcon(f), size=16, color=familyColor(f))
-                text (f == "sap" ? "Secours à personne" : f == "feu" ? "Incendie" : f == "route" ? "Accident" : f == "police" ? "Police" : "Opération diverse") font-weight=500
+        section testId="qualify"
+          header
+            text (hint == "call" ? "Qualifier l'appel  ←" : "Qualifier l'appel") color=(hint == "call" ? "#e6edf3" : "#9aa4b2")
+          for f in ["sap", "feu", "route", "police", "technique"] key=f
+            row press=qualify(f) role="button" gap=12 align-items="center" testId=`q-${f}`
+              Icon(name=familyIcon(f), size=18, color=familyColor(f))
+              text (f == "sap" ? "Secours à personne" : f == "feu" ? "Incendie" : f == "route" ? "Accident" : f == "police" ? "Police" : "Opération diverse") flex=1
       else
-        column gap=8
-          Heading(text="Moyens nécessaires", detail="")
-          row gap=6 flex-wrap="wrap"
+        section
+          header
+            text "Moyens nécessaires"
+          row gap=6 flex-wrap="wrap" padding-top=8 padding-bottom=8
             for n, i in c.needs key=i
-              row gap=6 align-items="center" padding="5px 8px" border-radius=3 background-color="#171c24" border-width=1 border-style="solid" border-color=needColor(n.state) aria-label=`${n.label} : ${n.state == "surplace" ? "sur place" : n.state == "engage" ? "engagé" : "manquant"}`
+              row gap=6 align-items="center" padding="5px 8px" border-radius=6 background-color="#171c24" border-width=1 border-style="solid" border-color=needColor(n.state) aria-label=`${n.label} : ${n.state == "surplace" ? "sur place" : n.state == "engage" ? "engagé" : "manquant"}`
                 Icon(name=(n.state == "surplace" ? "check" : n.state == "engage" ? "flag" : "alert"), size=12, color=needColor(n.state))
                 text n.type class=Mono font-size="0.75rem" font-weight=600 color=needColor(n.state)
-
         if c.units.length > 0
-          column gap=4
-            Heading(text="Engagés", detail=`${c.units.length}`)
+          section
+            header
+              text `Engagés · ${c.units.length}`
             for u in c.units key=u.id
-              row gap=10 align-items="center" padding="7px 10px" border-bottom="1px solid #1f2630"
-                view width=6 height=6 background-color=serviceColor(u.service)
-                button press=pickUnit(u.id) appearance="none" flex=1 text-align="left"
-                  text u.name class=Mono font-size="0.82rem" font-weight=600
-                text (u.eta != "" ? `${u.status} · ${u.eta}` : u.status) class=Mono font-size="0.72rem" color="#9aa4b2"
-                if u.eta != ""
+              // A crew on its way: swipe the row to call it back (UIKit's swipe action).
+              if u.eta != ""
+                row press=pickUnit(u.id) delete=recall(u.id) gap=10 align-items="center"
+                  view width=8 height=8 border-radius=4 background-color=serviceColor(u.service)
+                  text u.name class=Mono font-weight=600 flex=1
+                  text `${u.status} · ${u.eta}` class=Mono font-size="0.75rem" color="#9aa4b2"
                   button press=recall(u.id) aria-label=`Désengager ${u.name}` class=Quiet padding=4 testId=`recall-${u.id}`
                     Icon(name="close", size=12, color="#808b9c")
-
+              else
+                row press=pickUnit(u.id) gap=10 align-items="center"
+                  view width=8 height=8 border-radius=4 background-color=serviceColor(u.service)
+                  text u.name class=Mono font-weight=600 flex=1
+                  text u.status class=Mono font-size="0.75rem" color="#9aa4b2"
+            footer
+              text "Faites glisser un véhicule en route pour le désengager."
+        if open and picks.isEmpty() and pre.length > 0
+          section testId="presets"
+            header
+              text "Départ"
+            for p in pre key=p.id
+              row press=sendPreset(p.units) role="button" gap=10 align-items="center" padding-top=10 padding-bottom=10 box-shadow=(hint == "engage" and p.id == "rapide" ? "inset 0 0 0 2px #e6edf3" : "none") testId=(p.id == "rapide" ? "engage" : `preset-${p.id}`)
+                Icon(name=(p.id == "rapide" ? "flag" : p.id == "couverture" ? "layers" : "reputation"), size=18, color=(p.id == "rapide" ? "#f2555a" : "#e6edf3"))
+                column flex=1 min-width=0 gap=2
+                  text p.label font-weight=600
+                  text p.names class=Mono font-size="0.72rem" color="#9aa4b2"
+                  text p.cost font-size="0.74rem" color=(p.costly ? "#f2555a" : "#808b9c")
+                text p.eta class=Mono font-weight=600
         if open
-          column gap=6 testId="dispatch"
-            row align-items="center" gap=8
-              Heading(text="Moyens disponibles", detail=`${plural(opts.length, "véhicule", "véhicules")}`)
+          section testId="dispatch"
+            header
+              text `Choisir à la main · ${plural(opts.length, "véhicule", "véhicules")}`
             if shown.length == 0
-              text (opts.length == 0 ? "Aucun véhicule libre. Achetez-en dans une caserne." : "Aucun véhicule du type demandé n'est libre.") font-size="0.85rem" color="#9aa4b2"
+              row
+                text (opts.length == 0 ? "Aucun véhicule libre. Achetez-en dans une caserne." : "Aucun véhicule du type demandé n'est libre.") font-size="0.85rem" color="#9aa4b2"
             for o in shown key=o.id
-              row press=toggle(o.id) role="checkbox" aria-checked=picks.includes(o.id) aria-label=`${o.name}, ${o.long}, arrivée ${o.eta}` gap=10 align-items="center" padding="7px 10px" border-radius=4 background-color=(picks.includes(o.id) ? "#1f2630" : "#171c24") border-width=1 border-style="solid" border-color=(picks.includes(o.id) ? "#e6edf3" : "#1f2630") opacity=(o.needed ? 1 : 0.6) testId=`opt-${o.id}`
-                view width=16 height=16 border-radius=2 border-width=1 border-style="solid" border-color=(picks.includes(o.id) ? "#e6edf3" : "#4b5668") background-color=(picks.includes(o.id) ? "#e6edf3" : "transparent") display="flex" align-items="center" justify-content="center" flex-shrink=0
-                  if picks.includes(o.id)
-                    Icon(name="check", size=12, color="#0b0e12")
+              row press=toggle(o.id) role="checkbox" aria-checked=picks.includes(o.id) aria-label=`${o.name}, ${o.long}, arrivée ${o.eta}` gap=10 align-items="center" opacity=(o.needed ? 1 : 0.6) testId=`opt-${o.id}`
                 CallSign(label=o.type, service=o.service, color=serviceColor(o.service))
                 column flex=1 min-width=0
                   row gap=6 align-items="center"
-                    text o.name class=Mono font-size="0.82rem" font-weight=600
+                    text o.name class=Mono font-size="0.84rem" font-weight=600
                     if o.suggested
                       text "RÉFLEXE" class=Caps font-size="0.58rem" color="#9aa4b2"
                     if o.tired
                       text "FATIGUÉ" class=Caps font-size="0.58rem" color="#f0a531"
                   text (o.returning ? `${o.station} · en retour` : o.station) font-size="0.72rem" color="#808b9c" white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
                 text o.eta class=Mono font-size="0.8rem" font-weight=600
+                Icon(name="check", size=16, color=(picks.includes(o.id) ? "#3fb950" : "transparent"))
             if opts.filter(o => not o.needed).length > 0
-              button press=toggleAll class=Quiet testId="toggle-all"
-                text (showAll ? "Masquer les autres véhicules" : `Voir tous les véhicules (${opts.length})`) font-size="0.8rem"
-            // Ready-made departures, or the vehicles picked by hand.
-            if picks.isEmpty()
-              column gap=6 testId="presets"
-                for p in pre key=p.id
-                  button press=sendPreset(p.units) class=(p.id == "rapide" ? Primary : Secondary) justify-content="flex-start" padding="9px 12px" box-shadow=(hint == "engage" and p.id == "rapide" ? "0 0 0 2px #e6edf3" : "none") testId=(p.id == "rapide" ? "engage" : `preset-${p.id}`)
-                    column align-items="flex-start" gap=3 flex=1 min-width=0
-                      row gap=8 align-items="center" width="100%"
-                        Icon(name=(p.id == "rapide" ? "flag" : p.id == "couverture" ? "layers" : "reputation"), size=15, color=(p.id == "rapide" ? "#0b0e12" : "#e6edf3"))
-                        text p.label font-weight=600 flex=1 text-align="left" color=(p.id == "rapide" ? "#0b0e12" : "#e6edf3")
-                        text p.eta class=Mono font-size="0.78rem" font-weight=600 color=(p.id == "rapide" ? "#0b0e12" : "#e6edf3")
-                      text p.names class=Mono font-size="0.7rem" color=(p.id == "rapide" ? "#30394a" : "#9aa4b2") text-align="left"
-                      text p.cost font-size="0.72rem" text-align="left" color=(p.costly ? (p.id == "rapide" ? "#b3261e" : "#f2555a") : (p.id == "rapide" ? "#30394a" : "#808b9c"))
-            else
-              button press=engage class=Primary box-shadow=(hint == "engage" ? "0 0 0 2px #e6edf3" : "none") testId="engage"
-                Icon(name="flag", size=16, color="#0b0e12")
-                text `Engager ${plural(picks.length, "véhicule", "véhicules")}` font-weight=600
+              row press=toggleAll role="button" testId="toggle-all"
+                text (showAll ? "Masquer les autres véhicules" : `Voir tous les véhicules (${opts.length})`) color="#58a6ff"
+          if not picks.isEmpty()
+            section background-color="transparent"
+              row justify-content="center"
+                button press=engage appearance="auto" buttonStyle="bordered-prominent" accent-color="#f2555a" flex=1 testId="engage"
+                  text `Engager ${plural(picks.length, "véhicule", "véhicules")}`
 
 // The crew chief's report: the situation changed, the room decides.
 component DecisionCard

@@ -17,20 +17,29 @@ component CallQueue
     firstBuilding: bool
     hint: string
   view
-    column role="tabpanel" id="panel-appels"
+    // A native list (UIKit's cells on iOS): open calls by priority, then the closed ones.
+    list id="calls" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 role="tabpanel" aria-label="Appels" testId="panel-appels"
       if calls.length == 0
-        Empty(icon="phone", text=(firstBuilding ? "Pas d'appel tant qu'aucune caserne n'est en service." : "Aucun appel en cours."))
-      for c, i in calls key=c.id
-        CallLine(c=c, active=(c.id == selected), pick=pick(c.id), hinted=(hint == "call" and i == 0), tid=(i == 0 ? "call-first" : `call-${c.id}`))
+        section background-color="transparent"
+          Empty(icon="phone", text=(firstBuilding ? "Pas d'appel tant qu'aucune caserne n'est en service." : "Aucun appel en cours."))
+      else
+        section
+          header
+            text `En cours · ${calls.length}`
+          for c, i in calls key=c.id
+            CallLine(c=c, active=(c.id == selected), pick=pick(c.id), hinted=(hint == "call" and i == 0), tid=(i == 0 ? "call-first" : `call-${c.id}`))
       if closed.length > 0
-        view height=14
-        Heading(text="Clôturés", detail=`${closed.length}`)
-        for c in closed key=c.id
-          row gap=8 align-items="baseline" padding="6px 4px" border-bottom="1px solid #1a2029"
-            text c.timeText class=Mono font-size="0.7rem" color="#808b9c" width="2.6rem"
-            text c.title font-size="0.8rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis" color="#c9d1d9"
-            text (c.reward != "" ? c.reward : c.stateLabel) class=Mono font-size="0.7rem" color=outcomeColor(c.outcome)
+        section
+          header
+            text `Clôturés · ${closed.length}`
+          for c in closed key=c.id
+            row gap=10 align-items="center"
+              text c.timeText class=Mono font-size="0.72rem" color="#808b9c" width="2.8rem"
+              text c.title font-size="0.84rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis" color="#c9d1d9"
+              text (c.reward != "" ? c.reward : c.stateLabel) class=Mono font-size="0.72rem" color=outcomeColor(c.outcome)
 
+// One call: a cell with its priority stripe, reason and time left, then state,
+// address and the means it needs.
 component CallLine
   props
     c: CallRow
@@ -39,20 +48,20 @@ component CallLine
     hinted: bool
     tid: string
   view
-    column press=pick role="button" aria-label=`Priorité ${c.priority}, ${c.title}, ${c.address}, ${c.stateLabel}, ${c.timeText}` gap=3 padding="8px 8px 8px 10px" border-left-width=3 border-left-style="solid" border-left-color=priorityColor(c.priority) border-bottom="1px solid #1a2029" background-color=(active ? "#1a212b" : "transparent") box-shadow=(hinted ? "0 0 0 2px #e6edf3" : "none") testId=tid
-      row gap=8 align-items="baseline"
-        text c.at class=Mono font-size="0.7rem" color="#808b9c" width="2.6rem"
-        text `P${c.priority}` class=Mono font-size="0.7rem" font-weight=600 color=priorityColor(c.priority) width="1.4rem"
-        text c.title font-weight=600 font-size="0.86rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
-        text c.timeText class=Mono font-size="0.74rem" font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#c9d1d9") testId=`time-${c.id}`
-      row gap=8 align-items="baseline"
-        view width="4.4rem" flex-shrink=0
-          text (c.major != "" ? "CRISE" : c.soon ? "DÉBORDE" : stateCode(c.state)) class=Mono font-size="0.6rem" font-weight=600 letter-spacing="0.04em" color=(c.major != "" or c.soon ? "#f2555a" : stateColor(c.state)) animation=(c.soon ? "soon-blink 900ms steps(2) infinite" : "none")
-        text c.address class=Mono font-size="0.7rem" color="#9aa4b2" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
-        if c.needs.length > 0
-          row gap=4 flex-shrink=0
-            for n, i in c.needs key=i
-              text n.type class=Mono font-size="0.62rem" font-weight=600 color=needColor(n.state)
+    row press=pick role="button" aria-label=`Priorité ${c.priority}, ${c.title}, ${c.address}, ${c.stateLabel}, ${c.timeText}` gap=10 align-items="stretch" padding-top=8 padding-bottom=8 background-color=(active ? "#1a212b" : "transparent") box-shadow=(hinted ? "inset 0 0 0 2px #e6edf3" : "none") testId=tid
+      view width=4 border-radius=2 background-color=priorityColor(c.priority) flex-shrink=0
+      column flex=1 min-width=0 gap=4
+        row gap=8 align-items="baseline"
+          text `P${c.priority}` class=Mono font-size="0.72rem" font-weight=600 color=priorityColor(c.priority)
+          text c.title font-weight=600 font-size="0.9rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+          text c.timeText class=Mono font-size="0.78rem" font-weight=600 color=(c.fraction < 0.3 and c.state != "traitement" ? "#f2555a" : "#c9d1d9") testId=`time-${c.id}`
+        row gap=8 align-items="baseline"
+          text (c.major != "" ? "CRISE" : c.soon ? "DÉBORDE" : stateCode(c.state)) class=Mono font-size="0.62rem" font-weight=600 letter-spacing="0.04em" flex-shrink=0 color=(c.major != "" or c.soon ? "#f2555a" : stateColor(c.state)) animation=(c.soon ? "soon-blink 900ms steps(2) infinite" : "none")
+          text c.address class=Mono font-size="0.72rem" color="#9aa4b2" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis"
+          if c.needs.length > 0
+            row gap=4 flex-shrink=0
+              for n, i in c.needs key=i
+                text n.type class=Mono font-size="0.64rem" font-weight=600 color=needColor(n.state)
 
 keyframes soon-blink
   from opacity=1

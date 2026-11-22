@@ -54,7 +54,7 @@ component TopBar
           if snap.weather.event != ""
             Icon(name=snap.weather.eventIcon, size=15, color="#f0a531")
         view flex=1
-        button press=tapMoney appearance="none" aria-label=`Solde ${snap.moneyText}` padding="4px 2px" min-height="2.75rem" display="flex" align-items="center" testId="money"
+        button press=tapMoney appearance="none" aria-label=`Solde ${snap.moneyText}` padding="2px" display="flex" align-items="center" testId="money"
           if wide
             Figure(icon="money", label=snap.upkeepText, value=snap.moneyText, color=(snap.money < 0 ? "#f2555a" : money()))
           else
