@@ -64,21 +64,30 @@ component EmergencySim
   state picked = ""
   state drawerOpen = true
   state camSeq = 0
+  // Phone: the native scroll over the map (offset and zoom) is the camera.
+  state sl = 0
+  state st = 0
+  state sz = 1
+  state downX = 0
+  state downY = 0
   state lastTick = 0
   state hiddenToast = 0
 
   derive ready = boot.ready or started
   derive wide = viewport.width >= 900
   derive mapSel = sideOpen ? `${panel}:${picked}` : ""
-  derive moveReply = match moved { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
-  derive tickReply = match ticked { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
-  derive camReply = match cammed { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
-  derive placedReply = match placed { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "") }
+  derive moveReply = match moved { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "", sl = -1, st = -1, sz = -1) }
+  derive tickReply = match ticked { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "", sl = -1, st = -1, sz = -1) }
+  derive camReply = match cammed { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "", sl = -1, st = -1, sz = -1) }
+  derive placedReply = match placed { case some(r) => r, case none => Ack(seq = 0, cam = 0, picked = "", sl = -1, st = -1, sz = -1) }
   // Something open: beside the map on a wide screen, in the sheet on a phone.
   derive sheetUp = top(nav).name == "fiche"
   derive sideOpen = wide ? panel != "" : sheetUp
   derive navW = wide ? 56 : 0
   derive tabName = nav.tab
+  derive nativeMap = not wide
+  // Px per metre of the scroll's content: the whole town fits the screen at zoom 1.
+  derive z0 = snap.cityW > 0 ? min(viewport.width / snap.cityW, max(200, viewport.height - 100) / snap.cityH) : 0
   derive insetLeft = wide ? 384 : 0
   derive insetRight = wide and sideOpen ? 424 : 0
   // Where the detail panel will sit once it opens.
@@ -292,6 +301,21 @@ component EmergencySim
       send cammed = camera("call", tickReply.picked.slice(7), insetLeft, insetRight, barHeight, insetBottom)
   action afterCam
     camSeq = camReply.cam
+    if nativeMap and camReply.sz > 0
+      sl = camReply.sl
+      st = camReply.st
+      sz = camReply.sz
+  action onScroll(left: number, top: number, e: ScrollEvent)
+    sl = left
+    st = top
+    sz = e.scrollZoom
+  action tapDown(e: PointerEvent)
+    downX = e.clientX
+    downY = e.clientY
+  // A tap (not the end of a pan or a pinch) picks what is under the finger.
+  action tapUp(e: PointerEvent)
+    if max(e.clientX - downX, downX - e.clientX) + max(e.clientY - downY, downY - e.clientY) < 12
+      send moved = gesture("tap", e.pointerId, e.clientX, e.clientY, performanceNow())
   action zoomIn
     send cammed = camera("in", "", 0, 0, 0, 0)
   action zoomOut
@@ -307,7 +331,7 @@ component EmergencySim
             for e in t.stack key=e.id
               column navigationKey=`${e.id}` navigationPresentation=(e.name == "fiche" ? "modal" : "") navigationDetent=(e.name == "fiche" ? "medium large" : "large") position="absolute" inset=0 overflow="hidden" background-color=(e.name == "fiche" ? "#0e1217" : "#0b0e12")
                 if e.name == "regulation" and ready
-                  Regulation(snap=snap, wide=wide, barHeight=barHeight, panel=panel, picked=picked, sideOpen=sideOpen, drawerOpen=drawerOpen, guiding=guiding, hint=hint, showToast=showToast, placingLabel=placingLabel, camSeq=camSeq, mapSel=mapSel, down=down, drag=drag, up=up, zoomWheel=zoomWheel, zoomIn=zoomIn, zoomOut=zoomOut, fit=fit, toggleOverlay=toggleOverlay, cancelPosting=cancelPosting, openBuild=openBuild, confirmPlacing=confirmPlacing, cancelPlacing=cancelPlacing, skipGuide=skipGuide, tipSeen=tipSeen, hideToast=hideToast, pickCall=pickCall, toggleDrawer=toggleDrawer, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding, toMap=toMap)
+                  Regulation(snap=snap, wide=wide, nat=nativeMap, sl=sl, st=st, sz=sz, z0=z0, onScroll=onScroll, tapDown=tapDown, tapUp=tapUp, barHeight=barHeight, panel=panel, picked=picked, sideOpen=sideOpen, drawerOpen=drawerOpen, guiding=guiding, hint=hint, showToast=showToast, placingLabel=placingLabel, camSeq=camSeq, mapSel=mapSel, down=down, drag=drag, up=up, zoomWheel=zoomWheel, zoomIn=zoomIn, zoomOut=zoomOut, fit=fit, toggleOverlay=toggleOverlay, cancelPosting=cancelPosting, openBuild=openBuild, confirmPlacing=confirmPlacing, cancelPlacing=cancelPlacing, skipGuide=skipGuide, tipSeen=tipSeen, hideToast=hideToast, pickCall=pickCall, toggleDrawer=toggleDrawer, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding, toMap=toMap)
                 if e.name == "fiche" and ready
                   scroll position="absolute" inset=0 padding="16px 16px 24px" testId="fiche"
                     Detail(panel=panel, picked=picked, snap=snap, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding, toMap=toMap)
@@ -376,6 +400,14 @@ component Regulation
   props
     snap: Snap
     wide: bool
+    nat: bool
+    sl: number
+    st: number
+    sz: number
+    z0: number
+    onScroll: action
+    tapDown: action
+    tapUp: action
     barHeight: number
     panel: string
     picked: string
@@ -412,8 +444,13 @@ component Regulation
     toMap: action
   view
     view position="absolute" inset=0
-      canvas surface=city(camSeq, snap.night) position="absolute" left=0 top=0 width="100%" height="100%" aria-hidden=true testId="map-city"
-      canvas surface=live(mapSel) position="absolute" left=0 top=0 width="100%" height="100%" touch-action="none" pointerdown=down pointermove=drag pointerup=up wheel=zoomWheel role="img" aria-label=`Carte de ${snap.city}` testId="map"
+      canvas surface=city(camSeq, snap.night, (nat ? sl : -1), st, sz, z0) position="absolute" left=0 top=0 width="100%" height="100%" aria-hidden=true testId="map-city"
+      canvas surface=live(mapSel, (nat ? sl : -1), st, sz, z0) position="absolute" left=0 top=0 width="100%" height="100%" touch-action="none" pointerdown=down pointermove=drag pointerup=up wheel=zoomWheel role="img" aria-label=`Carte de ${snap.city}` testId="map"
+      // Phone: an invisible zoomable scroll over the map, driven by the platform
+      // (UIScrollView on iOS): pinch, pan, momentum, bounce and double tap are native.
+      if nat and z0 > 0
+        scroll position="absolute" left=0 top=0 width="100%" height="100%" -exact-min-zoom=1 -exact-max-zoom=(3 / z0) scrollLeft=sl scrollTop=st scrollZoom=sz scroll-behavior="smooth" scroll=onScroll aria-label=`Carte de ${snap.city}` testId="map-touch"
+          view width=`${snap.cityW * z0}px` height=`${snap.cityH * z0}px` pointerdown=tapDown pointerup=tapUp
       // Map tools: zoom, overview, coverage, build.
       column position="absolute" right=(wide ? (sideOpen ? 436 : 12) : 10) top=`calc(env(safe-area-inset-top) + ${barHeight + 10}px)` gap=6
         button press=zoomIn aria-label="Zoomer" class=IconButton testId="zoom-in"

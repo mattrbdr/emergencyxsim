@@ -35,7 +35,7 @@ export function drawCity(w: World, ctx: Ctx2D, frame: Frame, night = 0): boolean
   syncView(w, frame);
   // While a finger is on the map or the view glides, redraw every frame from the
   // camera as it is now, with the finer details left out to keep it fluid.
-  const moving = glide(w) || w.pointers.size > 0;
+  const moving = w.scrollZ0 > 0 ? false : glide(w) || w.pointers.size > 0;
   const { city } = w;
   const z = w.cam.zoom;
   const g = city.grid;

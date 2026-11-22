@@ -4,6 +4,10 @@ shape Ack
   seq: number
   cam: number
   picked: string
+  // Phone: where the native scroll should go (-1: nowhere).
+  sl: number
+  st: number
+  sz: number
 
 shape Boot
   ready: bool
@@ -265,6 +269,8 @@ shape Snap
   day: number
   date: string
   night: number
+  cityW: number
+  cityH: number
   repEffect: string
   difficulty: string
   weather: Weather

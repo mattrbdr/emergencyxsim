@@ -176,6 +176,8 @@ export interface World {
   view: { w: number; h: number };
   pointers: Map<number, Pointer>;
   pinch: { d: number; zoom: number } | null;
+  /** Phone: px per metre of the native scroll's content (0 when the mouse drives the camera). */
+  scrollZ0: number;
   /** Build mode: the kind being placed and where the ghost stands (node, or -1). */
   /** The sound of the moment and the marks on the map (sim/fx.ts); not saved. */
   cue: { id: number; name: string; seq: number };

@@ -16,7 +16,7 @@ test "the first caserne is free and comes with a VSAV"
   tap "build-caserne"
   clock data
   clock +300
-  tap "map"
+  tap "map-touch"
   clock data
   clock +300
   tap "placing-confirm"
@@ -41,7 +41,7 @@ test "a call is qualified, dispatched and paid"
   tap "build-caserne"
   clock data
   clock +300
-  tap "map"
+  tap "map-touch"
   clock data
   clock +300
   tap "placing-confirm"
@@ -97,7 +97,7 @@ test "the career survives a reload"
   tap "build-caserne"
   clock data
   clock +300
-  tap "map"
+  tap "map-touch"
   clock data
   clock +300
   tap "placing-confirm"
@@ -134,7 +134,7 @@ test "the views: fleet, career progression and the log, with time still running"
   tap "build-caserne"
   clock data
   clock +300
-  tap "map"
+  tap "map-touch"
   clock data
   clock +300
   tap "placing-confirm"
@@ -180,7 +180,7 @@ test "a vehicle is stationed at a crossing from its card"
   tap "build-caserne"
   clock data
   clock +300
-  tap "map"
+  tap "map-touch"
   clock data
   clock +300
   tap "placing-confirm"
@@ -199,7 +199,7 @@ test "a vehicle is stationed at a crossing from its card"
   clock data
   clock +300
   expect tree has "posting"
-  tap "map"
+  tap "map-touch"
   clock data
   clock +300
   expect state snap.units.0 .status == "poste"
@@ -231,10 +231,12 @@ test "fifteen taps on the balance double it; the map pans"
   clock data
   clock +300
   expect state snap.money == 60000
-  tap "map" drag 80 40
-  clock data
-  tap "map" pinch 2
-  clock data
-  tap "map" pinch 0.5
-  clock data
-  expect tree has "map"
+  tap "map-touch" pinch 3
+  clock settle
+  expect state sz >= 2
+  tap "map-touch" drag -80 40
+  clock settle
+  expect state sl >= 1
+  tap "map-touch" pinch 0.2
+  clock settle
+  expect state sz <= 1.01

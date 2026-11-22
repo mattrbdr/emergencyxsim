@@ -25,6 +25,8 @@ let zoomDrag: { sx: number; sy: number; zoom: number; wx: number; wy: number; mo
  */
 export function pointer(w: World, kind: string, id: number, x: number, y: number, t = 0): string {
   const ps = w.pointers;
+  // A tap on the phone's native scroll (it pans and zooms by itself): only what it picks.
+  if (kind === 'tap') return pick(w, x, y);
   if (kind === 'down') {
     if (ps.size === 0 && t - lastTap.t < DOUBLE_TAP_MS && Math.hypot(x - lastTap.x, y - lastTap.y) < DOUBLE_TAP_PX) {
       const [wx, wy] = toWorld(w, x, y);

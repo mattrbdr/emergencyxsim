@@ -1,6 +1,7 @@
 // What the view can ask (resources) and order (mutations). Each answer is one
 // line into the simulation; the reply is an Ack the view uses to refresh.
 import { euros, say } from '../sim/log.ts';
+import { scrollTarget } from '../render/camera.ts';
 import type { Difficulty } from '../sim/catalog/difficulty.ts';
 import type { Result, Sources } from '../app.contract.d.ts';
 import type { BuildingKind } from '../sim/catalog/buildings.ts';
@@ -24,7 +25,9 @@ import { downloadCommune, searchCommune, status } from './city-loader.ts';
 import { autosave, boot, demoCity, game, resetCareer, save, startCareer } from './game.ts';
 import { journalLines, roadmap, shopItems, snapshot, upgradeItems } from './snapshot.ts';
 
-const ack = (picked = ''): Result<'tick'> => ({ seq: game.world.seq, cam: game.world.cam.seq, picked });
+const ack = (picked = ''): Result<'tick'> => ({ seq: game.world.seq, cam: game.world.cam.seq, picked, sl: -1, st: -1, sz: -1 });
+/** A camera move's reply: on a phone, the scroll offset and zoom that show it. */
+const camAck = (picked = ''): Result<'tick'> => ({ ...ack(picked), ...scrollTarget(game.world) });
 
 export const sources: Sources = {
   // ------------------------------------------------ reads
@@ -185,6 +188,6 @@ export const sources: Sources = {
     else if (cmd === 'unit') { const u = w.units.find((x) => x.id === id); if (u) at(u.x, u.y); }
     else if (cmd === 'building') { const b = w.buildings.find((x) => x.id === id); if (b) at(b.x, b.y); }
     else if (cmd === 'site') { const p = w.city.pois[Number(id)]; if (p) at(p.x, p.y); }
-    return ack();
+    return camAck();
   },
 };

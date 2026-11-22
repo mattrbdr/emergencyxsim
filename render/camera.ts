@@ -99,3 +99,37 @@ export function settle(w: World) {
   w.cam.tz = w.cam.zoom;
   retarget(w);
 }
+
+// ---------------------------------------------------------------- native scroll (phones)
+// On a phone the map sits under a zoomable scroll the platform drives (UIKit's
+// UIScrollView on iOS: pinch, pan, momentum, bounce, double tap). Its content is
+// the whole town at `z0` px per metre; the scroll's offset and zoom are the camera.
+
+/** Called by each draw with the scroll's state: the camera follows it. */
+export function fromScroll(w: World, left: number, top: number, zoom: number, z0: number) {
+  if (!(z0 > 0) || left < 0) { w.scrollZ0 = 0; return; }
+  w.scrollZ0 = z0;
+  const z = z0 * Math.max(zoom, 0.01);
+  const cw = w.city.width * z, ch = w.city.height * z;
+  // Smaller than the port, the content is centred; larger, the offset is the scroll's.
+  const ox = cw < w.view.w ? -(w.view.w - cw) / 2 : left;
+  const oy = ch < w.view.h ? -(w.view.h - ch) / 2 : top;
+  const c = w.cam;
+  c.zoom = c.tz = z;
+  c.cx = c.tx = (w.view.w / 2 + ox) / z;
+  c.cy = c.ty = (w.view.h / 2 + oy) / z;
+  c.touched = true;
+}
+
+/** The scroll's offset and zoom that show the camera's target (a call to look at, the overview). */
+export function scrollTarget(w: World): { sl: number; st: number; sz: number } {
+  const z0 = w.scrollZ0;
+  if (!(z0 > 0)) return { sl: -1, st: -1, sz: -1 };
+  const c = w.cam;
+  const sz = Math.max(1, Math.min(maxZoom / z0, c.tz / z0));
+  const z = z0 * sz;
+  const cw = w.city.width * z, ch = w.city.height * z;
+  const sl = Math.max(0, Math.min(cw - w.view.w, c.tx * z - w.view.w / 2));
+  const st = Math.max(0, Math.min(ch - w.view.h, c.ty * z - w.view.h / 2));
+  return { sl, st, sz };
+}

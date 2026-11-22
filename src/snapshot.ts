@@ -282,6 +282,8 @@ export function snapshot(w: World): Snap {
     weather: weatherRow(w),
     // Night on the map in five steps (0 day – 4 deep night), for the city canvas.
     night: nightStep(w),
+    cityW: w.city.width,
+    cityH: w.city.height,
     repEffect: `primes ×${reputationFactor(w).toFixed(2).replace('.', ',')} · appels ×${(0.6 + w.reputation / 125).toFixed(2).replace('.', ',')}`,
     difficulty: DIFFICULTY[w.difficulty].label,
     posting: w.units.find((u) => u.id === w.posting)?.name ?? '',
