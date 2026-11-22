@@ -17,23 +17,23 @@ component CallQueue
     firstBuilding: bool
     hint: string
   view
-    // A native list (UIKit's cells on iOS): open calls by priority, then the closed ones.
-    list id="calls" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0 role="tabpanel" aria-label="Appels" testId="panel-appels"
+    // A plain native list (UIKit's cells and separators on iOS), on the panel's ground:
+    // open calls by priority, then the closed ones under their header.
+    list id="calls" appearance="auto" listStyle="plain" flex=1 min-height=0 background-color="transparent" role="tabpanel" aria-label="Appels" testId="panel-appels"
       if calls.length == 0
         section background-color="transparent"
-          Empty(icon="phone", text=(firstBuilding ? "Pas d'appel tant qu'aucune caserne n'est en service." : "Aucun appel en cours."))
+          row padding-top=18 padding-bottom=18 justify-content="center"
+            text (firstBuilding ? "Pas d'appel tant qu'aucune caserne n'est en service." : "Aucun appel en cours.") font-size="0.86rem" color="#9aa4b2" text-align="center"
       else
-        section
-          header
-            text `En cours · ${calls.length}`
+        section background-color="transparent"
           for c, i in calls key=c.id
             CallLine(c=c, active=(c.id == selected), pick=pick(c.id), hinted=(hint == "call" and i == 0), tid=(i == 0 ? "call-first" : `call-${c.id}`))
       if closed.length > 0
-        section
+        section background-color="transparent"
           header
             text `Clôturés · ${closed.length}`
           for c in closed key=c.id
-            row gap=10 align-items="center"
+            row gap=10 align-items="center" background-color="transparent"
               text c.timeText class=Mono font-size="0.72rem" color="#808b9c" width="2.8rem"
               text c.title font-size="0.84rem" flex=1 min-width=0 white-space="nowrap" overflow="hidden" text-overflow="ellipsis" color="#c9d1d9"
               text (c.reward != "" ? c.reward : c.stateLabel) class=Mono font-size="0.72rem" color=outcomeColor(c.outcome)

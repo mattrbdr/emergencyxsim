@@ -341,7 +341,8 @@ component EmergencySim
                     text sheetTitle role="heading" aria-level=2 font-weight=600 flex=1 min-width=0
                     if sheetSub != ""
                       text sheetSub
-                    button id="close" press=closePanel aria-label="Fermer" testId="fiche-close"
+                    // The root's navigationBack control: its press, the swipe down and the agent's back close the sheet.
+                    button id="back" press=closePanel aria-label="Fermer" testId="fiche-close"
                       image "symbol:close"
                   column flex=1 min-height=0 testId="fiche"
                     Detail(panel=panel, picked=picked, snap=snap, bar=true, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding, toMap=toMap)
@@ -351,7 +352,7 @@ component EmergencySim
                 if e.name == "detail"
                   column position="absolute" top=`calc(env(safe-area-inset-top) + ${barHeight}px)` left=0 right=0 bottom=0
                     header display="flex" align-items="center" gap=8 padding="6px 14px" border-bottom="1px solid #252c36"
-                      button id="close" press=back appearance="none" display="flex" align-items="center" gap=4 padding="6px 0" testId="fleet-back"
+                      button id="back" press=back appearance="none" display="flex" align-items="center" gap=4 padding="6px 0" testId="fleet-back"
                         Icon(name="chevron-left", size=14, color="#9aa4b2")
                         text "Flotte" font-size="0.84rem" color="#9aa4b2"
                       text (e.params.sel.startsWith("b-") ? "Base" : "Véhicule") role="heading" aria-level=2 font-size="0.9rem" font-weight=600
@@ -504,12 +505,20 @@ component Regulation
               Detail(panel=panel, picked=picked, snap=snap, bar=false, closePanel=closePanel, pickUnit=pickUnit, focusUnit=focusUnit, place=place, manageBuilding=manageBuilding, toMap=toMap)
       else
         // Phone: one drawer for the calls and the thing open.
-        column position="absolute" left=0 right=0 bottom=0 max-height=(drawerOpen ? "55%" : "auto") background-color="#0e1217" border-top="1px solid #30394a" testId="drawer"
-          button press=toggleDrawer appearance="none" display="flex" justify-content="center" padding-top=8 padding-bottom=4 aria-label=(drawerOpen ? "Réduire le panneau" : "Ouvrir le panneau") aria-expanded=drawerOpen testId="drawer-handle"
-            view width=36 height=4 border-radius=2 background-color="#4b5668"
-          CallsHeader(calls=snap.calls.length, fresh=snap.newCalls)
+        // The calls, in a panel shaped like an iOS sheet: its grabber and title are one
+        // control that folds it down to the title, or opens it.
+        column position="absolute" left=0 right=0 bottom=0 background-color="#0e1217" border-top-left-radius=14 border-top-right-radius=14 box-shadow="0 -6px 24px rgba(0,0,0,0.45)" overflow="hidden" testId="drawer"
+          button press=toggleDrawer appearance="none" display="flex" flex-direction="column" align-items="stretch" gap=6 padding="8px 16px 10px" aria-label=(drawerOpen ? "Réduire les appels" : "Afficher les appels") aria-expanded=drawerOpen testId="drawer-handle"
+            view align-self="center" width=36 height=5 border-radius=3 background-color="#4b5668"
+            row align-items="center" gap=8
+              text "Appels" font-size="1.05rem" font-weight=700
+              if snap.calls.length > 0
+                text `${snap.calls.length}` class=Mono font-size="0.72rem" font-weight=600 padding="1px 6px" border-radius=8 background-color=(snap.newCalls > 0 ? "#f2555a" : "#30394a") color=(snap.newCalls > 0 ? "#0b0e12" : "#e6edf3") testId="calls-count"
+              view flex=1
+              text (snap.newCalls > 0 ? `${snap.newCalls} à qualifier` : snap.calls.length > 0 ? "tous qualifiés" : "") font-size="0.78rem" color=(snap.newCalls > 0 ? "#f2555a" : "#808b9c")
+              Icon(name=(drawerOpen ? "minus" : "plus"), size=14, color="#808b9c")
           if drawerOpen
-            column flex=1 min-height=0 height="40vh"
+            column height="34vh" border-top="1px solid #1f2630"
               CallQueue(calls=snap.calls, closed=snap.closed, selected=(panel == "call" ? picked : ""), pick=pickCall, firstBuilding=snap.firstBuilding, hint=snap.guide.hint)
 
 component CallsHeader
